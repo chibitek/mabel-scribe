@@ -36,7 +36,7 @@
     "category": "Medical",
     "shortDescription": "Privacy-first clinical scribe for macOS.",
     "longDescription": "Mabel Scribe is a privacy-first dictation and clinical-scribe app for macOS. Audio is transcribed on-device using Whisper. Optional medical-terminology polish runs locally with BioMistral. Audio and transcripts never leave the Mac. Not a medical device.",
-    "externalBin": ["binaries/whisper-cpp"],
+    "externalBin": ["binaries/whisper-cpp", "binaries/llama-server"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

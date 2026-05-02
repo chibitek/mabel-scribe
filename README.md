@@ -48,19 +48,27 @@ Not in v0.1, but on the roadmap:
 
 ## Build
 
-The build flow is identical to Mabel. See the [Mabel README](https://github.com/erickgrau/Mabel/blob/main/README.md#build-it-yourself) for prerequisites, signing, and notarization. Differences for Mabel Scribe:
+The build flow is mostly identical to Mabel. See the [Mabel README](https://github.com/erickgrau/Mabel/blob/main/README.md#build-it-yourself) for prerequisites, signing, and notarization. Differences for Mabel Scribe:
 
 - Bundle identifier is `com.chibitek.mabelscribe` (not `com.mabel.app`).
 - Package name is `mabel-scribe`, Cargo crate name is `mabel-scribe`, Rust lib name is `scribe_lib`.
 - Optional dev env vars are `SCRIBE_GROQ_KEY` and `SCRIBE_LLAMA_SERVER`.
 - Signing identity is shared with Mabel (`Developer ID Application: Erick Grau (DF9FB764AR)`).
+- A static `llama-server` is bundled alongside `whisper-cpp` so users don't need to install llama.cpp separately. The binary is produced by [scripts/build-llama-server.sh](scripts/build-llama-server.sh), which clones llama.cpp at the latest release tag and links the server statically with Metal acceleration.
 
 ```bash
 git clone https://github.com/chibitek/mabel-scribe.git
 cd mabel-scribe
 npm install
+
+# One-time: build the bundled llama-server sidecar (~5 minutes on M-series).
+# Re-run this script when you want to bump llama.cpp.
+scripts/build-llama-server.sh
+
 npm run tauri dev
 ```
+
+The `whisper-cpp` sidecar binary is not currently fetched by a script. If `src-tauri/binaries/whisper-cpp-aarch64-apple-darwin` is missing on a fresh clone, copy it over from your existing Mabel checkout, or build whisper.cpp locally and place it there.
 
 ## License
 

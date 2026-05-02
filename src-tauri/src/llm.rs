@@ -166,19 +166,30 @@ struct RunningServer {
 }
 
 /// Resolves the path to `llama-server` for spawning. Order:
-///   1. `SCRIBE_LLAMA_SERVER` env var (override, useful for dev)
-///   2. Bundled sidecar — `binaries/llama-server-aarch64-apple-darwin` next to
-///      the app binary. (Not yet wired; left as a TODO before shipping.)
-///   3. `/opt/homebrew/bin/llama-server` (Apple Silicon brew)
-///   4. `/usr/local/bin/llama-server` (Intel brew, or manually installed)
+///   1. `SCRIBE_LLAMA_SERVER` env var (dev override).
+///   2. Bundled sidecar at `<exe_dir>/llama-server`. In production this is
+///      `Mabel Scribe.app/Contents/MacOS/llama-server`; in `npm run tauri
+///      dev` it's `target/debug/llama-server`. Tauri's bundler copies
+///      `binaries/llama-server-aarch64-apple-darwin` to here at build time,
+///      stripping the target-triple suffix.
+///   3. `/opt/homebrew/bin/llama-server` (Apple Silicon brew, dev fallback).
+///   4. `/usr/local/bin/llama-server` (Intel brew or manual install).
 ///
-/// Returns None if no candidate exists. Caller surfaces a friendly error so the
-/// LLM cleanup falls back to the rules-only pass.
+/// Returns None if no candidate exists. The caller surfaces a friendly error
+/// so the LLM cleanup falls back to the rules-only pass.
 fn resolve_llama_server_path() -> Option<PathBuf> {
     if let Ok(p) = std::env::var("SCRIBE_LLAMA_SERVER") {
         let path = PathBuf::from(p);
         if path.exists() {
             return Some(path);
+        }
+    }
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(parent) = exe.parent() {
+            let bundled = parent.join("llama-server");
+            if bundled.exists() {
+                return Some(bundled);
+            }
         }
     }
     for candidate in [

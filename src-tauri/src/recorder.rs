@@ -195,7 +195,7 @@ impl Recorder {
         let _ = std::fs::remove_file(&temp_path);
 
         let rule_cleaned = cleanup_text(&raw_text);
-        let cleaned = if settings.cleanup_mode == "llm" && !rule_cleaned.is_empty() {
+        let mut cleaned = if settings.cleanup_mode == "llm" && !rule_cleaned.is_empty() {
             println!("[Mabel] LLM cleanup input: {:?}", rule_cleaned);
             let t0 = std::time::Instant::now();
             match crate::llm::cleanup_with_llm(&rule_cleaned).await {
@@ -215,6 +215,33 @@ impl Recorder {
         } else {
             rule_cleaned
         };
+
+        // Stage 2: medical-terminology polish. Off by default. Best-effort —
+        // any failure falls back silently to stage 1's output, which is
+        // already pasteable.
+        if settings.medical_polish_enabled && !cleaned.is_empty() {
+            let t0 = std::time::Instant::now();
+            match crate::medical_polish::polish(&cleaned, &settings.dictionary).await {
+                Ok(polished) => {
+                    if polished != cleaned {
+                        println!(
+                            "[Mabel] Medical polish applied ({:?}): {:?} -> {:?}",
+                            t0.elapsed(),
+                            cleaned,
+                            polished
+                        );
+                    }
+                    cleaned = polished;
+                }
+                Err(e) => {
+                    eprintln!(
+                        "[Mabel] Medical polish failed ({:?}), keeping cleanup output: {}",
+                        t0.elapsed(),
+                        e
+                    );
+                }
+            }
+        }
         println!("[Mabel] About to paste: {:?}", cleaned);
         let (to_paste, press_enter) =
             extract_press_enter_command(&cleaned, settings.press_enter_command);

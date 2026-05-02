@@ -196,7 +196,7 @@ async fn transcribe_and_paste(
             // LLM cleanup only on the final chunk in streaming mode. Per-chunk
             // LLM passes would add 300-500ms to every paste and break the
             // "live transcription" feel.
-            let cleaned = if is_final && settings.cleanup_mode == "llm" {
+            let mut cleaned = if is_final && settings.cleanup_mode == "llm" {
                 match crate::llm::cleanup_with_llm(&rule_cleaned).await {
                     Ok(s) if !s.is_empty() => s,
                     Ok(_) => rule_cleaned,
@@ -208,6 +208,18 @@ async fn transcribe_and_paste(
             } else {
                 rule_cleaned
             };
+
+            // Stage 2: medical polish. Final chunks only — running it per
+            // chunk would multiply latency for streaming dictation, and the
+            // grammar/diff approach assumes a complete utterance to fix.
+            if is_final && settings.medical_polish_enabled && !cleaned.is_empty() {
+                match crate::medical_polish::polish(&cleaned, &settings.dictionary).await {
+                    Ok(polished) => cleaned = polished,
+                    Err(e) => {
+                        eprintln!("[Mabel] Medical polish failed, keeping cleanup output: {}", e);
+                    }
+                }
+            }
             // Only the final chunk can carry a "press enter" command — otherwise
             // we'd fire Return mid-sentence.
             let (to_paste, press_enter) = if is_final {

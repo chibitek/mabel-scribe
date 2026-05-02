@@ -36,6 +36,17 @@ pub struct Settings {
     /// "light" or "standard" — only consulted when cleanup_mode == "llm".
     #[serde(rename = "llmModel", default = "default_llm_model")]
     pub llm_model: String,
+    /// Optional second-pass medical-terminology polish using BioMistral 7B.
+    /// Runs after the cleanup pass, fixes drug names and medical jargon via a
+    /// constrained diff. Off by default; the model is a separate ~5 GB
+    /// download.
+    #[serde(rename = "medicalPolishEnabled", default)]
+    pub medical_polish_enabled: bool,
+    /// Which medical-polish model to use. Currently only "biomistral-7b-q5".
+    /// Field exists so a future Q4 fast variant or domain-specific fine-tune
+    /// can be added without a settings migration.
+    #[serde(rename = "medicalPolishModel", default = "default_medical_polish_model")]
+    pub medical_polish_model: String,
     /// Last Mabel version the user actually saw the "What's New" popup for.
     /// On launch we compare this to the running version — if they differ, show
     /// the popup with the changelog entries between them, then update this.
@@ -58,6 +69,7 @@ fn default_streaming() -> bool { true }
 fn default_true() -> bool { true }
 fn default_cleanup_mode() -> String { "rules".to_string() }
 fn default_llm_model() -> String { "standard".to_string() }
+fn default_medical_polish_model() -> String { "biomistral-7b-q5".to_string() }
 fn default_whisper_language() -> String { "multi".to_string() }
 
 /// What we actually serialize to disk. Excludes the Groq API key, which lives
@@ -87,6 +99,10 @@ struct DiskSettings {
     cleanup_mode: String,
     #[serde(rename = "llmModel", default = "default_llm_model")]
     llm_model: String,
+    #[serde(rename = "medicalPolishEnabled", default)]
+    medical_polish_enabled: bool,
+    #[serde(rename = "medicalPolishModel", default = "default_medical_polish_model")]
+    medical_polish_model: String,
     #[serde(rename = "lastSeenVersion", default)]
     last_seen_version: String,
     #[serde(rename = "whisperLanguage", default = "default_whisper_language")]
@@ -111,6 +127,8 @@ impl From<&Settings> for DiskSettings {
             press_enter_command: s.press_enter_command,
             cleanup_mode: s.cleanup_mode.clone(),
             llm_model: s.llm_model.clone(),
+            medical_polish_enabled: s.medical_polish_enabled,
+            medical_polish_model: s.medical_polish_model.clone(),
             last_seen_version: s.last_seen_version.clone(),
             whisper_language: s.whisper_language.clone(),
             dictionary: s.dictionary.clone(),
@@ -135,6 +153,8 @@ impl Default for Settings {
             press_enter_command: false,
             cleanup_mode: default_cleanup_mode(),
             llm_model: default_llm_model(),
+            medical_polish_enabled: false,
+            medical_polish_model: default_medical_polish_model(),
             last_seen_version: String::new(),
             whisper_language: default_whisper_language(),
             dictionary: Vec::new(),
@@ -178,6 +198,8 @@ impl Settings {
                         press_enter_command: d.press_enter_command,
                         cleanup_mode: d.cleanup_mode,
                         llm_model: d.llm_model,
+                        medical_polish_enabled: d.medical_polish_enabled,
+                        medical_polish_model: d.medical_polish_model,
                         last_seen_version: d.last_seen_version,
                         whisper_language: d.whisper_language,
                         dictionary: d.dictionary,

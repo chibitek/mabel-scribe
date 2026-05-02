@@ -523,6 +523,30 @@
               <div id="llm-download-progress" class="hidden">
                 <div id="llm-progress-bar"><div id="llm-progress-fill"></div></div>
               </div>
+              <div class="row hidden" id="medical-polish-row">
+                <div class="row-text">
+                  <div class="row-label">Medical terminology polish <span class="badge-experimental">experimental</span></div>
+                  <div class="row-hint">Second pass after AI cleanup. BioMistral 7B fixes drug names, anatomy, and medical abbreviations using a constrained edit list. Off unless you turn it on. Adds a few seconds per dictation.</div>
+                </div>
+                <button type="button" id="medical-polish-toggle" class="switch" role="switch" aria-checked="false" aria-label="Medical terminology polish">
+                  <span class="switch-thumb"></span>
+                </button>
+              </div>
+              <div class="row hidden" id="medical-polish-model-row">
+                <div class="row-text">
+                  <div class="row-label">Medical polish model</div>
+                  <div class="row-hint">BioMistral 7B Q5_K_M. Apache 2.0. ~5.1 GB one-time download.</div>
+                </div>
+                <div class="model-row">
+                  <select id="medical-polish-model-select" aria-label="Medical polish model">
+                    <option value="biomistral-7b-q5">BioMistral 7B Q5_K_M (~5.1 GB)</option>
+                  </select>
+                  <button type="button" id="medical-polish-download-btn" class="btn-secondary">Download</button>
+                </div>
+              </div>
+              <div id="medical-polish-download-progress" class="hidden">
+                <div id="medical-polish-progress-bar"><div id="medical-polish-progress-fill"></div></div>
+              </div>
               <div class="row hidden" id="cloud-settings">
                 <div class="row-text">
                   <div class="row-label">Groq API key <span class="key-status hidden" id="key-status">Saved</span></div>

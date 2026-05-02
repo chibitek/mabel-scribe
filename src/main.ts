@@ -18,6 +18,8 @@ interface Settings {
   pressEnterCommand: boolean;
   cleanupMode: string;
   llmModel: string;
+  medicalPolishEnabled: boolean;
+  medicalPolishModel: string;
   lastSeenVersion: string;
   whisperLanguage: string;
   dictionary: string[];
@@ -71,6 +73,13 @@ const llmModelSelect = $<HTMLSelectElement>("llm-model-select");
 const llmDownloadBtn = $<HTMLButtonElement>("llm-download-btn");
 const llmDownloadProgress = $("llm-download-progress");
 const llmProgressFill = $("llm-progress-fill");
+const medicalPolishRow = $("medical-polish-row");
+const medicalPolishToggle = $<HTMLButtonElement>("medical-polish-toggle");
+const medicalPolishModelRow = $("medical-polish-model-row");
+const medicalPolishModelSelect = $<HTMLSelectElement>("medical-polish-model-select");
+const medicalPolishDownloadBtn = $<HTMLButtonElement>("medical-polish-download-btn");
+const medicalPolishDownloadProgress = $("medical-polish-download-progress");
+const medicalPolishProgressFill = $("medical-polish-progress-fill");
 const groqKey = $<HTMLInputElement>("groq-key");
 const keySave = $<HTMLButtonElement>("key-save");
 const keyStatus = $("key-status");
@@ -187,8 +196,12 @@ async function loadSettings() {
   renderDictionary();
   cleanupModeSelect.value = currentSettings.cleanupMode || "rules";
   llmModelSelect.value = currentSettings.llmModel || "standard";
+  medicalPolishModelSelect.value = currentSettings.medicalPolishModel || "biomistral-7b-q5";
+  setSwitch(medicalPolishToggle, currentSettings.medicalPolishEnabled);
   applyCleanupModeUi();
+  applyMedicalPolishUi();
   await checkLlmModelStatus();
+  await checkMedicalPolishModelStatus();
   // The actual key is never echoed back from the keychain. We just show
   // "Saved" if a key was previously stored, and let the user overwrite it.
   groqKey.value = "";
@@ -295,8 +308,28 @@ async function checkLlmModelStatus() {
   llmDownloadBtn.disabled = downloaded;
 }
 
+async function checkMedicalPolishModelStatus() {
+  const downloaded = await invoke<boolean>("check_medical_model_downloaded", {
+    model: medicalPolishModelSelect.value,
+  });
+  medicalPolishDownloadBtn.textContent = downloaded ? "Downloaded" : "Download";
+  medicalPolishDownloadBtn.disabled = downloaded;
+}
+
 function applyCleanupModeUi() {
-  llmSettings.classList.toggle("hidden", cleanupModeSelect.value !== "llm");
+  const isLlm = cleanupModeSelect.value === "llm";
+  llmSettings.classList.toggle("hidden", !isLlm);
+  // Medical polish is only meaningful as a second pass after AI cleanup. When
+  // cleanup is rules-only, hide the polish row entirely so users don't enable
+  // a feature that won't fire.
+  medicalPolishRow.classList.toggle("hidden", !isLlm);
+  applyMedicalPolishUi();
+}
+
+function applyMedicalPolishUi() {
+  const isLlm = cleanupModeSelect.value === "llm";
+  const on = medicalPolishToggle.getAttribute("aria-checked") === "true";
+  medicalPolishModelRow.classList.toggle("hidden", !(isLlm && on));
 }
 
 async function saveSettings() {
@@ -308,6 +341,7 @@ async function saveSettings() {
   currentSettings.whisperLanguage = languageSelect.value;
   currentSettings.cleanupMode = cleanupModeSelect.value;
   currentSettings.llmModel = llmModelSelect.value;
+  currentSettings.medicalPolishModel = medicalPolishModelSelect.value;
   const previousKey = currentSettings.groqApiKey;
   currentSettings.groqApiKey = "";
   await invoke("save_settings", { settings: currentSettings });
@@ -454,6 +488,44 @@ llmDownloadBtn.addEventListener("click", async () => {
     console.error("LLM download failed:", e);
   }
   llmDownloadProgress.classList.add("hidden");
+});
+
+medicalPolishToggle.addEventListener("click", async () => {
+  const next = medicalPolishToggle.getAttribute("aria-checked") !== "true";
+  setSwitch(medicalPolishToggle, next);
+  currentSettings.medicalPolishEnabled = next;
+  applyMedicalPolishUi();
+  await saveSettings();
+  // Best-effort warm start when the user enables polish AND the model is on
+  // disk. If the file is missing, the warm-start fails fast; the user still
+  // sees the download button.
+  if (next) {
+    invoke("ensure_medical_llm_started").catch((e) =>
+      console.error("Medical polish warm start:", e)
+    );
+  }
+});
+
+medicalPolishModelSelect.addEventListener("change", async () => {
+  await checkMedicalPolishModelStatus();
+  await saveSettings();
+});
+
+medicalPolishDownloadBtn.addEventListener("click", async () => {
+  medicalPolishDownloadBtn.disabled = true;
+  medicalPolishDownloadProgress.classList.remove("hidden");
+  medicalPolishProgressFill.style.width = "0%";
+  try {
+    await invoke("download_medical_model", {
+      model: medicalPolishModelSelect.value,
+    });
+    medicalPolishDownloadBtn.textContent = "Downloaded";
+  } catch (e) {
+    medicalPolishDownloadBtn.textContent = "Retry";
+    medicalPolishDownloadBtn.disabled = false;
+    console.error("Medical polish download failed:", e);
+  }
+  medicalPolishDownloadProgress.classList.add("hidden");
 });
 
 keySave.addEventListener("click", () => saveGroqKey());

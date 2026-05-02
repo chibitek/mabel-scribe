@@ -8,7 +8,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutEvent, ShortcutSta
 
 use mabel_lib::audio;
 use mabel_lib::downloader;
-use mabel_lib::llm::LlmServer;
+use mabel_lib::llm::{LlmRole, LlmServer};
 use mabel_lib::recorder::{Recorder, RecordingState};
 use mabel_lib::settings::Settings;
 use mabel_lib::stats::{StatsStore, StatsSummary};
@@ -237,10 +237,10 @@ async fn download_llm_model(
     downloader::download_model(app, &url, &dest).await
 }
 
-/// Starts (or confirms running) the llama-server with the configured LLM model.
-/// Idempotent: if already running with the right model, returns immediately.
-/// The frontend can call this when the user enables LLM cleanup so the first
-/// dictation doesn't pay the cold-start cost.
+/// Starts (or confirms running) the cleanup llama-server with the configured
+/// LLM model. Idempotent: if already running with the right model, returns
+/// immediately. The frontend can call this when the user enables LLM cleanup so
+/// the first dictation doesn't pay the cold-start cost.
 #[tauri::command]
 async fn ensure_llm_started(
     app: tauri::AppHandle,
@@ -253,7 +253,45 @@ async fn ensure_llm_started(
     };
     let name = mabel_lib::llm::model_filename(&model)?;
     let path = app_dir.join(&name);
-    server.start(&app, &model, &path).await
+    server.start(&app, LlmRole::Cleanup, &model, &path).await
+}
+
+#[tauri::command]
+fn check_medical_model_downloaded(state: State<AppState>, model: String) -> bool {
+    match mabel_lib::llm::medical_model_filename(&model) {
+        Ok(name) => state.app_dir.join(&name).exists(),
+        Err(_) => false,
+    }
+}
+
+#[tauri::command]
+async fn download_medical_model(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    model: String,
+) -> Result<(), String> {
+    let url = mabel_lib::llm::medical_model_download_url(&model)?;
+    let name = mabel_lib::llm::medical_model_filename(&model)?;
+    let dest = state.app_dir.join(&name);
+    downloader::download_model(app, &url, &dest).await
+}
+
+/// Starts (or confirms running) the medical-polish llama-server. Same
+/// idempotent contract as `ensure_llm_started`. Only relevant when
+/// `medical_polish_enabled` is on; otherwise this command is never called.
+#[tauri::command]
+async fn ensure_medical_llm_started(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let (model, app_dir, server) = {
+        let settings = state.settings.lock().unwrap();
+        let model = settings.medical_polish_model.clone();
+        (model, state.app_dir.clone(), state.llm_server.clone())
+    };
+    let name = mabel_lib::llm::medical_model_filename(&model)?;
+    let path = app_dir.join(&name);
+    server.start(&app, LlmRole::Medical, &model, &path).await
 }
 
 #[tauri::command]
@@ -455,6 +493,9 @@ fn main() {
             check_llm_model_downloaded,
             download_llm_model,
             ensure_llm_started,
+            check_medical_model_downloaded,
+            download_medical_model,
+            ensure_medical_llm_started,
             reconcile_groq_keychain,
             get_whats_new,
             mark_version_seen,
@@ -536,7 +577,10 @@ fn main() {
                         let model = initial_llm_model.clone();
                         let warm_handle = handle.clone();
                         tauri::async_runtime::spawn(async move {
-                            if let Err(e) = server.start(&warm_handle, &model, &model_path).await {
+                            if let Err(e) = server
+                                .start(&warm_handle, LlmRole::Cleanup, &model, &model_path)
+                                .await
+                            {
                                 eprintln!("[Mabel] LLM warm-start failed: {}", e);
                             }
                         });
@@ -553,7 +597,7 @@ fn main() {
             // next launch can't bind.
             if matches!(event, tauri::WindowEvent::Destroyed) {
                 if let Some(state) = window.app_handle().try_state::<AppState>() {
-                    state.llm_server.stop();
+                    state.llm_server.stop_all();
                 }
             }
         })

@@ -1,31 +1,44 @@
-// LLM cleanup pass: runs Whisper output through a local LLM (llama.cpp server)
-// to remove fillers, fix punctuation, and normalize numbers/proper nouns.
+// LLM server: spawns one or more `llama-server` sidecar processes bound to
+// 127.0.0.1 and exposes their OpenAI-compatible chat-completions endpoints to
+// the rest of the app.
 //
-// Architecture: spawn `llama-server` as a Tauri sidecar bound to 127.0.0.1, hold
-// the child handle in app state, and POST to its OpenAI-compatible
-// /v1/chat/completions endpoint per cleanup. The server keeps the model warm
-// between calls so per-cleanup latency is just generation, not model load.
+// Two roles can run side by side:
 //
-// Two model tiers, downloaded lazily into the app config dir alongside the
-// Whisper models:
-//   - "light"    → SmolLM3-3B Q4_K_M  (~1.8 GB)  — fast, weaker on numbers/terms
-//   - "standard" → Gemma 4 E4B Q4_K_M (~5.0 GB)  — better quality, default
+//   - LlmRole::Cleanup  → port 18745 — runs Gemma 4 E4B Q4_K_M for the
+//                         dictation-cleanup pass (filler removal, punctuation,
+//                         self-correction collapse).
+//   - LlmRole::Medical  → port 18746 — runs BioMistral 7B Q5_K_M for the
+//                         optional medical-terminology polish pass that fires
+//                         after cleanup. Diff-JSON output, prompt cache enabled.
+//
+// Each role keeps its model warm between calls. Servers are started lazily —
+// on the first cleanup or polish request — and torn down on app exit.
+//
+// Models are downloaded lazily into the app config dir alongside the Whisper
+// models. URLs and filenames live in the per-role registries below.
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::Duration;
 use tauri::AppHandle;
 
-const ALLOWED_MODELS: &[&str] = &["standard"];
+const ALLOWED_CLEANUP_MODELS: &[&str] = &["standard"];
+const ALLOWED_MEDICAL_MODELS: &[&str] = &["biomistral-7b-q5"];
 
-/// Loopback port we bind llama-server to. Picked to be high and uncommon. If
-/// this collides with another process the server will fail to start and we'll
-/// fall back to the rules-only cleanup path.
-pub const SERVER_PORT: u16 = 18745;
+/// Loopback ports per role. Picked to be high and uncommon. If either collides
+/// with another process the corresponding server fails to start and the caller
+/// falls back to the prior pipeline stage's output.
+const CLEANUP_PORT: u16 = 18745;
+const MEDICAL_PORT: u16 = 18746;
 
-/// Hard cap on how long we wait for the model to load before giving up on the
-/// cleanup call. Cold model load on M1 base for Gemma 4 E4B is ~3s.
+/// Backwards compatibility for callers that still reference SERVER_PORT.
+/// Equivalent to LlmRole::Cleanup.port().
+pub const SERVER_PORT: u16 = CLEANUP_PORT;
+
+/// Hard cap on how long we wait for any model to load before giving up. Cold
+/// load on M1 base for Gemma 4 E4B is ~3s; BioMistral 7B Q5 is ~5s.
 const READY_TIMEOUT: Duration = Duration::from_secs(20);
 
 /// Per-cleanup HTTP timeout. Generation alone is sub-second on M-series; pad
@@ -36,8 +49,64 @@ const SYSTEM_PROMPT: &str = "You are a dictation cleanup assistant. The user spo
 
 const USER_PROMPT_PREFIX: &str = "Clean this transcript directly. Do not think, reason, or explain. Output only the cleaned text. Transcript: ";
 
+/// Identifies which sidecar server a request targets. Both roles can be running
+/// at the same time on different ports.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum LlmRole {
+    Cleanup,
+    Medical,
+}
+
+impl LlmRole {
+    pub fn port(self) -> u16 {
+        match self {
+            LlmRole::Cleanup => CLEANUP_PORT,
+            LlmRole::Medical => MEDICAL_PORT,
+        }
+    }
+
+    /// llama-server flags specific to this role. Each role gets its own context
+    /// size, prompt-cache strategy, and reasoning-budget setting.
+    fn server_args(self) -> Vec<&'static str> {
+        match self {
+            LlmRole::Cleanup => vec![
+                // 2K context is plenty for dictation utterances. Larger context
+                // costs RAM at load.
+                "-c", "2048",
+                // Required to apply the model's chat template.
+                "--jinja",
+                // Suppress reasoning tokens. Both Gemma 4 and SmolLM3 emit them
+                // by default; for cleanup we want immediate text-only answers.
+                "--reasoning-budget", "0",
+                // Offload all layers to Metal on macOS. Silently ignored on
+                // non-Metal hosts.
+                "-ngl", "99",
+            ],
+            LlmRole::Medical => vec![
+                // 4K fits a typical SOAP note plus its source transcript plus
+                // the in-prompt glossary plus the few-shot examples.
+                "-c", "4096",
+                "--jinja",
+                "--reasoning-budget", "0",
+                "-ngl", "99",
+                // Reuse KV-cache prefix across requests when the prompt prefix
+                // matches. The system prompt + glossary + few-shots are
+                // identical on every polish call, so this avoids re-prefilling
+                // thousands of tokens. `n` is a per-token budget; 256 is a
+                // reasonable default per llama.cpp guidance.
+                "--cache-reuse", "256",
+                // Quantize the KV cache. Q8_0 cuts KV memory roughly in half
+                // with negligible quality loss for this task. Helps on 16GB
+                // Macs that are also running the cleanup server and Whisper.
+                "-ctk", "q8_0",
+                "-ctv", "q8_0",
+            ],
+        }
+    }
+}
+
 pub fn validate_model(model: &str) -> Result<&str, String> {
-    if ALLOWED_MODELS.contains(&model) {
+    if ALLOWED_CLEANUP_MODELS.contains(&model) {
         Ok(model)
     } else {
         Err(format!("Invalid LLM model: {}", model))
@@ -60,10 +129,35 @@ pub fn model_download_url(model: &str) -> Result<String, String> {
     .to_string())
 }
 
-/// Holds the running llama-server process handle plus the model it was started
-/// with. We keep both so we can detect a model change in settings and respawn.
+pub fn validate_medical_model(model: &str) -> Result<&str, String> {
+    if ALLOWED_MEDICAL_MODELS.contains(&model) {
+        Ok(model)
+    } else {
+        Err(format!("Invalid medical LLM model: {}", model))
+    }
+}
+
+pub fn medical_model_filename(model: &str) -> Result<String, String> {
+    Ok(match validate_medical_model(model)? {
+        "biomistral-7b-q5" => "BioMistral-7B.Q5_K_M.gguf",
+        _ => unreachable!(),
+    }
+    .to_string())
+}
+
+pub fn medical_model_download_url(model: &str) -> Result<String, String> {
+    Ok(match validate_medical_model(model)? {
+        "biomistral-7b-q5" => "https://huggingface.co/MaziyarPanahi/BioMistral-7B-GGUF/resolve/main/BioMistral-7B.Q5_K_M.gguf",
+        _ => unreachable!(),
+    }
+    .to_string())
+}
+
+/// Holds running llama-server child handles, keyed by role. Each role can have
+/// at most one server running; starting a second one for the same role kills
+/// the first.
 pub struct LlmServer {
-    inner: Mutex<Option<RunningServer>>,
+    inner: Mutex<HashMap<LlmRole, RunningServer>>,
 }
 
 struct RunningServer {
@@ -102,29 +196,31 @@ fn resolve_llama_server_path() -> Option<PathBuf> {
 impl LlmServer {
     pub fn new() -> Self {
         Self {
-            inner: Mutex::new(None),
+            inner: Mutex::new(HashMap::new()),
         }
     }
 
-    /// Returns true if the server is running with the requested model.
-    pub fn is_ready_for(&self, model: &str) -> bool {
+    /// Returns true if the role's server is running with the requested model.
+    pub fn is_ready_for(&self, role: LlmRole, model: &str) -> bool {
         let guard = self.inner.lock().unwrap();
-        guard.as_ref().map(|s| s.model == model).unwrap_or(false)
+        guard.get(&role).map(|s| s.model == model).unwrap_or(false)
     }
 
-    /// Starts llama-server with the given model. If a server is already running
-    /// with a different model, kills it first. Caller is responsible for
-    /// ensuring the model file exists at `model_path`.
+    /// Starts a llama-server for the given role with the given model. If a
+    /// server is already running for this role with a different model, kills
+    /// it first. Caller is responsible for ensuring the model file exists at
+    /// `model_path`.
     pub async fn start(
         &self,
         _app: &AppHandle,
+        role: LlmRole,
         model: &str,
         model_path: &PathBuf,
     ) -> Result<(), String> {
-        if self.is_ready_for(model) {
+        if self.is_ready_for(role, model) {
             return Ok(());
         }
-        self.stop();
+        self.stop(role);
 
         if !model_path.exists() {
             return Err(format!("LLM model not found: {:?}", model_path));
@@ -134,33 +230,24 @@ impl LlmServer {
             .ok_or_else(|| "llama-server binary not found (install llama.cpp via brew, or set MABEL_LLAMA_SERVER)".to_string())?;
 
         println!(
-            "[Mabel] Starting llama-server ({:?}) for {} ({:?})",
-            bin, model, model_path
+            "[Mabel] Starting llama-server ({:?}) for role={:?} model={} ({:?})",
+            bin, role, model, model_path
         );
 
+        let port = role.port();
+        let port_str = port.to_string();
+        let mut args: Vec<&str> = vec![
+            "-m",
+            model_path.to_str().unwrap(),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            &port_str,
+        ];
+        args.extend(role.server_args());
+
         let child = Command::new(&bin)
-            .args([
-                "-m",
-                model_path.to_str().unwrap(),
-                "--host",
-                "127.0.0.1",
-                "--port",
-                &SERVER_PORT.to_string(),
-                // 2K context is plenty for dictation utterances. Larger context
-                // costs RAM at load.
-                "-c",
-                "2048",
-                // Required to apply the model's chat template.
-                "--jinja",
-                // Suppress reasoning tokens. Both Gemma 4 and SmolLM3 emit them
-                // by default; for cleanup we want immediate text-only answers.
-                "--reasoning-budget",
-                "0",
-                // Offload all layers to Metal on macOS. On non-Metal hosts the
-                // flag is silently ignored.
-                "-ngl",
-                "99",
-            ])
+            .args(&args)
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .spawn()
@@ -168,25 +255,31 @@ impl LlmServer {
 
         {
             let mut guard = self.inner.lock().unwrap();
-            *guard = Some(RunningServer {
-                child,
-                model: model.to_string(),
-            });
+            guard.insert(
+                role,
+                RunningServer {
+                    child,
+                    model: model.to_string(),
+                },
+            );
         }
 
         // Poll /health until ready or timeout. The server returns 200 once the
         // model is fully loaded.
         let client = reqwest::Client::new();
-        let url = format!("http://127.0.0.1:{}/health", SERVER_PORT);
+        let url = format!("http://127.0.0.1:{}/health", port);
         let deadline = std::time::Instant::now() + READY_TIMEOUT;
         loop {
             if std::time::Instant::now() >= deadline {
-                self.stop();
-                return Err("llama-server failed to become ready in time".to_string());
+                self.stop(role);
+                return Err(format!(
+                    "llama-server (role={:?}) failed to become ready in time",
+                    role
+                ));
             }
             match client.get(&url).timeout(Duration::from_millis(500)).send().await {
                 Ok(resp) if resp.status().is_success() => {
-                    println!("[Mabel] llama-server ready");
+                    println!("[Mabel] llama-server ready (role={:?})", role);
                     return Ok(());
                 }
                 _ => tokio::time::sleep(Duration::from_millis(250)).await,
@@ -194,11 +287,21 @@ impl LlmServer {
         }
     }
 
-    /// Kills the running server if any. Idempotent.
-    pub fn stop(&self) {
+    /// Kills the running server for a single role if any. Idempotent.
+    pub fn stop(&self, role: LlmRole) {
         let mut guard = self.inner.lock().unwrap();
-        if let Some(mut server) = guard.take() {
-            println!("[Mabel] Stopping llama-server");
+        if let Some(mut server) = guard.remove(&role) {
+            println!("[Mabel] Stopping llama-server (role={:?})", role);
+            let _ = server.child.kill();
+            let _ = server.child.wait();
+        }
+    }
+
+    /// Kills every running server. Called on app exit.
+    pub fn stop_all(&self) {
+        let mut guard = self.inner.lock().unwrap();
+        for (role, mut server) in guard.drain() {
+            println!("[Mabel] Stopping llama-server (role={:?})", role);
             let _ = server.child.kill();
             let _ = server.child.wait();
         }
@@ -240,11 +343,12 @@ struct ChatResponseMessage {
     content: String,
 }
 
-/// Calls the running llama-server to clean up a transcript. The server must
-/// already be started — caller should ensure that via `LlmServer::start` (which
-/// is fast on subsequent calls because it short-circuits when already running).
+/// Calls the running cleanup llama-server to clean up a transcript. The server
+/// must already be started — caller should ensure that via
+/// `LlmServer::start(LlmRole::Cleanup, ...)` (which short-circuits when already
+/// running).
 ///
-/// On any failure, returns an Err and the caller should fall back to the
+/// On any failure, returns Err and the caller should fall back to the
 /// rules-only cleanup output. Cleanup is best-effort; never block paste on it.
 pub async fn cleanup_with_llm(text: &str) -> Result<String, String> {
     let trimmed = text.trim();
@@ -273,7 +377,7 @@ pub async fn cleanup_with_llm(text: &str) -> Result<String, String> {
         .build()
         .map_err(|e| e.to_string())?;
 
-    let url = format!("http://127.0.0.1:{}/v1/chat/completions", SERVER_PORT);
+    let url = format!("http://127.0.0.1:{}/v1/chat/completions", CLEANUP_PORT);
     let resp = client
         .post(&url)
         .json(&req)
@@ -426,6 +530,33 @@ mod tests {
     fn urls_are_https_and_huggingface() {
         let std = model_download_url("standard").unwrap();
         assert!(std.starts_with("https://huggingface.co/"));
+    }
+
+    #[test]
+    fn medical_model_validates() {
+        assert!(validate_medical_model("biomistral-7b-q5").is_ok());
+        assert!(validate_medical_model("standard").is_err());
+        assert!(validate_medical_model("../etc/passwd").is_err());
+    }
+
+    #[test]
+    fn medical_filename_is_stable() {
+        assert_eq!(
+            medical_model_filename("biomistral-7b-q5").unwrap(),
+            "BioMistral-7B.Q5_K_M.gguf"
+        );
+    }
+
+    #[test]
+    fn medical_url_is_https_and_huggingface() {
+        let url = medical_model_download_url("biomistral-7b-q5").unwrap();
+        assert!(url.starts_with("https://huggingface.co/"));
+        assert!(url.ends_with(".gguf"));
+    }
+
+    #[test]
+    fn role_ports_are_distinct() {
+        assert_ne!(LlmRole::Cleanup.port(), LlmRole::Medical.port());
     }
 
     #[test]

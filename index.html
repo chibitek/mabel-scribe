@@ -285,11 +285,6 @@
           </div>
 
           <div class="card help-card">
-            <h2 class="help-h">Mabel on your desktop (companion)</h2>
-            <p>Settings &rarr; System &rarr; <b>Mabel on your desktop</b>. Off by default. When on, Mabel walks across your screen now and then &mdash; she enters from one edge, pauses to sit and blink, then walks off. Adjust her size, how often she visits, and how long each visit lasts. Use <b>Show now</b> to preview, click again to dismiss mid-walk.</p>
-          </div>
-
-          <div class="card help-card">
             <h2 class="help-h">Live dictation</h2>
             <p>When enabled (Settings &rarr; Engine), Mabel transcribes and pastes in chunks while you speak instead of waiting until you stop. Useful for long dictations. Disable it for short snippets where you want a single clean paste.</p>
           </div>
@@ -329,7 +324,7 @@
           <div class="card help-card">
             <h2 class="help-h">Troubleshooting</h2>
             <p><b>Nothing happens when I press the hotkey.</b> Check that the hotkey isn't already bound by another app. Try a different combination in Settings &rarr; General.</p>
-            <p><b>Recording starts but nothing pastes.</b> Open System Settings &rarr; Privacy &amp; Security &rarr; Accessibility and confirm Mabel is toggled on. If you denied the Automation prompt, reset it with <code>tccutil reset AppleEvents com.mabel.app</code> in Terminal and try again.</p>
+            <p><b>Recording starts but nothing pastes.</b> Open System Settings &rarr; Privacy &amp; Security &rarr; Accessibility and confirm Mabel is toggled on. If you denied the Automation prompt, reset it with <code>tccutil reset AppleEvents com.chibitek.mabelscribe</code> in Terminal and try again.</p>
             <p><b>Transcription is slow.</b> Switch to the Small model in Settings &rarr; Engine, or try Groq cloud.</p>
             <p><b>Wrong microphone.</b> Pick the one you want in Settings &rarr; General.</p>
           </div>
@@ -579,66 +574,6 @@
                 <button type="button" id="press-enter-toggle" class="switch" role="switch" aria-checked="false" aria-label="Press Enter command">
                   <span class="switch-thumb"></span>
                 </button>
-              </div>
-              <div class="row">
-                <div class="row-text">
-                  <div class="row-label">Mabel on your desktop</div>
-                  <div class="row-hint">Mabel walks across your screen now and then. Off by default. Tweak how often, how big, and how long she sticks around below.</div>
-                </div>
-                <button type="button" id="companion-toggle" class="switch" role="switch" aria-checked="false" aria-label="Companion">
-                  <span class="switch-thumb"></span>
-                </button>
-              </div>
-              <div class="row hidden" id="companion-settings">
-                <div class="row-text">
-                  <div class="row-label">Companion size</div>
-                  <div class="row-hint">How large Mabel appears on your screen.</div>
-                </div>
-                <select id="companion-size-select" aria-label="Companion size">
-                  <option value="small">Small</option>
-                  <option value="medium">Medium</option>
-                  <option value="large">Large</option>
-                </select>
-              </div>
-              <div class="row hidden" id="companion-frequency-row">
-                <div class="row-text">
-                  <div class="row-label">How often</div>
-                  <div class="row-hint">How often Mabel visits your desktop.</div>
-                </div>
-                <select id="companion-frequency-select" aria-label="Companion frequency">
-                  <option value="15min">Every 15 minutes</option>
-                  <option value="30min">Every 30 minutes</option>
-                  <option value="1hr">Every hour</option>
-                  <option value="2hr">Every 2 hours</option>
-                </select>
-              </div>
-              <div class="row hidden" id="companion-visit-row">
-                <div class="row-text">
-                  <div class="row-label">Visit length</div>
-                  <div class="row-hint">How long Mabel sticks around each visit.</div>
-                </div>
-                <select id="companion-visit-select" aria-label="Companion visit length">
-                  <option value="short">Short</option>
-                  <option value="medium">Medium</option>
-                  <option value="long">Long</option>
-                </select>
-              </div>
-              <div class="row hidden" id="companion-skin-row">
-                <div class="row-text">
-                  <div class="row-label">Companion character</div>
-                  <div class="row-hint">Switch the desktop companion between Mabel and Mochi.</div>
-                </div>
-                <select id="companion-skin-select" aria-label="Companion character">
-                  <option value="mabel">Mabel</option>
-                  <option value="mochi">Mochi</option>
-                </select>
-              </div>
-              <div class="row hidden" id="companion-test-row">
-                <div class="row-text">
-                  <div class="row-label">Show Mabel now</div>
-                  <div class="row-hint">Run a one-off visit so you can see what the settings produce.</div>
-                </div>
-                <button type="button" id="companion-test-btn" class="btn-secondary">Show now</button>
               </div>
             </div>
           </div>

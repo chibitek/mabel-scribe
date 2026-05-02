@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen, emit } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 
@@ -18,10 +18,6 @@ interface Settings {
   pressEnterCommand: boolean;
   cleanupMode: string;
   llmModel: string;
-  companionEnabled: boolean;
-  companionSize: string;
-  companionFrequency: string;
-  companionVisit: string;
   lastSeenVersion: string;
   whisperLanguage: string;
   dictionary: string[];
@@ -202,11 +198,6 @@ async function loadSettings() {
   streamingToggle.setAttribute("aria-checked", String(currentSettings.streaming));
   setSwitch(autostartToggle, currentSettings.launchAtLogin);
   setSwitch(dockToggle, currentSettings.showInDock);
-  setSwitch(companionToggle, currentSettings.companionEnabled);
-  companionSizeSelect.value = currentSettings.companionSize || "medium";
-  companionFrequencySelect.value = currentSettings.companionFrequency || "30min";
-  companionVisitSelect.value = currentSettings.companionVisit || "medium";
-  applyCompanionUi();
   setSwitch(soundsToggle, currentSettings.dictationSounds);
   setSwitch(pressEnterToggle, currentSettings.pressEnterCommand);
 
@@ -317,9 +308,6 @@ async function saveSettings() {
   currentSettings.whisperLanguage = languageSelect.value;
   currentSettings.cleanupMode = cleanupModeSelect.value;
   currentSettings.llmModel = llmModelSelect.value;
-  currentSettings.companionSize = companionSizeSelect.value;
-  currentSettings.companionFrequency = companionFrequencySelect.value;
-  currentSettings.companionVisit = companionVisitSelect.value;
   const previousKey = currentSettings.groqApiKey;
   currentSettings.groqApiKey = "";
   await invoke("save_settings", { settings: currentSettings });
@@ -486,22 +474,6 @@ const autostartToggle = $<HTMLButtonElement>("autostart-toggle");
 const dockToggle = $<HTMLButtonElement>("dock-toggle");
 const soundsToggle = $<HTMLButtonElement>("sounds-toggle");
 const pressEnterToggle = $<HTMLButtonElement>("press-enter-toggle");
-const companionToggle = $<HTMLButtonElement>("companion-toggle");
-const companionSettings = $("companion-settings");
-const companionFrequencyRow = $("companion-frequency-row");
-const companionVisitRow = $("companion-visit-row");
-const companionTestRow = $("companion-test-row");
-const companionSizeSelect = $<HTMLSelectElement>("companion-size-select");
-const companionFrequencySelect = $<HTMLSelectElement>("companion-frequency-select");
-const companionVisitSelect = $<HTMLSelectElement>("companion-visit-select");
-const companionTestBtn = $<HTMLButtonElement>("companion-test-btn");
-
-function applyCompanionUi() {
-  const on = companionToggle.getAttribute("aria-checked") === "true";
-  for (const row of [companionSettings, companionFrequencyRow, companionVisitRow, companionTestRow]) {
-    row.classList.toggle("hidden", !on);
-  }
-}
 
 function setSwitch(btn: HTMLButtonElement, on: boolean) {
   btn.setAttribute("aria-checked", String(on));
@@ -545,27 +517,6 @@ pressEnterToggle.addEventListener("click", () => {
   setSwitch(pressEnterToggle, next);
   currentSettings.pressEnterCommand = next;
   saveSettings();
-});
-
-companionToggle.addEventListener("click", () => {
-  const next = companionToggle.getAttribute("aria-checked") !== "true";
-  setSwitch(companionToggle, next);
-  currentSettings.companionEnabled = next;
-  applyCompanionUi();
-  saveSettings();
-});
-
-for (const sel of [companionSizeSelect, companionFrequencySelect, companionVisitSelect]) {
-  sel.addEventListener("change", () => {
-    currentSettings.companionSize = companionSizeSelect.value;
-    currentSettings.companionFrequency = companionFrequencySelect.value;
-    currentSettings.companionVisit = companionVisitSelect.value;
-    saveSettings();
-  });
-}
-
-companionTestBtn.addEventListener("click", () => {
-  invoke("companion_visit_now").catch((e) => console.error("companion test:", e));
 });
 
 function formatHotkey(accelerator: string): string {
@@ -860,80 +811,3 @@ function renderChangelog(md: string): string {
 }
 
 maybeShowWhatsNew();
-
-// Easter egg: seven clicks anywhere on the hero (portrait + title block) within
-// the first ten seconds of opening the app toggle Mochi mode (hero portrait,
-// brand name, and view title swap). The flag is persisted in localStorage so
-// the chosen skin survives across launches; the same gesture toggles it back.
-(function mochiModeEasterEgg() {
-  const STORAGE_KEY = "mabel.mochiMode";
-  const UNLOCKED_KEY = "mabel.mochiUnlocked";
-  const portrait = document.getElementById("hero-portrait") as HTMLImageElement | null;
-  const title = document.getElementById("meet-title");
-  const brand = document.getElementById("brand-name");
-  const skinRow = document.getElementById("companion-skin-row");
-  const skinSelect = document.getElementById("companion-skin-select") as HTMLSelectElement | null;
-
-  const setMode = (on: boolean) => {
-    if (on) {
-      localStorage.setItem(STORAGE_KEY, "1");
-      localStorage.setItem(UNLOCKED_KEY, "1");
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-    apply(on);
-  };
-
-  const apply = (on: boolean) => {
-    if (portrait) {
-      portrait.src = on ? "/mochi.png" : "/mabel.png";
-      portrait.alt = on ? "Mochi" : "Mabel";
-      portrait.classList.toggle("mochi", on);
-    }
-    if (title) title.textContent = on ? "Meet Mochi" : "Meet Mabel";
-    if (brand) brand.textContent = on ? "Mochi" : "Mabel";
-    // Once unlocked, expose the Settings toggle so the user doesn't have to
-    // re-do the easter-egg gesture to switch back. Currently being in mochi
-    // mode counts as unlocked too — covers users who activated the egg on a
-    // build that didn't yet write the unlocked flag.
-    if (on) localStorage.setItem(UNLOCKED_KEY, "1");
-    if (skinRow && localStorage.getItem(UNLOCKED_KEY) === "1") {
-      skinRow.classList.remove("hidden");
-    }
-    if (skinSelect) skinSelect.value = on ? "mochi" : "mabel";
-    // Tell the companion window to swap its sprite skin. Re-emit a few times
-    // because the companion's listener may not have attached yet on first
-    // boot — the emits are idempotent.
-    const payload = { skin: on ? "mochi" : "mabel" };
-    emit("mabel-companion-skin", payload).catch(() => {});
-    setTimeout(() => emit("mabel-companion-skin", payload).catch(() => {}), 500);
-    setTimeout(() => emit("mabel-companion-skin", payload).catch(() => {}), 2000);
-  };
-
-  apply(localStorage.getItem(STORAGE_KEY) === "1");
-
-  if (skinSelect) {
-    skinSelect.addEventListener("change", () => {
-      setMode(skinSelect.value === "mochi");
-    });
-  }
-
-  const hero = document.querySelector(".hero") as HTMLElement | null;
-  if (!hero) return;
-  const start = Date.now();
-  let count = 0;
-  const onClick = () => {
-    if (Date.now() - start > 10000) {
-      hero.removeEventListener("click", onClick);
-      return;
-    }
-    count++;
-    console.log("[mochi-egg] click", count);
-    if (count >= 7) {
-      hero.removeEventListener("click", onClick);
-      setMode(localStorage.getItem(STORAGE_KEY) !== "1");
-    }
-  };
-  hero.addEventListener("click", onClick);
-  setTimeout(() => hero.removeEventListener("click", onClick), 10100);
-})();

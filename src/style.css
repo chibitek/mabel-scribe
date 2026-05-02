@@ -158,12 +158,6 @@ kbd { font-family: var(--sans); }
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
   flex-shrink: 0;
 }
-.hero-portrait.mochi {
-  object-fit: contain;
-  transform: scale(1.45);
-  background: transparent;
-  box-shadow: none;
-}
 .hero-text { flex: 1; min-width: 0; }
 .hero-text .view-title { margin-bottom: 4px; }
 .view-title {

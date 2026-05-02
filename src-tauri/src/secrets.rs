@@ -1,7 +1,7 @@
 use keyring::Entry;
 use std::sync::RwLock;
 
-const SERVICE: &str = "com.mabel.app";
+const SERVICE: &str = "com.chibitek.mabelscribe";
 const GROQ_KEY_ACCOUNT: &str = "groq_api_key";
 
 /// In-process cache of the Groq key. First access touches the keychain (and on

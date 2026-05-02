@@ -17,8 +17,6 @@ use mabel_lib::transcribe_local;
 
 struct AppState {
     recorder: Recorder,
-    // Wrapped in Arc so background tasks (the companion scheduler) can hold a
-    // shared reference and read the latest settings on each tick.
     settings: Arc<Mutex<Settings>>,
     app_dir: PathBuf,
     stats: Arc<StatsStore>,
@@ -138,7 +136,7 @@ fn request_apple_events_permission() {
 fn get_app_dir() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("."))
-        .join("com.mabel.app")
+        .join("com.chibitek.mabelscribe")
 }
 
 #[tauri::command]
@@ -237,23 +235,6 @@ async fn download_llm_model(
     let name = mabel_lib::llm::model_filename(&model)?;
     let dest = state.app_dir.join(&name);
     downloader::download_model(app, &url, &dest).await
-}
-
-/// Toggle one companion visit. If a visit is currently in flight, cancel it
-/// (cat parks off-screen). Otherwise start a new one. Used by the Settings
-/// "Show now" button so repeat clicks don't stack visits.
-#[tauri::command]
-async fn companion_visit_now(
-    app: tauri::AppHandle,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
-    if mabel_lib::companion::is_visiting() {
-        mabel_lib::companion::cancel_visit();
-        return Ok(());
-    }
-    let snapshot = state.settings.lock().unwrap().clone();
-    mabel_lib::companion::run_visit(&app, &snapshot).await;
-    Ok(())
 }
 
 /// Starts (or confirms running) the llama-server with the configured LLM model.
@@ -431,7 +412,6 @@ fn main() {
     let initial_show_in_dock = settings.show_in_dock;
     let initial_cleanup_mode = settings.cleanup_mode.clone();
     let initial_llm_model = settings.llm_model.clone();
-    let initial_companion_enabled = settings.companion_enabled;
 
     tauri::Builder::default()
         // Single-instance MUST be the first plugin registered. When a second
@@ -475,7 +455,6 @@ fn main() {
             check_llm_model_downloaded,
             download_llm_model,
             ensure_llm_started,
-            companion_visit_now,
             reconcile_groq_keychain,
             get_whats_new,
             mark_version_seen,
@@ -510,41 +489,6 @@ fn main() {
             .focused(false)
             .shadow(false)
             .build();
-
-            // Create the companion (animated cat) window. Plain transparent
-            // always-on-top NSWindow — deliberately NOT converted to NSPanel
-            // (the overlay does that for floating-across-Spaces behavior, but
-            // for the companion we need a regular window that reliably shows
-            // and hides on demand). Starts visible at the builder layer; we
-            // immediately hide it in code so it doesn't flash.
-            // Companion window. Never hidden — we just park it off-screen when
-            // not in a visit. macOS's hide/show dance on transparent windows is
-            // flaky (show after hide doesn't always re-render), so we sidestep
-            // it entirely by teleporting the window in and out of visible
-            // bounds. 1px off the visible region is enough.
-            let companion = WebviewWindowBuilder::new(
-                app,
-                "companion",
-                WebviewUrl::App("src/companion.html".into()),
-            )
-            .title("")
-            .inner_size(265.0, 265.0)
-            .position(-9999.0, -9999.0)
-            .resizable(false)
-            .decorations(false)
-            .transparent(true)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .focused(false)
-            .shadow(false)
-            .build();
-            match companion {
-                Ok(cw) => {
-                    let _ = cw.show();
-                    println!("[Mabel] Companion window created (parked off-screen)");
-                }
-                Err(e) => eprintln!("[Mabel] Failed to create companion window: {}", e),
-            }
 
             match overlay {
                 Ok(w) => {
@@ -599,13 +543,6 @@ fn main() {
                     }
                 }
             }
-
-            // Spawn the desktop companion scheduler. The loop runs forever and
-            // re-reads settings each tick, so toggling the feature on/off in the
-            // UI takes effect on the next interval. We always spawn — the
-            // scheduler itself respects companion_enabled.
-            let _ = initial_companion_enabled; // kept for symmetry / future use
-            mabel_lib::companion::spawn_scheduler(handle.clone(), settings_handle.clone());
 
             Ok(())
         })

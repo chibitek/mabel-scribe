@@ -47,7 +47,7 @@ pub struct Settings {
     /// can be added without a settings migration.
     #[serde(rename = "medicalPolishModel", default = "default_medical_polish_model")]
     pub medical_polish_model: String,
-    /// Last Mabel version the user actually saw the "What's New" popup for.
+    /// Last Scribe version the user actually saw the "What's New" popup for.
     /// On launch we compare this to the running version — if they differ, show
     /// the popup with the changelog entries between them, then update this.
     #[serde(rename = "lastSeenVersion", default)]

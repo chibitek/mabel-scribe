@@ -108,10 +108,10 @@ pub fn spawn_vad_worker(
                     }
                     Ok(Some(rms)) => {
                         let _ = std::fs::remove_file(&path);
-                        println!("[Mabel] dropped silent chunk (rms={:.4})", rms);
+                        println!("[Scribe] dropped silent chunk (rms={:.4})", rms);
                     }
                     Ok(None) => {}
-                    Err(e) => eprintln!("[Mabel] streaming chunk write failed: {}", e),
+                    Err(e) => eprintln!("[Scribe] streaming chunk write failed: {}", e),
                 }
             }
         }
@@ -141,10 +141,10 @@ pub async fn flush_final_chunk(
         }
         Ok(Some(rms)) => {
             let _ = std::fs::remove_file(&path);
-            println!("[Mabel] dropped silent final chunk (rms={:.4})", rms);
+            println!("[Scribe] dropped silent final chunk (rms={:.4})", rms);
         }
         Ok(None) => {}
-        Err(e) => eprintln!("[Mabel] streaming final chunk write failed: {}", e),
+        Err(e) => eprintln!("[Scribe] streaming final chunk write failed: {}", e),
     }
 }
 
@@ -201,7 +201,7 @@ async fn transcribe_and_paste(
                     Ok(s) if !s.is_empty() => s,
                     Ok(_) => rule_cleaned,
                     Err(e) => {
-                        eprintln!("[Mabel] LLM cleanup failed, using rules: {}", e);
+                        eprintln!("[Scribe] LLM cleanup failed, using rules: {}", e);
                         rule_cleaned
                     }
                 }
@@ -216,7 +216,7 @@ async fn transcribe_and_paste(
                 match crate::medical_polish::polish(&cleaned, &settings.dictionary).await {
                     Ok(polished) => cleaned = polished,
                     Err(e) => {
-                        eprintln!("[Mabel] Medical polish failed, keeping cleanup output: {}", e);
+                        eprintln!("[Scribe] Medical polish failed, keeping cleanup output: {}", e);
                     }
                 }
             }
@@ -229,7 +229,7 @@ async fn transcribe_and_paste(
             };
             if !to_paste.is_empty() {
                 if let Err(e) = paste_text(&to_paste) {
-                    eprintln!("[Mabel] paste failed: {}", e);
+                    eprintln!("[Scribe] paste failed: {}", e);
                     return;
                 }
                 let words = to_paste.split_whitespace().count() as u64;
@@ -240,6 +240,6 @@ async fn transcribe_and_paste(
                 let _ = press_return();
             }
         }
-        Err(e) => eprintln!("[Mabel] streaming transcription failed: {}", e),
+        Err(e) => eprintln!("[Scribe] streaming transcription failed: {}", e),
     }
 }

@@ -17,8 +17,8 @@ fn main() {
         .map(|o| !o.stdout.is_empty())
         .unwrap_or(false);
 
-    println!("cargo:rustc-env=MABEL_GIT_HASH={}", hash);
-    println!("cargo:rustc-env=MABEL_GIT_DIRTY={}", if dirty { "1" } else { "0" });
+    println!("cargo:rustc-env=SCRIBE_GIT_HASH={}", hash);
+    println!("cargo:rustc-env=SCRIBE_GIT_DIRTY={}", if dirty { "1" } else { "0" });
     println!("cargo:rerun-if-changed=../.git/HEAD");
     println!("cargo:rerun-if-changed=../.git/index");
 

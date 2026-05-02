@@ -165,7 +165,7 @@ $("open-help").addEventListener("click", () => {
 // Auto-hide first-time setup card once the user has completed a full dictation.
 // A successful Recording → Transcribing → Ready cycle proves mic + accessibility +
 // automation permissions all worked, so the prompts won't fire again.
-const SETUP_DONE_KEY = "mabel.setupComplete";
+const SETUP_DONE_KEY = "scribe.setupComplete";
 const setupCard = document.getElementById("setup-card");
 function hideSetupCardIfDone() {
   if (setupCard && localStorage.getItem(SETUP_DONE_KEY) === "1") {
@@ -744,7 +744,7 @@ async function maybeRunFirstTimeSetup() {
     retry.classList.add("hidden");
     fill.style.width = "0%";
     pct.textContent = "0%";
-    // Front-load every macOS permission Mabel needs while the model downloads,
+    // Front-load every macOS permission Mabel Scribe needs while the model downloads,
     // so the user grants them once during setup instead of being interrupted
     // mid-dictation later. Both calls are non-blocking — they trigger the
     // system prompts and return immediately. The Microphone prompt fires
@@ -757,7 +757,7 @@ async function maybeRunFirstTimeSetup() {
       // best accuracy out of the box for English dictation.
       currentSettings = { ...settings, whisperModel: "small", whisperLanguage: "en" };
       await invoke("save_settings", { settings: currentSettings });
-      body.textContent = "Whisper Small is ready. Mabel works fully offline, on this Mac. Audio never leaves the device.";
+      body.textContent = "Whisper Small is ready. Mabel Scribe works fully offline, on this Mac. Audio never leaves the device.";
       foot.innerHTML = 'For better accuracy on long dictations, switch to the <b>Medium</b> model anytime in <b>Settings → Engine</b>. It is a larger one-time download.';
       fill.style.width = "100%";
       pct.textContent = "100%";

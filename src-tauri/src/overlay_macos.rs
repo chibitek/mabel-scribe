@@ -18,7 +18,7 @@ pub fn apply_overlay_behavior(window: &tauri::WebviewWindow) {
     let panel = match window.to_panel() {
         Ok(p) => p,
         Err(e) => {
-            eprintln!("[Mabel] Could not convert overlay to NSPanel: {:?}", e);
+            eprintln!("[Scribe] Could not convert overlay to NSPanel: {:?}", e);
             return;
         }
     };

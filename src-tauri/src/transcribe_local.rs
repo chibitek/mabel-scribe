@@ -52,7 +52,7 @@ pub async fn transcribe_local(
         return Err("Whisper model not found. Please download a model first.".to_string());
     }
 
-    println!("[Mabel] Running whisper.cpp sidecar with model {:?}", model_path);
+    println!("[Scribe] Running whisper.cpp sidecar with model {:?}", model_path);
 
     let prompt = build_prompt(dictionary);
 
@@ -98,7 +98,7 @@ pub async fn transcribe_local(
     }
 
     let text = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    println!("[Mabel DEBUG] Whisper raw output: {:?}", text);
+    println!("[Scribe DEBUG] Whisper raw output: {:?}", text);
     Ok(text)
 }
 
@@ -176,9 +176,9 @@ mod tests {
 
     #[test]
     fn test_build_prompt_skips_blank_entries() {
-        let words = vec!["".to_string(), "  ".to_string(), "Mabel".to_string()];
+        let words = vec!["".to_string(), "  ".to_string(), "Aspirin".to_string()];
         let p = build_prompt(&words);
-        assert_eq!(p, "Dictation transcript: Mabel.");
+        assert_eq!(p, "Dictation transcript: Aspirin.");
     }
 
 }

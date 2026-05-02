@@ -1,5 +1,5 @@
 #!/bin/sh
-# Set the Finder icon of a .dmg file to the Mabel app icon.
+# Set the Finder icon of a .dmg file to the Mabel Scribe app icon.
 #
 # Why this exists: macOS shows a generic disk-image icon for any .dmg by
 # default. Tauri's bundler sets the icon for the *mounted volume* via
@@ -17,7 +17,7 @@
 #   4. xcrun stapler staple <dmg>
 #
 # Usage:
-#   scripts/set-dmg-icon.sh path/to/Mabel_X.Y.Z_aarch64.dmg
+#   scripts/set-dmg-icon.sh path/to/Mabel\ Scribe_X.Y.Z_aarch64.dmg
 
 set -e
 

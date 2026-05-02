@@ -6,14 +6,14 @@ use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt as AutostartManagerExt, MacosLauncher};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutEvent, ShortcutState};
 
-use mabel_lib::audio;
-use mabel_lib::downloader;
-use mabel_lib::llm::{LlmRole, LlmServer};
-use mabel_lib::recorder::{Recorder, RecordingState};
-use mabel_lib::settings::Settings;
-use mabel_lib::stats::{StatsStore, StatsSummary};
-use mabel_lib::system_ui;
-use mabel_lib::transcribe_local;
+use scribe_lib::audio;
+use scribe_lib::downloader;
+use scribe_lib::llm::{LlmRole, LlmServer};
+use scribe_lib::recorder::{Recorder, RecordingState};
+use scribe_lib::settings::Settings;
+use scribe_lib::stats::{StatsStore, StatsSummary};
+use scribe_lib::system_ui;
+use scribe_lib::transcribe_local;
 
 struct AppState {
     recorder: Recorder,
@@ -47,7 +47,7 @@ struct WhatsNewEntry {
 /// first launch after an update.
 #[tauri::command]
 fn get_whats_new() -> Option<WhatsNewEntry> {
-    let target_header = format!("## v{}", mabel_lib::MABEL_VERSION);
+    let target_header = format!("## v{}", scribe_lib::SCRIBE_VERSION);
     let mut lines = WHATSNEW_MD.lines();
     while let Some(line) = lines.next() {
         if line.trim_start().starts_with(&target_header) {
@@ -62,7 +62,7 @@ fn get_whats_new() -> Option<WhatsNewEntry> {
                 body.push('\n');
             }
             return Some(WhatsNewEntry {
-                version: mabel_lib::MABEL_VERSION.to_string(),
+                version: scribe_lib::SCRIBE_VERSION.to_string(),
                 body: body.trim().to_string(),
             });
         }
@@ -73,16 +73,16 @@ fn get_whats_new() -> Option<WhatsNewEntry> {
 #[tauri::command]
 fn mark_version_seen(state: State<AppState>) -> Result<(), String> {
     let mut held = state.settings.lock().unwrap();
-    held.last_seen_version = mabel_lib::MABEL_VERSION.to_string();
+    held.last_seen_version = scribe_lib::SCRIBE_VERSION.to_string();
     held.save(&state.app_dir)
 }
 
 #[tauri::command]
 fn get_version() -> VersionInfo {
     VersionInfo {
-        version: mabel_lib::MABEL_VERSION,
-        git_hash: mabel_lib::MABEL_GIT_HASH,
-        dirty: mabel_lib::MABEL_GIT_DIRTY == "1",
+        version: scribe_lib::SCRIBE_VERSION,
+        git_hash: scribe_lib::SCRIBE_GIT_HASH,
+        dirty: scribe_lib::SCRIBE_GIT_DIRTY == "1",
     }
 }
 
@@ -113,7 +113,7 @@ fn check_accessibility() -> bool {
 
 /// Triggers macOS's Accessibility-required system dialog if not yet granted.
 /// Returns whether trust was already in place. The dialog has an "Open System
-/// Settings" button that takes the user to the right pane with Mabel
+/// Settings" button that takes the user to the right pane with Mabel Scribe
 /// pre-listed.
 #[tauri::command]
 fn request_accessibility() -> bool {
@@ -126,7 +126,7 @@ fn request_accessibility() -> bool {
     already_trusted
 }
 
-/// Fires a benign AppleScript so macOS shows the "Mabel wants to send Apple
+/// Fires a benign AppleScript so macOS shows the "Mabel Scribe wants to send Apple
 /// events to System Events" prompt during setup, not on first paste.
 #[tauri::command]
 fn request_apple_events_permission() {
@@ -163,7 +163,7 @@ fn reconcile_groq_keychain(state: State<AppState>) -> bool {
     if already {
         return true;
     }
-    if mabel_lib::secrets::has_groq_key() {
+    if scribe_lib::secrets::has_groq_key() {
         let mut held = state.settings.lock().unwrap();
         held.groq_key_configured = true;
         let _ = held.save(&state.app_dir);
@@ -219,7 +219,7 @@ async fn download_model(
 
 #[tauri::command]
 fn check_llm_model_downloaded(state: State<AppState>, model: String) -> bool {
-    match mabel_lib::llm::model_filename(&model) {
+    match scribe_lib::llm::model_filename(&model) {
         Ok(name) => state.app_dir.join(&name).exists(),
         Err(_) => false,
     }
@@ -231,8 +231,8 @@ async fn download_llm_model(
     state: State<'_, AppState>,
     model: String,
 ) -> Result<(), String> {
-    let url = mabel_lib::llm::model_download_url(&model)?;
-    let name = mabel_lib::llm::model_filename(&model)?;
+    let url = scribe_lib::llm::model_download_url(&model)?;
+    let name = scribe_lib::llm::model_filename(&model)?;
     let dest = state.app_dir.join(&name);
     downloader::download_model(app, &url, &dest).await
 }
@@ -251,14 +251,14 @@ async fn ensure_llm_started(
         let model = settings.llm_model.clone();
         (model, state.app_dir.clone(), state.llm_server.clone())
     };
-    let name = mabel_lib::llm::model_filename(&model)?;
+    let name = scribe_lib::llm::model_filename(&model)?;
     let path = app_dir.join(&name);
     server.start(&app, LlmRole::Cleanup, &model, &path).await
 }
 
 #[tauri::command]
 fn check_medical_model_downloaded(state: State<AppState>, model: String) -> bool {
-    match mabel_lib::llm::medical_model_filename(&model) {
+    match scribe_lib::llm::medical_model_filename(&model) {
         Ok(name) => state.app_dir.join(&name).exists(),
         Err(_) => false,
     }
@@ -270,8 +270,8 @@ async fn download_medical_model(
     state: State<'_, AppState>,
     model: String,
 ) -> Result<(), String> {
-    let url = mabel_lib::llm::medical_model_download_url(&model)?;
-    let name = mabel_lib::llm::medical_model_filename(&model)?;
+    let url = scribe_lib::llm::medical_model_download_url(&model)?;
+    let name = scribe_lib::llm::medical_model_filename(&model)?;
     let dest = state.app_dir.join(&name);
     downloader::download_model(app, &url, &dest).await
 }
@@ -289,7 +289,7 @@ async fn ensure_medical_llm_started(
         let model = settings.medical_polish_model.clone();
         (model, state.app_dir.clone(), state.llm_server.clone())
     };
-    let name = mabel_lib::llm::medical_model_filename(&model)?;
+    let name = scribe_lib::llm::medical_model_filename(&model)?;
     let path = app_dir.join(&name);
     server.start(&app, LlmRole::Medical, &model, &path).await
 }
@@ -350,11 +350,11 @@ fn build_shortcut_handler(
        + Sync
        + 'static {
     move |_app, shortcut, event| {
-        println!("[Mabel] Hotkey event: {:?} state={:?}", shortcut, event.state);
+        println!("[Scribe] Hotkey event: {:?} state={:?}", shortcut, event.state);
         let handle = handle.clone();
         let state = handle.state::<AppState>();
         let mode = state.settings.lock().unwrap().recording_mode.clone();
-        println!("[Mabel] Recording mode: {}", mode);
+        println!("[Scribe] Recording mode: {}", mode);
 
         match event.state {
             ShortcutState::Pressed => {
@@ -362,23 +362,23 @@ fn build_shortcut_handler(
                     let state = handle.state::<AppState>();
                     match mode.as_str() {
                         "toggle" => {
-                            println!("[Mabel] Toggle mode: calling do_toggle_recording");
+                            println!("[Scribe] Toggle mode: calling do_toggle_recording");
                             match do_toggle_recording(&handle, state.inner()).await {
-                                Ok(_) => println!("[Mabel] Toggle complete"),
-                                Err(e) => eprintln!("[Mabel] Toggle error: {}", e),
+                                Ok(_) => println!("[Scribe] Toggle complete"),
+                                Err(e) => eprintln!("[Scribe] Toggle error: {}", e),
                             }
                         }
                         "push-to-talk" => {
                             let current = state.recorder.get_state();
-                            println!("[Mabel] PTT mode, current state: {:?}", current);
+                            println!("[Scribe] PTT mode, current state: {:?}", current);
                             if current == RecordingState::Ready {
                                 let (mic, settings) = {
                                     let s = state.settings.lock().unwrap();
                                     (s.microphone.clone(), s.clone())
                                 };
                                 match state.recorder.start_recording(&handle, &mic, &settings, &state.app_dir) {
-                                    Ok(_) => println!("[Mabel] Recording started"),
-                                    Err(e) => eprintln!("[Mabel] Start recording error: {}", e),
+                                    Ok(_) => println!("[Scribe] Recording started"),
+                                    Err(e) => eprintln!("[Scribe] Start recording error: {}", e),
                                 }
                             }
                         }
@@ -398,8 +398,8 @@ fn build_shortcut_handler(
                                 .stop_and_transcribe(&handle, &settings, &state.app_dir)
                                 .await
                             {
-                                Ok(_) => println!("[Mabel] Transcription complete"),
-                                Err(e) => eprintln!("[Mabel] Transcription error: {}", e),
+                                Ok(_) => println!("[Scribe] Transcription complete"),
+                                Err(e) => eprintln!("[Scribe] Transcription error: {}", e),
                             }
                         }
                     });
@@ -454,7 +454,7 @@ fn main() {
     tauri::Builder::default()
         // Single-instance MUST be the first plugin registered. When a second
         // copy launches (e.g. user double-clicks the dock icon while the
-        // LaunchAgent already has Mabel running, or a dev build starts on top
+        // LaunchAgent already has Scribe running, or a dev build starts on top
         // of the installed one) it exits immediately and the original instance
         // gets the callback. Two instances would otherwise fight over the
         // global hotkey and the shared config dir, which silently breaks paste.
@@ -540,14 +540,14 @@ fn main() {
                     // Defensive: a panic in objc-land here would propagate
                     // into AppKit's did_finish_launching and abort the app.
                     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        mabel_lib::overlay_macos::apply_overlay_behavior(&w);
+                        scribe_lib::overlay_macos::apply_overlay_behavior(&w);
                     }));
                     if result.is_err() {
-                        eprintln!("[Mabel] apply_overlay_behavior panicked; overlay behavior not applied");
+                        eprintln!("[Scribe] apply_overlay_behavior panicked; overlay behavior not applied");
                     }
-                    println!("[Mabel] Overlay window created");
+                    println!("[Scribe] Overlay window created");
                 }
-                Err(e) => eprintln!("[Mabel] Failed to create overlay: {}", e),
+                Err(e) => eprintln!("[Scribe] Failed to create overlay: {}", e),
             }
 
             let handle = app.handle().clone();
@@ -555,14 +555,14 @@ fn main() {
             // Apply persisted dock visibility preference.
             system_ui::set_dock_visibility(&handle, initial_show_in_dock);
 
-            println!("[Mabel] Registering global shortcut: {}", initial_hotkey);
+            println!("[Scribe] Registering global shortcut: {}", initial_hotkey);
 
             match app.global_shortcut().on_shortcut(
                 initial_hotkey.as_str(),
                 build_shortcut_handler(handle.clone()),
             ) {
-                Ok(_) => println!("[Mabel] Global shortcut registered successfully"),
-                Err(e) => eprintln!("[Mabel] ERROR: Failed to register global shortcut: {}", e),
+                Ok(_) => println!("[Scribe] Global shortcut registered successfully"),
+                Err(e) => eprintln!("[Scribe] ERROR: Failed to register global shortcut: {}", e),
             }
 
             // If the user has LLM cleanup configured and the model is on disk,
@@ -570,7 +570,7 @@ fn main() {
             // 1–3s cold start. Best effort only — failure here just means the
             // first cleanup pays the load cost (or falls back to rules).
             if initial_cleanup_mode == "llm" {
-                if let Ok(name) = mabel_lib::llm::model_filename(&initial_llm_model) {
+                if let Ok(name) = scribe_lib::llm::model_filename(&initial_llm_model) {
                     let model_path = app_dir.join(&name);
                     if model_path.exists() {
                         let server = llm_server.clone();
@@ -581,7 +581,7 @@ fn main() {
                                 .start(&warm_handle, LlmRole::Cleanup, &model, &model_path)
                                 .await
                             {
-                                eprintln!("[Mabel] LLM warm-start failed: {}", e);
+                                eprintln!("[Scribe] LLM warm-start failed: {}", e);
                             }
                         });
                     }

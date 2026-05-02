@@ -15,13 +15,13 @@ fn entry() -> Result<Entry, String> {
 }
 
 pub fn get_groq_key() -> Result<String, String> {
-    // Dev override: setting MABEL_GROQ_KEY in the shell skips the keychain
+    // Dev override: setting SCRIBE_GROQ_KEY in the shell skips the keychain
     // entirely. Useful when running `npm run tauri dev` because Rust edits
     // change the binary signature each rebuild, which makes macOS treat every
     // dev session as a new app and re-prompt for keychain access. In a signed
     // production install the keychain prompt fires once per machine and
     // "Always Allow" persists forever.
-    if let Ok(env_key) = std::env::var("MABEL_GROQ_KEY") {
+    if let Ok(env_key) = std::env::var("SCRIBE_GROQ_KEY") {
         if !env_key.is_empty() {
             return Ok(env_key);
         }

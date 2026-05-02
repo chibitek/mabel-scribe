@@ -166,7 +166,7 @@ struct RunningServer {
 }
 
 /// Resolves the path to `llama-server` for spawning. Order:
-///   1. `MABEL_LLAMA_SERVER` env var (override, useful for dev)
+///   1. `SCRIBE_LLAMA_SERVER` env var (override, useful for dev)
 ///   2. Bundled sidecar — `binaries/llama-server-aarch64-apple-darwin` next to
 ///      the app binary. (Not yet wired; left as a TODO before shipping.)
 ///   3. `/opt/homebrew/bin/llama-server` (Apple Silicon brew)
@@ -175,7 +175,7 @@ struct RunningServer {
 /// Returns None if no candidate exists. Caller surfaces a friendly error so the
 /// LLM cleanup falls back to the rules-only pass.
 fn resolve_llama_server_path() -> Option<PathBuf> {
-    if let Ok(p) = std::env::var("MABEL_LLAMA_SERVER") {
+    if let Ok(p) = std::env::var("SCRIBE_LLAMA_SERVER") {
         let path = PathBuf::from(p);
         if path.exists() {
             return Some(path);
@@ -227,10 +227,10 @@ impl LlmServer {
         }
 
         let bin = resolve_llama_server_path()
-            .ok_or_else(|| "llama-server binary not found (install llama.cpp via brew, or set MABEL_LLAMA_SERVER)".to_string())?;
+            .ok_or_else(|| "llama-server binary not found (install llama.cpp via brew, or set SCRIBE_LLAMA_SERVER)".to_string())?;
 
         println!(
-            "[Mabel] Starting llama-server ({:?}) for role={:?} model={} ({:?})",
+            "[Scribe] Starting llama-server ({:?}) for role={:?} model={} ({:?})",
             bin, role, model, model_path
         );
 
@@ -279,7 +279,7 @@ impl LlmServer {
             }
             match client.get(&url).timeout(Duration::from_millis(500)).send().await {
                 Ok(resp) if resp.status().is_success() => {
-                    println!("[Mabel] llama-server ready (role={:?})", role);
+                    println!("[Scribe] llama-server ready (role={:?})", role);
                     return Ok(());
                 }
                 _ => tokio::time::sleep(Duration::from_millis(250)).await,
@@ -291,7 +291,7 @@ impl LlmServer {
     pub fn stop(&self, role: LlmRole) {
         let mut guard = self.inner.lock().unwrap();
         if let Some(mut server) = guard.remove(&role) {
-            println!("[Mabel] Stopping llama-server (role={:?})", role);
+            println!("[Scribe] Stopping llama-server (role={:?})", role);
             let _ = server.child.kill();
             let _ = server.child.wait();
         }
@@ -301,7 +301,7 @@ impl LlmServer {
     pub fn stop_all(&self) {
         let mut guard = self.inner.lock().unwrap();
         for (role, mut server) in guard.drain() {
-            println!("[Mabel] Stopping llama-server (role={:?})", role);
+            println!("[Scribe] Stopping llama-server (role={:?})", role);
             let _ = server.child.kill();
             let _ = server.child.wait();
         }

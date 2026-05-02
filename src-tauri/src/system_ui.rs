@@ -36,7 +36,7 @@ extern "C" {
     static kCFBooleanTrue: *const c_void;
 }
 
-/// Checks whether Mabel has Accessibility permission. When `prompt` is true
+/// Checks whether Scribe has Accessibility permission. When `prompt` is true
 /// and the app is not trusted, macOS shows the standard Accessibility-required
 /// system dialog with a button that opens System Settings to the right pane
 /// (the app gets added to the Accessibility list automatically).
@@ -75,7 +75,7 @@ pub fn is_accessibility_trusted(prompt: bool) -> bool {
 pub fn is_accessibility_trusted(_prompt: bool) -> bool { true }
 
 /// Fires a no-op AppleScript against System Events so macOS shows the
-/// "Mabel wants to send Apple events to System Events" permission prompt.
+/// "Mabel Scribe wants to send Apple events to System Events" permission prompt.
 /// Without this, the prompt only appears the first time we try to paste
 /// (Cmd+V via System Events keystroke), which is too late — by then the user
 /// has already lost a dictation. We call this during first-run setup so the

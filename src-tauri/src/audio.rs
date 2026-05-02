@@ -85,7 +85,7 @@ impl AudioRecorder {
         let sample_rate = default_config.sample_rate().0;
         let channels = default_config.channels();
 
-        println!("[Mabel] Mic config: {}Hz, {} channels", sample_rate, channels);
+        println!("[Scribe] Mic config: {}Hz, {} channels", sample_rate, channels);
 
         self.source_sample_rate = sample_rate;
         self.source_channels = channels;
@@ -113,7 +113,7 @@ impl AudioRecorder {
                     }
                 },
                 |err| {
-                    eprintln!("[Mabel] Audio stream error: {}", err);
+                    eprintln!("[Scribe] Audio stream error: {}", err);
                 },
                 None,
             )
@@ -138,7 +138,7 @@ impl AudioRecorder {
             let _ = app_handle.emit("audio-level", 0.0_f32);
         });
 
-        println!("[Mabel] Audio recording started");
+        println!("[Scribe] Audio recording started");
         Ok(())
     }
 
@@ -193,13 +193,13 @@ impl AudioRecorder {
     pub fn stop_and_save(&mut self, output_path: &PathBuf) -> Result<PathBuf, String> {
         self.running.store(false, Ordering::Relaxed);
         self.stream = None; // Drop stops the stream
-        println!("[Mabel] Audio recording stopped");
+        println!("[Scribe] Audio recording stopped");
 
         let saved = self.drain_to_wav(output_path)?;
         if saved.is_none() {
             return Err("No audio captured".to_string());
         }
-        println!("[Mabel] WAV saved to {:?}", output_path);
+        println!("[Scribe] WAV saved to {:?}", output_path);
         Ok(output_path.clone())
     }
 

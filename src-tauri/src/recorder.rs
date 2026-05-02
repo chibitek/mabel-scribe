@@ -196,19 +196,19 @@ impl Recorder {
 
         let rule_cleaned = cleanup_text(&raw_text);
         let mut cleaned = if settings.cleanup_mode == "llm" && !rule_cleaned.is_empty() {
-            println!("[Mabel] LLM cleanup input: {:?}", rule_cleaned);
+            println!("[Scribe] LLM cleanup input: {:?}", rule_cleaned);
             let t0 = std::time::Instant::now();
             match crate::llm::cleanup_with_llm(&rule_cleaned).await {
                 Ok(s) if !s.is_empty() => {
-                    println!("[Mabel] LLM cleanup output ({:?}): {:?}", t0.elapsed(), s);
+                    println!("[Scribe] LLM cleanup output ({:?}): {:?}", t0.elapsed(), s);
                     s
                 }
                 Ok(empty) => {
-                    println!("[Mabel] LLM returned empty ({:?}, raw={:?}); falling back to rules", t0.elapsed(), empty);
+                    println!("[Scribe] LLM returned empty ({:?}, raw={:?}); falling back to rules", t0.elapsed(), empty);
                     rule_cleaned
                 }
                 Err(e) => {
-                    eprintln!("[Mabel] LLM cleanup failed ({:?}), using rules: {}", t0.elapsed(), e);
+                    eprintln!("[Scribe] LLM cleanup failed ({:?}), using rules: {}", t0.elapsed(), e);
                     rule_cleaned
                 }
             }
@@ -225,7 +225,7 @@ impl Recorder {
                 Ok(polished) => {
                     if polished != cleaned {
                         println!(
-                            "[Mabel] Medical polish applied ({:?}): {:?} -> {:?}",
+                            "[Scribe] Medical polish applied ({:?}): {:?} -> {:?}",
                             t0.elapsed(),
                             cleaned,
                             polished
@@ -235,14 +235,14 @@ impl Recorder {
                 }
                 Err(e) => {
                     eprintln!(
-                        "[Mabel] Medical polish failed ({:?}), keeping cleanup output: {}",
+                        "[Scribe] Medical polish failed ({:?}), keeping cleanup output: {}",
                         t0.elapsed(),
                         e
                     );
                 }
             }
         }
-        println!("[Mabel] About to paste: {:?}", cleaned);
+        println!("[Scribe] About to paste: {:?}", cleaned);
         let (to_paste, press_enter) =
             extract_press_enter_command(&cleaned, settings.press_enter_command);
         if !to_paste.is_empty() {
@@ -279,7 +279,7 @@ mod tests {
 
     #[test]
     fn test_initial_state_is_ready() {
-        let stats = Arc::new(StatsStore::load(&PathBuf::from("/tmp/mabel-test-recorder")));
+        let stats = Arc::new(StatsStore::load(&PathBuf::from("/tmp/scribe-test-recorder")));
         let recorder = Recorder::new(stats);
         assert_eq!(recorder.get_state(), RecordingState::Ready);
     }

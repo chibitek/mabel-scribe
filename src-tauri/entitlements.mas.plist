@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  MAS / TestFlight skeleton. Do NOT point the Developer ID DMG path
+  (tauri.conf.json + scripts/release-macos.sh) at this file.
+
+  Omitted on purpose (they fail MAS): disable-library-validation and
+  allow-unsigned-executable-memory. allow-jit is also omitted; add it back
+  only if sandboxed WebKit will not start, with an App Review justification.
+
+  1.1.7 / 1.2.0 whisper-cpp sidecar builds are NOT MAS-ready.
+  MAS binary must statically link whisper or wait for Phase B
+  (WhisperKit / FluidAudio Parakeet). Bundle id stays com.mabel.app.
+  Price: free. Category: Productivity. Publisher: Chibitek Labs.
+-->
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+    <key>com.apple.security.device.audio-input</key>
+    <true/>
+    <key>com.apple.security.network.client</key>
+    <true/>
+    <key>com.apple.security.automation.apple-events</key>
+    <true/>
+    <key>com.apple.security.files.user-selected.read-write</key>
+    <true/>
+</dict>
+</plist>

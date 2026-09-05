@@ -184,6 +184,15 @@ let currentSettings: Settings;
 let llmRuntimeAvailable = false;
 const STREAMING_AVAILABLE = false;
 
+const WHISPER_VARIANTS = [
+  { modelSize: "large-v3", language: "en" },
+  { modelSize: "large-v3", language: "multi" },
+  { modelSize: "small", language: "en" },
+  { modelSize: "small", language: "multi" },
+  { modelSize: "medium", language: "en" },
+  { modelSize: "medium", language: "multi" },
+];
+
 async function loadSettings() {
   currentSettings = await invoke<Settings>("get_settings");
 
@@ -813,13 +822,7 @@ async function maybeRunFirstTimeSetup() {
   // Any existing whisper ggml on disk skips first-run, regardless of size or
   // language variant — we don't want to nag a returning user with a fresh
   // download just because we added .en variants.
-  const variants = [
-    { modelSize: "small", language: "multi" },
-    { modelSize: "small", language: "en" },
-    { modelSize: "medium", language: "multi" },
-    { modelSize: "medium", language: "en" },
-  ];
-  for (const v of variants) {
+  for (const v of WHISPER_VARIANTS) {
     if (await invoke<boolean>("check_model_downloaded", v)) return;
   }
 
@@ -833,7 +836,7 @@ async function maybeRunFirstTimeSetup() {
   modal.classList.remove("hidden");
 
   const startDownload = async () => {
-    body.textContent = "Downloading the Whisper Small (English) model (~500 MB) so dictation works fully offline. This is a one-time setup.";
+    body.textContent = "Downloading Whisper Large v3 Q5 (~1.1 GB) so dictation works fully offline. Recommended on Apple Silicon. This is a one-time setup.";
     foot.classList.remove("hidden");
     done.classList.add("hidden");
     retry.classList.add("hidden");
@@ -843,13 +846,19 @@ async function maybeRunFirstTimeSetup() {
     // builds can re-prompt due to changing signatures, which is disruptive.
     // Prompts will appear when the relevant feature is actually used.
     try {
-      await invoke("download_model", { modelSize: "small", language: "en" });
-      // Persist Small (English-only) as the active model on first run —
-      // best accuracy out of the box for English dictation.
-      currentSettings = { ...settings, whisperModel: "small", whisperLanguage: "en" };
+      await invoke("download_model", { modelSize: "large-v3", language: "en" });
+      // Persist Large v3 Q5 + local engine on first run. No official
+      // English-only large-v3 Q5 exists; the language setting still forces
+      // the English decoder on the multilingual checkpoint.
+      currentSettings = {
+        ...settings,
+        engine: "local",
+        whisperModel: "large-v3",
+        whisperLanguage: "en",
+      };
       await invoke("save_settings", { settings: currentSettings });
-      body.textContent = "Whisper Small is ready. Mabel works fully offline, on this Mac. Audio never leaves the device.";
-      foot.innerHTML = 'For better accuracy on long dictations, switch to the <b>Medium</b> model anytime in <b>Settings → Engine</b>. It is a larger one-time download.';
+      body.textContent = "Whisper Large v3 Q5 is ready. Mabel works fully offline, on this Mac. Audio never leaves the device.";
+      foot.innerHTML = 'Need a smaller download or faster transcription? Switch to <b>Medium</b> or <b>Small</b> anytime in <b>Settings → Engine</b>.';
       fill.style.width = "100%";
       pct.textContent = "100%";
       done.classList.remove("hidden");
@@ -941,14 +950,8 @@ async function maybeShowWhatsNew() {
     // top of it would be noisy. We detect "first launch ever" as no
     // lastSeenVersion AND no Whisper model on disk.
     if (!settings.lastSeenVersion) {
-      const variants = [
-        { modelSize: "small", language: "multi" },
-        { modelSize: "small", language: "en" },
-        { modelSize: "medium", language: "multi" },
-        { modelSize: "medium", language: "en" },
-      ];
       let hasModel = false;
-      for (const v of variants) {
+      for (const v of WHISPER_VARIANTS) {
         if (await invoke<boolean>("check_model_downloaded", v)) {
           hasModel = true;
           break;

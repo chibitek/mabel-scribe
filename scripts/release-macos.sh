@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Developer ID + notarized GitHub DMG only. Not Mac App Store / TestFlight.
+# MAS draft flavor: docs/mas-and-testflight.md and scripts/build-mas.sh.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)

@@ -4,8 +4,31 @@ use tauri_plugin_shell::ShellExt;
 
 /// Whisper model sizes we accept. Anything else is rejected before it can
 /// flow into a file path or download URL.
-const ALLOWED_MODELS: &[&str] = &["small", "medium"];
+///
+/// `large-v3` is the quantized Q5_0 multilingual checkpoint
+/// (`ggml-large-v3-q5_0.bin`, ~1.1 GB). There is no official English-only
+/// large-v3 Q5 on the whisper.cpp Hugging Face repo, so en/multi share one file.
+const ALLOWED_MODELS: &[&str] = &["small", "medium", "large-v3"];
 const ALLOWED_LANGUAGES: &[&str] = &["en", "multi", "auto"];
+
+/// Recommended default for new Apple Silicon installs.
+pub fn recommended_model_size() -> &'static str {
+    "large-v3"
+}
+
+/// Every (size, language) pair the downloader / first-run gate should check.
+/// large-v3 maps en and multi to the same file; listing both keeps the UI
+/// scan consistent with small/medium.
+pub fn known_download_variants() -> &'static [(&'static str, &'static str)] {
+    &[
+        ("large-v3", "en"),
+        ("large-v3", "multi"),
+        ("small", "en"),
+        ("small", "multi"),
+        ("medium", "en"),
+        ("medium", "multi"),
+    ]
+}
 
 pub fn validate_model_size(size: &str) -> Result<&str, String> {
     if ALLOWED_MODELS.contains(&size) {
@@ -115,13 +138,17 @@ pub async fn transcribe_local(
 
 /// Disk filename for a (size, language) pair. English-only models are
 /// the same size on disk but trained harder on English — better accuracy
-/// when the user only ever speaks English.
+/// when the user only ever speaks English. large-v3 Q5 has no `.en`
+/// variant, so both language settings share `ggml-large-v3-q5_0.bin`.
 pub fn model_filename(model_size: &str, language: &str) -> Result<String, String> {
     let size = validate_model_size(model_size)?;
     let lang = validate_language(language)?;
-    Ok(match lang {
-        "en" => format!("ggml-{}.en.bin", size),
-        _ => format!("ggml-{}.bin", size),
+    Ok(match size {
+        "large-v3" => "ggml-large-v3-q5_0.bin".to_string(),
+        _ => match lang {
+            "en" => format!("ggml-{}.en.bin", size),
+            _ => format!("ggml-{}.bin", size),
+        },
     })
 }
 
@@ -143,6 +170,23 @@ mod tests {
         assert_eq!(model_filename("medium", "multi").unwrap(), "ggml-medium.bin");
         assert_eq!(model_filename("small", "en").unwrap(), "ggml-small.en.bin");
         assert_eq!(model_filename("medium", "en").unwrap(), "ggml-medium.en.bin");
+        assert_eq!(
+            model_filename("large-v3", "en").unwrap(),
+            "ggml-large-v3-q5_0.bin"
+        );
+        assert_eq!(
+            model_filename("large-v3", "multi").unwrap(),
+            "ggml-large-v3-q5_0.bin"
+        );
+    }
+
+    #[test]
+    fn test_recommended_model_is_large_v3_q5() {
+        assert_eq!(recommended_model_size(), "large-v3");
+        assert!(ALLOWED_MODELS.contains(&recommended_model_size()));
+        assert!(known_download_variants()
+            .iter()
+            .any(|(size, _)| *size == "large-v3"));
     }
 
     #[test]
@@ -163,6 +207,10 @@ mod tests {
         assert_eq!(
             model_download_url("medium", "en").unwrap(),
             "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.en.bin"
+        );
+        assert_eq!(
+            model_download_url("large-v3", "en").unwrap(),
+            "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-q5_0.bin"
         );
     }
 

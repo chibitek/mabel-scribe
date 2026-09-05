@@ -6,6 +6,7 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::audio::AudioRecorder;
 use crate::cleanup::cleanup_text;
+use crate::llm::LlmServer;
 use crate::paste::{extract_press_enter_command, paste_text, press_return};
 use crate::settings::Settings;
 use crate::stats::StatsStore;
@@ -13,6 +14,24 @@ use crate::streaming::{self, StreamingHandle};
 use crate::system_ui;
 use crate::transcribe_groq;
 use crate::transcribe_local;
+
+pub const TEMP_RECORDING_WAV: &str = "temp_recording.wav";
+pub const LEGACY_LAST_RECORDING_WAV: &str = "last_recording.wav";
+
+/// Delete leftover dictation audio in App Support. Called after a successful
+/// transcribe and on launch so a leftover `last_recording.wav` from older
+/// builds cannot linger.
+pub fn wipe_audio_artifacts(app_dir: &PathBuf) {
+    for name in [TEMP_RECORDING_WAV, LEGACY_LAST_RECORDING_WAV] {
+        let path = app_dir.join(name);
+        if path.exists() {
+            match std::fs::remove_file(&path) {
+                Ok(()) => println!("[Mabel] wiped leftover audio {:?}", path),
+                Err(e) => eprintln!("[Mabel] failed to wipe {:?}: {}", path, e),
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub enum RecordingState {
@@ -40,10 +59,11 @@ pub struct Recorder {
     streaming_words: Arc<AtomicU64>,
     started_at: Arc<Mutex<Option<Instant>>>,
     stats: Arc<StatsStore>,
+    llm_server: Arc<LlmServer>,
 }
 
 impl Recorder {
-    pub fn new(stats: Arc<StatsStore>) -> Self {
+    pub fn new(stats: Arc<StatsStore>, llm_server: Arc<LlmServer>) -> Self {
         Self {
             state: Arc::new(Mutex::new(RecordingState::Ready)),
             audio_recorder: Arc::new(Mutex::new(AudioRecorder::new())),
@@ -51,6 +71,7 @@ impl Recorder {
             streaming_words: Arc::new(AtomicU64::new(0)),
             started_at: Arc::new(Mutex::new(None)),
             stats,
+            llm_server,
         }
     }
 
@@ -171,7 +192,7 @@ impl Recorder {
             return Ok(String::new());
         }
 
-        let temp_path = app_dir.join("temp_recording.wav");
+        let temp_path = app_dir.join(TEMP_RECORDING_WAV);
         let stop_and_save_result = {
             let mut recorder = self.audio_recorder.lock().unwrap();
             recorder.stop_and_save(&temp_path)
@@ -249,7 +270,21 @@ impl Recorder {
                     rule_cleaned.chars().count()
                 );
                 let t0 = std::time::Instant::now();
-                match crate::llm::cleanup_with_llm(&rule_cleaned).await {
+                let llm_result = match crate::llm::model_filename(&settings.llm_model) {
+                    Ok(name) => {
+                        let model_path = app_dir.join(name);
+                        crate::llm::ensure_and_cleanup(
+                            app,
+                            &self.llm_server,
+                            &settings.llm_model,
+                            &model_path,
+                            &rule_cleaned,
+                        )
+                        .await
+                    }
+                    Err(e) => Err(e),
+                };
+                match llm_result {
                     Ok(s) if !s.is_empty() => {
                         println!(
                             "[Mabel] LLM cleanup succeeded ({:?}, chars={})",
@@ -327,6 +362,7 @@ impl Recorder {
             Ok(text) => {
                 crate::debug_log::append(app_dir, "stop_and_transcribe succeeded");
                 println!("[Mabel] stop_and_transcribe succeeded");
+                wipe_audio_artifacts(app_dir);
                 if settings.dictation_sounds {
                     system_ui::play_sound("Pop");
                 }
@@ -352,7 +388,27 @@ mod tests {
     #[test]
     fn test_initial_state_is_ready() {
         let stats = Arc::new(StatsStore::load(&PathBuf::from("/tmp/mabel-test-recorder")));
-        let recorder = Recorder::new(stats);
+        let recorder = Recorder::new(stats, Arc::new(LlmServer::new()));
         assert_eq!(recorder.get_state(), RecordingState::Ready);
+    }
+
+    #[test]
+    fn wipe_audio_artifacts_deletes_temp_and_legacy_wav() {
+        let dir = std::env::temp_dir().join(format!(
+            "mabel-wav-wipe-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let temp = dir.join(TEMP_RECORDING_WAV);
+        let legacy = dir.join(LEGACY_LAST_RECORDING_WAV);
+        std::fs::write(&temp, b"temp").unwrap();
+        std::fs::write(&legacy, b"legacy").unwrap();
+        wipe_audio_artifacts(&dir);
+        assert!(!temp.exists());
+        assert!(!legacy.exists());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -103,10 +103,10 @@ Both Wispr and Glaido run an LLM cleanup after transcription: strip filler ("um"
 - Server cleanly killed on app exit via `WindowEvent::Destroyed`.
 - End-to-end smoke verified: real `llama-server` started with our exact args returns the expected cleaned output for our exact prompt structure.
 
-**Ship-blocker — binary bundling:**
-- Currently resolves `llama-server` from `MABEL_LLAMA_SERVER` env, then `/opt/homebrew/bin/llama-server`, then `/usr/local/bin`. Fine for dev but assumes user has llama.cpp installed via brew.
-- Brew binary has rpath deps to `/opt/homebrew/Cellar/ggml/...` so it can't be copied as a Tauri sidecar directly.
-- Path forward: vendor the official llama.cpp macOS-arm64 release zip into `src-tauri/binaries/` (binary + dylibs) and either fix rpaths or ship a wrapper that sets `DYLD_LIBRARY_PATH`. Re-add to `tauri.conf.json` `externalBin` once that's solved.
+**Ship-blocker — binary bundling:** FIXED in v1.2.0.
+- `scripts/vendor-llama-server.sh` downloads the official llama.cpp macOS-arm64 release and stages `llama-server` + dylibs in `src-tauri/llama-runtime/`.
+- Official binaries already use `@loader_path`; the vendor script re-applies that rpath on Darwin. The runtime is bundled as a Tauri resource so it does not share Frameworks with Whisper's older ggml dylibs.
+- Homebrew remains a last-resort fallback. The server idle-unloads after five minutes.
 
 ### F2. Custom dictionary / personal vocabulary
 Wispr "learns" proper nouns and jargon automatically. Glaido lets users add terms manually. Easiest version: a settings pane with a textarea of names/terms/acronyms, injected as Whisper's `initial_prompt`.
@@ -114,8 +114,8 @@ Wispr "learns" proper nouns and jargon automatically. Glaido lets users add term
 ### F3. Snippets (voice shortcuts)
 "insert my calendar link" → expands to a stored URL. "standard reply" → full email template. Dictionary of trigger phrase → replacement string, applied during the cleanup pass.
 
-### F4. Larger model option
-Whisper Medium or Large as opt-in download. Bigger file, slower, much more accurate. UI: model picker in settings with size/speed/accuracy tradeoff shown.
+### F4. Larger model option — SHIPPED in v1.2.0
+Whisper Large v3 Q5 (`ggml-large-v3-q5_0.bin`, ~1.1 GB) is the recommended default for new Apple Silicon installs. Small and Medium remain fallbacks. No official English-only large-v3 Q5 exists.
 
 ### F5. App-aware tone
 Wispr adjusts tone by foreground app (Slack casual, Gmail formal, VS Code terse code-comment style). Tauri can read the active app on macOS via NSWorkspace. Pair with F1 by varying the cleanup prompt per app bundle ID.

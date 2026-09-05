@@ -2,6 +2,17 @@
 
 The in-app first-launch popup reads from this file. Every Mabel release MUST add an entry here. Newest version on top.
 
+## v1.2.0 (2026-09-05)
+
+### New
+- Whisper Large v3 Q5 (~1.1 GB) is now a downloadable local model and the recommended default for new Apple Silicon installs. Small and Medium stay available as fallbacks. There is no official English-only large-v3 Q5; the multilingual Q5 is used, and the language setting still forces the English decoder or auto-detect.
+- New installs default to the local engine. Groq stays opt-in behind your own API key.
+- AI cleanup no longer needs Homebrew. Mabel vendors `llama-server` and its dylibs from the official llama.cpp macOS-arm64 release and loads them from a bundled `llama-runtime` folder (same rpath idea as the v1.1.0 Whisper Frameworks fix). The Gemma 4 E4B model still downloads on first use (~5 GB).
+- The local LLM unloads after five minutes idle so the ~5 GB weights are not pinned for the whole session.
+
+### Fixed
+- After a successful transcription, leftover dictation audio is deleted — including any leftover `last_recording.wav` in Application Support from older builds.
+
 ## v1.1.7 (2026-05-13)
 
 ### New

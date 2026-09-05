@@ -54,10 +54,10 @@ pub struct Settings {
     /// the popup with the changelog entries between them, then update this.
     #[serde(rename = "lastSeenVersion", default)]
     pub last_seen_version: String,
-    /// "en" (English-only Whisper model — better accuracy on English) or
-    /// "multi" (multilingual model). Defaults to "multi" so existing installs
-    /// continue using whatever ggml-{size}.bin they already downloaded; new
-    /// users get "en" via the first-run flow / Settings dropdown.
+    /// "en" (force English decoder — better accuracy on English) or
+    /// "multi" (auto-detect). Serde default is "multi" so existing installs
+    /// keep their downloaded ggml-{size}.bin; brand-new Settings::default
+    /// and first-run persist "en". large-v3 Q5 is multilingual-only on disk.
     #[serde(rename = "whisperLanguage", default = "default_whisper_language")]
     pub whisper_language: String,
     /// Custom dictionary words. Prepended to whisper.cpp's `--prompt` so
@@ -151,7 +151,7 @@ impl Default for Settings {
         Self {
             microphone: "default".to_string(),
             engine: "local".to_string(),
-            whisper_model: "small".to_string(),
+            whisper_model: crate::transcribe_local::recommended_model_size().to_string(),
             groq_api_key: String::new(),
             recording_mode: "toggle".to_string(),
             hotkey: "CmdOrCtrl+D".to_string(),
@@ -168,7 +168,7 @@ impl Default for Settings {
             companion_frequency: default_companion_frequency(),
             companion_visit: default_companion_visit(),
             last_seen_version: String::new(),
-            whisper_language: default_whisper_language(),
+            whisper_language: "en".to_string(),
             dictionary: Vec::new(),
         }
     }
@@ -290,7 +290,8 @@ mod tests {
         let settings = Settings::default();
         assert_eq!(settings.microphone, "default");
         assert_eq!(settings.engine, "local");
-        assert_eq!(settings.whisper_model, "small");
+        assert_eq!(settings.whisper_model, "large-v3");
+        assert_eq!(settings.whisper_language, "en");
         assert_eq!(settings.groq_api_key, "");
         assert_eq!(settings.recording_mode, "toggle");
         assert_eq!(settings.hotkey, "CmdOrCtrl+D");

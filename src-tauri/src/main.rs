@@ -457,8 +457,9 @@ fn main() {
     let initial_hotkey = settings.hotkey.clone();
 
     let stats = Arc::new(StatsStore::load(&app_dir));
-    let recorder = Recorder::new(stats.clone());
     let llm_server = Arc::new(LlmServer::new());
+    let recorder = Recorder::new(stats.clone(), llm_server.clone());
+    mabel_lib::recorder::wipe_audio_artifacts(&app_dir);
     let settings_handle = Arc::new(Mutex::new(settings.clone()));
     let initial_show_in_dock = settings.show_in_dock;
     let initial_cleanup_mode = settings.cleanup_mode.clone();
@@ -614,6 +615,16 @@ fn main() {
                 Ok(_) => println!("[Mabel] Global shortcut registered successfully"),
                 Err(e) => eprintln!("[Mabel] ERROR: Failed to register global shortcut: {}", e),
             }
+
+            // Idle-unload the LLM after a few minutes so Gemma's ~5 GB is not
+            // pinned for the whole session. The next cleanup cold-starts again.
+            let idle_server = llm_server.clone();
+            tauri::async_runtime::spawn(async move {
+                loop {
+                    tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                    idle_server.stop_if_idle(mabel_lib::llm::IDLE_UNLOAD);
+                }
+            });
 
             // If the user has LLM cleanup configured and the model is on disk,
             // warm the server now so the first dictation doesn't block on a

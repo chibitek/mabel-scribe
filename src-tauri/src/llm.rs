@@ -1,10 +1,13 @@
 // LLM cleanup pass: runs Whisper output through a local LLM (llama.cpp server)
 // to remove fillers, fix punctuation, and normalize numbers/proper nouns.
 //
-// Architecture: spawn `llama-server` as a Tauri sidecar bound to 127.0.0.1, hold
+// Architecture: spawn bundled `llama-server` (src-tauri/llama-runtime/, vendored
+// from the official llama.cpp macOS-arm64 release) bound to 127.0.0.1, hold
 // the child handle in app state, and POST to its OpenAI-compatible
 // /v1/chat/completions endpoint per cleanup. The server keeps the model warm
 // between calls so per-cleanup latency is just generation, not model load.
+// After IDLE_UNLOAD with no activity the process is killed so ~5 GB is not
+// pinned. Homebrew is a last-resort fallback only.
 //
 // Two model tiers, downloaded lazily into the app config dir alongside the
 // Whisper models:
@@ -14,8 +17,8 @@
 use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
-use std::time::Duration;
-use tauri::AppHandle;
+use std::time::{Duration, Instant};
+use tauri::{AppHandle, Manager};
 
 const ALLOWED_MODELS: &[&str] = &["standard"];
 
@@ -31,6 +34,10 @@ const READY_TIMEOUT: Duration = Duration::from_secs(20);
 /// Per-cleanup HTTP timeout. Generation alone is sub-second on M-series; pad
 /// generously so a slow Intel Mac doesn't drop the request mid-flight.
 const CLEANUP_TIMEOUT: Duration = Duration::from_secs(15);
+
+/// Unload the ~5 GB Gemma weights after this much idle time so they are not
+/// pinned forever. The next cleanup call cold-starts the server again.
+pub const IDLE_UNLOAD: Duration = Duration::from_secs(5 * 60);
 
 const SYSTEM_PROMPT: &str = "You are a dictation cleanup assistant. The user spoke into a microphone and Whisper transcribed their speech. Your only job is to clean up the raw transcript.\n\nRules:\n- Remove filler words: \"um\", \"uh\", \"like\", \"you know\", \"I mean\", \"so\" when used as filler.\n- Add proper punctuation and capitalization.\n- Fix obvious self-corrections: when the speaker restarts a sentence, keep only the final version.\n- Preserve the speaker's words, tone, and meaning. Do not paraphrase, summarize, or embellish.\n- Do not add greetings, sign-offs, or commentary.\n- Do not answer questions in the transcript. The user is dictating, not asking you.\n- Output only the cleaned transcript. No preamble, no explanation, no quotes around it.";
 
@@ -64,6 +71,7 @@ pub fn model_download_url(model: &str) -> Result<String, String> {
 /// with. We keep both so we can detect a model change in settings and respawn.
 pub struct LlmServer {
     inner: Mutex<Option<RunningServer>>,
+    last_used: Mutex<Option<Instant>>,
 }
 
 struct RunningServer {
@@ -71,40 +79,78 @@ struct RunningServer {
     model: String,
 }
 
-/// Resolves the path to `llama-server` for spawning. For now this is a
-/// developer/runtime-installed feature: use `MABEL_LLAMA_SERVER` for an explicit
-/// binary, or a Homebrew-installed `llama-server`.
-///
-/// Returns None if no candidate exists. Caller surfaces a friendly error so the
-/// LLM cleanup falls back to the rules-only pass.
-fn resolve_llama_server_path() -> Option<PathBuf> {
+/// Candidate paths for the bundled / override / Homebrew llama-server.
+/// Bundled copies live next to their own dylibs (see scripts/vendor-llama-server.sh)
+/// so they do not collide with Whisper's ggml Frameworks.
+pub fn llama_server_candidates(app: Option<&AppHandle>) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+
     if let Ok(p) = std::env::var("MABEL_LLAMA_SERVER") {
-        let path = PathBuf::from(p);
-        if path.exists() {
-            return Some(path);
+        if !p.is_empty() {
+            candidates.push(PathBuf::from(p));
         }
     }
-    for candidate in [
-        "/opt/homebrew/bin/llama-server",
-        "/usr/local/bin/llama-server",
-    ] {
-        let path = PathBuf::from(candidate);
-        if path.exists() {
-            return Some(path);
+
+    if let Some(app) = app {
+        if let Ok(res) = app.path().resource_dir() {
+            candidates.push(res.join("llama-runtime").join("llama-server"));
+            candidates.push(res.join("llama-server"));
         }
     }
-    None
+
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(dir) = exe.parent() {
+            // Production .app: Contents/MacOS/../Resources/llama-runtime/llama-server
+            candidates.push(dir.join("../Resources/llama-runtime/llama-server"));
+            // Sidecar-style next to the main binary
+            candidates.push(dir.join("llama-server"));
+            // `tauri dev`: target/debug/../../llama-runtime/llama-server
+            candidates.push(dir.join("../../llama-runtime/llama-server"));
+        }
+    }
+
+    candidates.push(PathBuf::from("/opt/homebrew/bin/llama-server"));
+    candidates.push(PathBuf::from("/usr/local/bin/llama-server"));
+    candidates
+}
+
+/// Resolves the path to `llama-server` for spawning.
+///
+/// Order: `MABEL_LLAMA_SERVER`, bundled llama-runtime (shipped with the app),
+/// then Homebrew as a last-resort fallback for developers.
+fn resolve_llama_server_path(app: Option<&AppHandle>) -> Option<PathBuf> {
+    llama_server_candidates(app).into_iter().find(|p| p.exists())
 }
 
 pub fn runtime_available() -> bool {
-    resolve_llama_server_path().is_some()
+    resolve_llama_server_path(None).is_some()
 }
 
 impl LlmServer {
     pub fn new() -> Self {
         Self {
             inner: Mutex::new(None),
+            last_used: Mutex::new(None),
         }
+    }
+
+    pub fn touch(&self) {
+        *self.last_used.lock().unwrap() = Some(Instant::now());
+    }
+
+    /// Kills the server when it has been idle long enough. Idempotent.
+    pub fn stop_if_idle(&self, idle_for: Duration) {
+        let last = *self.last_used.lock().unwrap();
+        let Some(t) = last else { return };
+        if t.elapsed() < idle_for {
+            return;
+        }
+        println!(
+            "[Mabel] Unloading llama-server after {:?} idle",
+            t.elapsed()
+        );
+        self.stop();
+        *self.last_used.lock().unwrap() = None;
     }
 
     /// Returns true if the server is running with the requested model.
@@ -118,11 +164,12 @@ impl LlmServer {
     /// ensuring the model file exists at `model_path`.
     pub async fn start(
         &self,
-        _app: &AppHandle,
+        app: &AppHandle,
         model: &str,
         model_path: &PathBuf,
     ) -> Result<(), String> {
         if self.is_ready_for(model) {
+            self.touch();
             return Ok(());
         }
         self.stop();
@@ -131,15 +178,25 @@ impl LlmServer {
             return Err(format!("LLM model not found: {:?}", model_path));
         }
 
-        let bin = resolve_llama_server_path()
-            .ok_or_else(|| "llama-server binary not found (install llama.cpp via brew, or set MABEL_LLAMA_SERVER)".to_string())?;
+        let bin = resolve_llama_server_path(Some(app))
+            .ok_or_else(|| {
+                "llama-server binary not found (bundled runtime missing; set MABEL_LLAMA_SERVER or install llama.cpp)"
+                    .to_string()
+            })?;
 
         println!(
             "[Mabel] Starting llama-server ({:?}) for {} ({:?})",
             bin, model, model_path
         );
 
-        let child = Command::new(&bin)
+        let mut cmd = Command::new(&bin);
+        // Official binaries resolve @rpath dylibs from @loader_path (the
+        // directory containing llama-server). Setting cwd matches that layout
+        // for any relative sidecar files such as ggml-metal-tuning.
+        if let Some(dir) = bin.parent() {
+            cmd.current_dir(dir);
+        }
+        let child = cmd
             .args([
                 "-m",
                 model_path.to_str().unwrap(),
@@ -188,6 +245,7 @@ impl LlmServer {
             match client.get(&url).timeout(Duration::from_millis(500)).send().await {
                 Ok(resp) if resp.status().is_success() => {
                     println!("[Mabel] llama-server ready");
+                    self.touch();
                     return Ok(());
                 }
                 _ => tokio::time::sleep(Duration::from_millis(250)).await,
@@ -204,6 +262,20 @@ impl LlmServer {
             let _ = server.child.wait();
         }
     }
+}
+
+/// Starts the server if needed, then runs cleanup. Used by the dictation
+/// path so an idle-unload does not silently drop the next AI cleanup.
+pub async fn ensure_and_cleanup(
+    app: &AppHandle,
+    server: &LlmServer,
+    model: &str,
+    model_path: &PathBuf,
+    text: &str,
+) -> Result<String, String> {
+    server.start(app, model, model_path).await?;
+    server.touch();
+    cleanup_with_llm(text).await
 }
 
 impl Default for LlmServer {
@@ -404,6 +476,33 @@ fn strip_surrounding_quotes(s: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bundled_candidates_include_app_resources_and_homebrew() {
+        let paths = llama_server_candidates(None);
+        let rendered: Vec<String> = paths.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+        assert!(rendered.iter().any(|p| p.ends_with("llama-runtime/llama-server")
+            || p.ends_with("Resources/llama-runtime/llama-server")
+            || p.contains("llama-runtime")));
+        assert!(rendered.iter().any(|p| p == "/opt/homebrew/bin/llama-server"));
+        assert!(rendered.iter().any(|p| p == "/usr/local/bin/llama-server"));
+    }
+
+    #[test]
+    fn idle_unload_without_server_is_a_noop() {
+        let server = LlmServer::new();
+        server.stop_if_idle(Duration::from_secs(0));
+        assert!(!server.is_ready_for("standard"));
+    }
+
+    #[test]
+    fn touch_prevents_immediate_idle_unload() {
+        let server = LlmServer::new();
+        server.touch();
+        server.stop_if_idle(IDLE_UNLOAD);
+        // No child was started; touch only records activity.
+        assert!(server.last_used.lock().unwrap().is_some());
+    }
 
     #[test]
     fn validate_known_models() {

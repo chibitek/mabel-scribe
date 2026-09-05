@@ -42,7 +42,7 @@ Local works completely offline once you download the model. Groq is faster and m
 
 - macOS 12 (Monterey) or later
 - Apple Silicon (M1 / M2 / M3 / M4). Intel build is not currently distributed.
-- ~500 MB free for the Small Whisper model, ~1.5 GB for Medium.
+- ~1.1 GB free for the recommended Whisper Large v3 Q5 model; Small (~500 MB) and Medium (~1.5 GB) remain available as fallbacks.
 
 ## Install (end users)
 
@@ -51,13 +51,13 @@ Download the latest signed and notarized DMG from the [Releases](../../releases)
 On first launch:
 
 1. macOS asks for **Microphone** access. Click Allow.
-2. Mabel auto-downloads the Whisper Small model (~500 MB) with a progress bar. One-time setup.
+2. Mabel auto-downloads the Whisper Large v3 Q5 model (~1.1 GB) with a progress bar. One-time setup. You can switch to Medium or Small later.
 3. Mabel triggers macOS's **Accessibility** dialog. Click Open System Settings, flip the Mabel toggle on.
 4. Press your hotkey and speak. macOS asks for **Automation (System Events)** the first time text is pasted. Click Allow.
 
 A fourth Keychain prompt appears only if you save a Groq API key.
 
-Default hotkey is `Cmd+Shift+/`. Rebind in Settings → General. The Help view inside the app has the full feature reference and troubleshooting.
+Default hotkey is `Cmd+D`. Rebind in Settings → General. The Help view inside the app has the full feature reference and troubleshooting.
 
 ---
 
@@ -192,6 +192,8 @@ The `entitlements.plist` file is already in `src-tauri/`. It declares:
 
 The last two hardened-runtime entitlements, plus JIT, are security-sensitive. Keep them only while they are required by the WebKit runtime or the whisper-cpp sidecar loading path, and re-test builds after removing any one of them before shipping a tighter entitlement set.
 
+Mac App Store / TestFlight is a **separate follow-up**. The 1.2 DMG stays on Developer ID + `entitlements.plist`. See [docs/mas-and-testflight.md](docs/mas-and-testflight.md) and the unused `src-tauri/entitlements.mas.plist` skeleton. Do not convert this DMG path to MAS until whisper is statically linked or Phase B replaces the sidecar.
+
 ## Build with signing + notarization
 
 ```bash
@@ -280,7 +282,8 @@ src/                       Frontend (TypeScript + HTML + CSS)
 
 src-tauri/
   build.rs                 Embeds git hash + version at compile time
-  entitlements.plist       Hardened-runtime entitlements for notarization
+  entitlements.plist       Hardened-runtime entitlements for Developer ID DMG
+  entitlements.mas.plist   Unused MAS/TestFlight sandbox skeleton (see docs/mas-and-testflight.md)
   src/
     main.rs                Tauri commands, plugin registration, app setup
     lib.rs                 Module roots + version constants
@@ -296,7 +299,9 @@ src-tauri/
     system_ui.rs           Dock visibility, sounds, Accessibility request
     secrets.rs             Keychain read/write via the keyring crate
     stats.rs               Local-only daily counts, WPM, streak
-    downloader.rs          Whisper model fetcher with progress events
+    downloader.rs          Whisper / LLM model fetcher with progress events
+    llm.rs                 Local Gemma cleanup via bundled llama-server
+    llama-runtime/         Vendored llama-server + dylibs (see scripts/vendor-llama-server.sh)
 ```
 
 ## Audio path

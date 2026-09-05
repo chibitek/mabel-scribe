@@ -28,6 +28,8 @@ target/
 
 # App-specific
 src-tauri/binaries/
+src-tauri/llama-runtime/*
+!src-tauri/llama-runtime/.gitkeep
 src-tauri/tauri.local.conf.json
 whisper.cpp/
 

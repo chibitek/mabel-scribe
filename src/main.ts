@@ -8,6 +8,7 @@ import { check, Update } from "@tauri-apps/plugin-updater";
 interface Settings {
   microphone: string;
   engine: string;
+  localEngine: string;
   whisperModel: string;
   groqApiKey: string;
   recordingMode: string;
@@ -66,6 +67,8 @@ const engineLocal = $("engine-local");
 const engineCloud = $("engine-cloud");
 const localSettings = $("local-settings");
 const cloudSettings = $("cloud-settings");
+const localEngineSelect = $<HTMLSelectElement>("local-engine-select");
+const whisperCppSettings = $("whisper-cpp-settings");
 const modelSelect = $<HTMLSelectElement>("model-select");
 const languageSelect = $<HTMLSelectElement>("language-select");
 const downloadBtn = $<HTMLButtonElement>("download-btn");
@@ -207,6 +210,9 @@ async function loadSettings() {
   micSelect.value = currentSettings.microphone || mics.find((m) => m.is_default)?.name || "";
 
   setEngine(currentSettings.engine);
+  await populateLocalEngines();
+  localEngineSelect.value = currentSettings.localEngine || "parakeet";
+  applyLocalEngineUi();
   modelSelect.value = currentSettings.whisperModel;
   languageSelect.value = currentSettings.whisperLanguage || "multi";
   await checkModelStatus();
@@ -397,10 +403,43 @@ function setRecordingMode(mode: string) {
   modePtt.classList.toggle("active", mode === "push-to-talk");
 }
 
+interface LocalEngineInfo {
+  id: string;
+  label: string;
+  available: boolean;
+  mas_clean: boolean;
+}
+
+async function populateLocalEngines() {
+  const engines = await invoke<LocalEngineInfo[]>("list_local_engines");
+  const current = localEngineSelect.value;
+  localEngineSelect.innerHTML = "";
+  for (const engine of engines) {
+    const option = document.createElement("option");
+    option.value = engine.id;
+    option.textContent = engine.label;
+    option.disabled = !engine.available;
+    localEngineSelect.appendChild(option);
+  }
+  if (engines.some((e) => e.id === current && e.available)) {
+    localEngineSelect.value = current;
+  } else {
+    const fallback = engines.find((e) => e.available);
+    if (fallback) localEngineSelect.value = fallback.id;
+  }
+}
+
+function applyLocalEngineUi() {
+  const engine = localEngineSelect.value || "parakeet";
+  currentSettings.localEngine = engine;
+  whisperCppSettings.classList.toggle("hidden", engine !== "whisper-cpp");
+}
+
 async function checkModelStatus() {
-  const downloaded = await invoke<boolean>("check_model_downloaded", {
-    modelSize: modelSelect.value,
-    language: languageSelect?.value || "multi",
+  const engine = localEngineSelect?.value || currentSettings.localEngine || "parakeet";
+  const downloaded = await invoke<boolean>("check_local_engine_ready", {
+    engine,
+    language: languageSelect?.value || currentSettings.whisperLanguage || "en",
   });
   downloadBtn.textContent = downloaded ? "Downloaded" : "Download";
   downloadBtn.disabled = downloaded;
@@ -428,6 +467,7 @@ async function saveSettings() {
   // change to trip the keychain prompt on unsigned builds. The key is saved
   // explicitly via the Save button next to the input.
   currentSettings.microphone = micSelect.value;
+  currentSettings.localEngine = localEngineSelect.value;
   currentSettings.whisperModel = modelSelect.value;
   currentSettings.whisperLanguage = languageSelect.value;
   currentSettings.cleanupMode = cleanupModeSelect.value;
@@ -465,6 +505,11 @@ async function saveGroqKey() {
 engineLocal.addEventListener("click", () => { setEngine("local"); saveSettings(); });
 engineCloud.addEventListener("click", () => { setEngine("cloud"); saveSettings(); });
 micSelect.addEventListener("change", () => saveSettings());
+localEngineSelect.addEventListener("change", async () => {
+  applyLocalEngineUi();
+  await checkModelStatus();
+  await saveSettings();
+});
 modelSelect.addEventListener("change", async () => { await checkModelStatus(); saveSettings(); });
 languageSelect.addEventListener("change", async () => { await checkModelStatus(); saveSettings(); });
 
@@ -540,9 +585,9 @@ downloadBtn.addEventListener("click", async () => {
   downloadProgress.classList.remove("hidden");
   progressFill.style.width = "0%";
   try {
-    await invoke("download_model", {
-      modelSize: modelSelect.value,
-      language: languageSelect?.value || "multi",
+    await invoke("download_local_engine", {
+      engine: localEngineSelect.value || currentSettings.localEngine || "parakeet",
+      language: languageSelect?.value || currentSettings.whisperLanguage || "en",
     });
     downloadBtn.textContent = "Downloaded";
   } catch (e) {
@@ -819,12 +864,14 @@ listen<DownloadProgress>("download-progress", (event) => {
 
 async function maybeRunFirstTimeSetup() {
   const settings = await invoke<Settings>("get_settings");
-  // Any existing whisper ggml on disk skips first-run, regardless of size or
-  // language variant — we don't want to nag a returning user with a fresh
-  // download just because we added .en variants.
+  // Returning users: any existing whisper ggml, Parakeet, or WhisperKit
+  // cache skips first-run so we don't nag a 1.2 install with a new download.
   for (const v of WHISPER_VARIANTS) {
     if (await invoke<boolean>("check_model_downloaded", v)) return;
   }
+  if (await invoke<boolean>("check_local_engine_ready", { engine: "parakeet", language: "en" })) return;
+  if (await invoke<boolean>("check_local_engine_ready", { engine: "parakeet", language: "multi" })) return;
+  if (await invoke<boolean>("check_local_engine_ready", { engine: "whisperkit", language: "en" })) return;
 
   const modal = document.getElementById("firstrun-modal")!;
   const body = document.getElementById("firstrun-body")!;
@@ -836,7 +883,7 @@ async function maybeRunFirstTimeSetup() {
   modal.classList.remove("hidden");
 
   const startDownload = async () => {
-    body.textContent = "Downloading Whisper Large v3 Q5 (~1.1 GB) so dictation works fully offline. Recommended on Apple Silicon. This is a one-time setup.";
+    body.textContent = "Downloading Parakeet so dictation works fully offline on this Mac. Recommended default. This is a one-time setup.";
     foot.classList.remove("hidden");
     done.classList.add("hidden");
     retry.classList.add("hidden");
@@ -846,19 +893,17 @@ async function maybeRunFirstTimeSetup() {
     // builds can re-prompt due to changing signatures, which is disruptive.
     // Prompts will appear when the relevant feature is actually used.
     try {
-      await invoke("download_model", { modelSize: "large-v3", language: "en" });
-      // Persist Large v3 Q5 + local engine on first run. No official
-      // English-only large-v3 Q5 exists; the language setting still forces
-      // the English decoder on the multilingual checkpoint.
+      await invoke("download_local_engine", { engine: "parakeet", language: "en" });
       currentSettings = {
         ...settings,
         engine: "local",
+        localEngine: "parakeet",
         whisperModel: "large-v3",
         whisperLanguage: "en",
       };
       await invoke("save_settings", { settings: currentSettings });
-      body.textContent = "Whisper Large v3 Q5 is ready. Mabel works fully offline, on this Mac. Audio never leaves the device.";
-      foot.innerHTML = 'Need a smaller download or faster transcription? Switch to <b>Medium</b> or <b>Small</b> anytime in <b>Settings → Engine</b>.';
+      body.textContent = "Parakeet is ready. Mabel works fully offline, on this Mac. Audio never leaves the device.";
+      foot.innerHTML = 'Want WhisperKit or the older whisper.cpp path? Switch anytime in <b>Settings → Engine</b>.';
       fill.style.width = "100%";
       pct.textContent = "100%";
       done.classList.remove("hidden");

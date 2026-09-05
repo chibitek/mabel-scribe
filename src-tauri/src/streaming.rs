@@ -12,7 +12,7 @@ use crate::cleanup::cleanup_text;
 use crate::paste::{extract_press_enter_command, paste_text, press_return};
 use crate::settings::Settings;
 use crate::transcribe_groq;
-use crate::transcribe_local;
+use crate::transcribe_native;
 
 const TICK: Duration = Duration::from_millis(33);
 const SPEECH_RMS: f32 = 0.020;
@@ -162,23 +162,9 @@ async fn transcribe_and_paste(
     is_final: bool,
 ) {
     let raw = match settings.engine.as_str() {
-        "local" => match transcribe_local::model_filename(
-            &settings.whisper_model,
-            &settings.whisper_language,
-        ) {
-            Ok(model_file) => {
-                let model_path = app_dir.join(model_file);
-                transcribe_local::transcribe_local(
-                    &app,
-                    &model_path,
-                    &path,
-                    &settings.whisper_language,
-                    &settings.dictionary,
-                )
-                .await
-            }
-            Err(e) => Err(format!("invalid model: {}", e)),
-        },
+        "local" => {
+            transcribe_native::transcribe_local_engine(&app, &app_dir, &path, &settings).await
+        }
         "cloud" => match crate::secrets::get_groq_key() {
             Ok(key) => {
                 transcribe_groq::transcribe_groq(&key, &path, &settings.whisper_language).await

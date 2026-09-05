@@ -1,17 +1,20 @@
 #!/usr/bin/env bash
 # Experimental MAS / TestFlight flavor. Does NOT replace scripts/release-macos.sh.
 #
-# 1.1.7 and 1.2.0 whisper-cpp sidecar builds are NOT Mac App Store ready.
-# This script will not run unless MABEL_MAS_EXPERIMENT=1.
+# Phase B default engine (FluidAudio Parakeet, in-process CoreML) does not
+# require disable-library-validation or allow-unsigned-executable-memory.
+# This flavor still is NOT claimed MAS-ready: WebKit JIT, llama-server,
+# sandboxed paste, and a real Apple Distribution + provisioning run are
+# unfinished. Do not upload to App Store Connect.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 cd "$ROOT"
 
 echo "build-mas: MAS / TestFlight flavor (App Sandbox + entitlements.mas.plist)" >&2
-echo "build-mas: 1.1.7 / 1.2.0 local whisper sidecar is NOT MAS-ready." >&2
-echo "build-mas: disable-library-validation is stripped on this target; the sidecar will fail." >&2
-echo "build-mas: ship MAS only after Phase B (WhisperKit/Parakeet) or a static-link whisper." >&2
+echo "build-mas: default local engine is in-process Parakeet (CoreML)." >&2
+echo "build-mas: whisper-cpp sidecar + ggml dylibs are excluded from this flavor." >&2
+echo "build-mas: NOT MAS-ready — do not upload. See docs/mas-and-testflight.md." >&2
 echo "build-mas: the GitHub notarized DMG path is unchanged (scripts/release-macos.sh)." >&2
 
 if [[ "${MABEL_MAS_EXPERIMENT:-}" != "1" ]]; then
@@ -19,4 +22,4 @@ if [[ "${MABEL_MAS_EXPERIMENT:-}" != "1" ]]; then
   exit 1
 fi
 
-exec npm run tauri -- build --config src-tauri/tauri.mas.conf.json --bundles app
+exec npm run tauri -- build --config src-tauri/tauri.mas.conf.json --bundles app -- --no-default-features

@@ -8,6 +8,11 @@ use crate::secrets;
 pub struct Settings {
     pub microphone: String,
     pub engine: String,
+    /// On-device backend when `engine == "local"`.
+    /// New installs: `parakeet`. Existing 1.2 configs without this field
+    /// migrate to `whisper-cpp` so their ggml Q5 path keeps working.
+    #[serde(rename = "localEngine", default = "crate::local_engine::default_new_install")]
+    pub local_engine: String,
     #[serde(rename = "whisperModel")]
     pub whisper_model: String,
     #[serde(rename = "groqApiKey")]
@@ -82,6 +87,8 @@ fn default_whisper_language() -> String { "multi".to_string() }
 struct DiskSettings {
     microphone: String,
     engine: String,
+    #[serde(rename = "localEngine", default)]
+    local_engine: Option<String>,
     #[serde(rename = "whisperModel")]
     whisper_model: String,
     #[serde(rename = "recordingMode")]
@@ -124,6 +131,7 @@ impl From<&Settings> for DiskSettings {
         Self {
             microphone: s.microphone.clone(),
             engine: s.engine.clone(),
+            local_engine: Some(s.local_engine.clone()),
             whisper_model: s.whisper_model.clone(),
             recording_mode: s.recording_mode.clone(),
             hotkey: s.hotkey.clone(),
@@ -151,6 +159,7 @@ impl Default for Settings {
         Self {
             microphone: "default".to_string(),
             engine: "local".to_string(),
+            local_engine: crate::local_engine::default_new_install(),
             whisper_model: crate::transcribe_local::recommended_model_size().to_string(),
             groq_api_key: String::new(),
             recording_mode: "toggle".to_string(),
@@ -198,6 +207,9 @@ impl Settings {
                     .map(|d| Settings {
                         microphone: d.microphone,
                         engine: d.engine,
+                        local_engine: d
+                            .local_engine
+                            .unwrap_or_else(crate::local_engine::migrate_missing_field),
                         whisper_model: d.whisper_model,
                         groq_api_key: String::new(),
                         recording_mode: d.recording_mode,
@@ -234,6 +246,18 @@ impl Settings {
         // "auto". Internally we now persist "multi" for that behavior.
         if settings.whisper_language == "auto" {
             settings.whisper_language = "multi".to_string();
+            needs_migration = true;
+        }
+
+        if crate::local_engine::validate(&settings.local_engine).is_err() {
+            settings.local_engine = crate::local_engine::default_new_install();
+            needs_migration = true;
+        }
+
+        if settings.local_engine == crate::local_engine::WHISPER_CPP
+            && !crate::local_engine::whisper_cpp_sidecar_compiled()
+        {
+            settings.local_engine = crate::local_engine::default_new_install();
             needs_migration = true;
         }
 
@@ -290,6 +314,7 @@ mod tests {
         let settings = Settings::default();
         assert_eq!(settings.microphone, "default");
         assert_eq!(settings.engine, "local");
+        assert_eq!(settings.local_engine, "parakeet");
         assert_eq!(settings.whisper_model, "large-v3");
         assert_eq!(settings.whisper_language, "en");
         assert_eq!(settings.groq_api_key, "");
@@ -321,5 +346,23 @@ mod tests {
         let json = serde_json::to_string(&disk).unwrap();
         let parsed: DiskSettings = serde_json::from_str(&json).unwrap();
         assert_eq!(parsed, disk);
+    }
+
+    #[test]
+    fn missing_local_engine_field_migrates_to_whisper_cpp() {
+        let json = r#"{
+            "microphone": "default",
+            "engine": "local",
+            "whisperModel": "large-v3",
+            "recordingMode": "toggle",
+            "hotkey": "CmdOrCtrl+D"
+        }"#;
+        let parsed: DiskSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(parsed.local_engine, None);
+        let migrated = parsed
+            .local_engine
+            .clone()
+            .unwrap_or_else(crate::local_engine::migrate_missing_field);
+        assert_eq!(migrated, "whisper-cpp");
     }
 }

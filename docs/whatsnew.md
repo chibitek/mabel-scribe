@@ -2,6 +2,16 @@
 
 The in-app first-launch popup reads from this file. Every Mabel release MUST add an entry here. Newest version on top.
 
+## v1.3.0 (2026-09-05)
+
+### New
+- Parakeet is the default local engine on new installs. It runs in-process via FluidAudio / CoreML on the Neural Engine. No whisper.cpp sidecar for that path.
+- WhisperKit large-v3-turbo is an optional local engine, also in-process.
+- Settings → Engine lets you pick Parakeet, WhisperKit, or the Phase A whisper.cpp Large v3 Q5 sidecar (Developer ID builds only).
+
+### Fixed
+- Existing 1.2.0 installs keep their whisper.cpp model and are not forced onto Parakeet.
+
 ## v1.2.0 (2026-09-05)
 
 ### New

@@ -3,10 +3,15 @@
   "bundle": {
     "targets": ["app"],
     "createUpdaterArtifacts": false,
+    "externalBin": [],
     "macOS": {
+      "minimumSystemVersion": "14.0",
       "entitlements": "entitlements.mas.plist",
       "signingIdentity": "Apple Distribution: Chibitek Labs (TEAMID)",
-      "hardenedRuntime": true
+      "hardenedRuntime": true,
+      "frameworks": [
+        "native-asr/libMabelASR.dylib"
+      ]
     }
   }
 }

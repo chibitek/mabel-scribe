@@ -1,4 +1,59 @@
+use std::path::Path;
 use std::process::Command;
+
+fn try_link_native_asr() {
+    println!("cargo:rerun-if-changed=../native/MabelASR/Sources/MabelASR/MabelASR.swift");
+    println!("cargo:rerun-if-changed=../native/MabelASR/Package.swift");
+    println!("cargo:rerun-if-changed=../scripts/build-mabel-asr.sh");
+    println!("cargo:rerun-if-env-changed=MABEL_SKIP_NATIVE_ASR");
+    println!("cargo:rustc-check-cfg=cfg(mabel_native_asr)");
+
+    if std::env::var("CARGO_CFG_TARGET_OS").ok().as_deref() != Some("macos") {
+        return;
+    }
+    if std::env::var("MABEL_SKIP_NATIVE_ASR").ok().as_deref() == Some("1") {
+        println!("cargo:warning=MabelASR skipped (MABEL_SKIP_NATIVE_ASR=1)");
+        return;
+    }
+
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let script = Path::new(&manifest_dir).join("../scripts/build-mabel-asr.sh");
+    let status = Command::new("bash").arg(&script).status();
+    match status {
+        Ok(s) if s.success() => {}
+        Ok(s) => {
+            println!(
+                "cargo:warning=MabelASR build failed (exit {}). Parakeet/WhisperKit will be unavailable.",
+                s.code().unwrap_or(-1)
+            );
+            return;
+        }
+        Err(e) => {
+            println!("cargo:warning=could not run build-mabel-asr.sh: {}", e);
+            return;
+        }
+    }
+
+    let dylib = Path::new(&manifest_dir).join("native-asr/libMabelASR.dylib");
+    if !dylib.exists() {
+        println!("cargo:warning=libMabelASR.dylib not staged; native engines unlinked");
+        return;
+    }
+
+    println!(
+        "cargo:rustc-link-search=native={}",
+        dylib.parent().unwrap().display()
+    );
+    println!("cargo:rustc-link-lib=dylib=MabelASR");
+    println!("cargo:rustc-link-lib=framework=Foundation");
+    println!("cargo:rustc-link-lib=framework=CoreML");
+    println!("cargo:rustc-link-lib=framework=AVFoundation");
+    println!("cargo:rustc-link-lib=framework=Accelerate");
+    println!("cargo:rustc-link-lib=framework=AudioToolbox");
+    println!("cargo:rustc-link-lib=framework=CoreAudio");
+    println!("cargo:rustc-link-lib=framework=CoreMedia");
+    println!("cargo:rustc-cfg=mabel_native_asr");
+}
 
 fn main() {
     let hash = Command::new("git")
@@ -22,5 +77,6 @@ fn main() {
     println!("cargo:rerun-if-changed=../.git/HEAD");
     println!("cargo:rerun-if-changed=../.git/index");
 
+    try_link_native_asr();
     tauri_build::build()
 }

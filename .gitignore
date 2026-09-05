@@ -26,6 +26,11 @@ dist-ssr
 # Rust
 target/
 
+# In-process CoreML ASR products (built on macOS by scripts/build-mabel-asr.sh)
+src-tauri/native-asr/*
+!src-tauri/native-asr/.gitkeep
+native/MabelASR/.build/
+
 # App-specific
 src-tauri/binaries/
 src-tauri/llama-runtime/*

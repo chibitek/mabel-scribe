@@ -1,51 +1,92 @@
-# Mac App Store and TestFlight (follow-up)
+# Dual flavor: Developer ID DMG vs Mac App Store / TestFlight
 
-Mabel 1.2 ships as a **signed Developer ID DMG**, not as a Mac App Store build. This note is the cheap MAS / TestFlight flavor so Erick can take it later. Do not point `scripts/release-macos.sh` or the checked-in `tauri.conf.json` at the MAS entitlements.
+**1.1.7 and 1.2.0 local Whisper (whisper-cpp sidecar + ggml dylibs) are not Mac App Store ready.** Do not upload those binaries to MAS or Mac TestFlight. Do not ship 1.1.7 to the store.
 
-## Store listing
+The outside-store channel stays the **GitHub notarized Developer ID DMG** (`scripts/release-macos.sh`). MAS / TestFlight is a second flavor that needs App Sandbox, Apple Distribution signing, a Mac App Store provisioning profile, and an engine that does not require `disable-library-validation`.
+
+The clean long-term MAS engine is **Phase B** (in-process WhisperKit / FluidAudio Parakeet). Until then, a MAS binary would need whisper **statically linked** into the main executable. This repo does not do that yet. Phase B is not started here.
+
+## Store listing (when a legal binary exists)
 
 | Field | Value |
 |---|---|
-| Bundle ID | `com.mabel.app` (unchanged) |
+| Bundle ID | `com.mabel.app` (same as the DMG) |
 | Price | Free |
 | Category | Productivity (`public.app-category.productivity` is already in `Info.plist`) |
 | Publisher | Chibitek Labs |
 
-TestFlight uses the same MAS-signed binary (`Apple Distribution` / Mac App Store signing), uploaded via Transporter or Xcode Organizer. It is not the Developer ID notarized DMG.
+TestFlight Mac uses the **MAS-signed** `.app` / installer (`Apple Distribution` + Mac App Store provisioning), uploaded via Transporter or Xcode. It is not the notarized Developer ID DMG.
 
-## Files in this repo
+## Dual-flavor files
 
-- `src-tauri/entitlements.plist` — **current ship path**. Hardened Runtime for Developer ID + notarization. Includes `allow-jit`, `allow-unsigned-executable-memory`, and `disable-library-validation` so the whisper-cpp sidecar can load the bundled ggml dylibs in `Contents/Frameworks/`.
-- `src-tauri/entitlements.mas.plist` — **skeleton only**. App Sandbox, microphone, outbound network (model download + optional Groq), Apple Events (paste), user-selected files (manual model import).
-- `src-tauri/tauri.mas.conf.json` — unused Tauri overlay. Example: `npm run tauri build -- --config src-tauri/tauri.mas.conf.json`. Not wired into the release script.
+| Flavor | Entitlements | Tauri config | How to build |
+|---|---|---|---|
+| **Developer ID DMG (ship 1.2)** | `src-tauri/entitlements.plist` | `tauri.conf.json` + private `tauri.local.conf.json` | `scripts/release-macos.sh` or `npm run build:dmg` |
+| **MAS / TestFlight (not shippable yet)** | `src-tauri/entitlements.mas.plist` | overlay `src-tauri/tauri.mas.conf.json` | `npm run build:mas` (refuses unless `MABEL_MAS_EXPERIMENT=1`) |
 
-## Why the current binary cannot ship on MAS
+`release-macos.sh` is Developer ID only. It is not wired to the MAS overlay. Do not point it at `entitlements.mas.plist`.
 
-`disable-library-validation` and `allow-unsigned-executable-memory` are rejected (or are a non-starter) for the Mac App Store. Today they exist because:
+### Developer ID DMG (current ship path)
 
-1. The whisper-cpp sidecar loads unsigned-from-Apple's-POV ggml dylibs from `Contents/Frameworks/`.
-2. WebKit / the sidecar load path historically needed the unsigned-executable-memory entitlement.
+```bash
+# Private signing override (gitignored). Identity is Developer ID Application.
+# scripts/release-macos.sh
+```
 
-A MAS binary must **drop `disable-library-validation`**. That means one of:
+`entitlements.plist` is Hardened Runtime **without** App Sandbox. It includes the three codesigning entitlements the current sidecar needs:
 
-- Statically link whisper.cpp into the main executable (no sidecar dylibs), or
-- Wait for Phase B (WhisperKit / FluidAudio Parakeet) so there is no whisper-cpp sidecar.
+- `com.apple.security.cs.allow-jit`
+- `com.apple.security.cs.allow-unsigned-executable-memory`
+- `com.apple.security.cs.disable-library-validation` (whisper-cpp + `Contents/Frameworks/` ggml dylibs)
 
-Do not try to "sandbox the current sidecar" by keeping library-validation disabled. That will fail MAS.
+Those last two **fail MAS**. `disable-library-validation` is the hard blocker for the current local engine.
 
-`allow-jit` is omitted from the MAS skeleton. If a sandboxed Tauri/WebKit build will not start without it, add it back with an App Review explanation. Do not re-add the other two.
+### MAS / TestFlight (draft flavor only)
 
-## Sandbox notes for a future MAS flavor
+```bash
+# Prints the not-ready warning and exits unless you opt in:
+MABEL_MAS_EXPERIMENT=1 npm run build:mas
+```
 
-- Model downloads should land in the app container (Application Support). The sandbox allows that without extra entitlements.
-- `files.user-selected.read-write` is for an explicit "choose a model file" path, not a substitute for container writes.
-- `network.client` covers Hugging Face model downloads and optional Groq. No server inbound listener should be bound off loopback; llama-server already uses `127.0.0.1`.
-- Paste via System Events may still need a temporary Apple Events exception for `com.apple.systemevents` after the first sandbox test. Add that only if the sandboxed build cannot paste.
-- In-app GitHub Releases updater (`createUpdaterArtifacts`) does not apply on the App Store. The MAS overlay turns that off. Store updates go through App Store / TestFlight.
+That runs Tauri with `--config src-tauri/tauri.mas.conf.json --bundles app` so you get an `.app`, not a DMG. After Phase B (or a static-link whisper), the remaining store steps on a Mac with the right certs are:
 
-## Suggested later work (not 1.2)
+1. Sign with **Apple Distribution: Chibitek Labs (TEAMID)** and embed the **Mac App Store** provisioning profile for `com.mabel.app`.
+2. Wrap with `productbuild` / Xcode using **3rd Party Mac Developer Installer**.
+3. Upload that pkg to App Store Connect.
+4. Enable **Mac TestFlight**, then submit the free Productivity listing.
 
-1. Keep shipping Developer ID DMGs from `scripts/release-macos.sh`.
-2. Create a Mac App Store record: free, Productivity, Chibitek Labs, bundle `com.mabel.app`.
-3. After Phase B or a statically linked whisper, build with `tauri.mas.conf.json` + Apple Distribution identity.
-4. Upload that build to TestFlight, then submit for MAS review.
+`tauri.mas.conf.json` turns off GitHub updater artifacts. Store updates go through App Store / TestFlight, not `latest.json`.
+
+## MAS entitlements draft
+
+`entitlements.mas.plist` is sandbox **ON** and **does not** set:
+
+- `com.apple.security.cs.disable-library-validation`
+- `com.apple.security.cs.allow-unsigned-executable-memory`
+
+It does set:
+
+- `com.apple.security.app-sandbox`
+- `com.apple.security.device.audio-input`
+- `com.apple.security.network.client` (Hugging Face model download, optional Groq)
+- `com.apple.security.automation.apple-events` (paste)
+- `com.apple.security.files.user-selected.read-write` (manual model file pick)
+
+`allow-jit` is omitted. If sandboxed WebKit will not start, add it back with an App Review justification. Do **not** re-add library-validation disable or unsigned-executable-memory to the MAS file.
+
+A 1.2.0 build that still ships `externalBin: whisper-cpp` plus Frameworks ggml dylibs **will not load** under this entitlements file. That is expected. It is why MAS waits on Phase B or a static-link whisper.
+
+## Sandbox notes (future)
+
+- Model downloads belong in the app container (Application Support). The sandbox allows that without extra entitlements.
+- User-selected files are for an explicit “choose a model” path, not a substitute for container writes.
+- llama-server must stay on `127.0.0.1`. No inbound listen off loopback.
+- Paste via System Events may still need a temporary Apple Events exception for `com.apple.systemevents` after the first sandbox run.
+- Soft nits (review screenshots, privacy nutrition labels, sandbox path polish) come later.
+
+## Suggested order
+
+1. Ship 1.2.0 as the GitHub notarized DMG. That is the only supported distribution for this PR.
+2. Create the App Store Connect record: free, Productivity, Chibitek Labs, `com.mabel.app`. Do not upload 1.1.7 or 1.2.0 sidecar builds.
+3. Land Phase B (or statically link whisper) so MAS entitlements can stay stripped of library-validation disable.
+4. Then `MABEL_MAS_EXPERIMENT=1 npm run build:mas`, Apple Distribution + MAS provisioning, TestFlight, store review.

@@ -8,6 +8,7 @@
   allow-unsigned-executable-memory. allow-jit is also omitted; add it back
   only if sandboxed WebKit will not start, with an App Review justification.
 
+  1.1.7 / 1.2.0 whisper-cpp sidecar builds are NOT MAS-ready.
   MAS binary must statically link whisper or wait for Phase B
   (WhisperKit / FluidAudio Parakeet). Bundle id stays com.mabel.app.
   Price: free. Category: Productivity. Publisher: Chibitek Labs.

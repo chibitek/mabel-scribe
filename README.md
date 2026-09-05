@@ -192,7 +192,7 @@ The `entitlements.plist` file is already in `src-tauri/`. It declares:
 
 The last two hardened-runtime entitlements, plus JIT, are security-sensitive. Keep them only while they are required by the WebKit runtime or the whisper-cpp sidecar loading path, and re-test builds after removing any one of them before shipping a tighter entitlement set.
 
-Mac App Store / TestFlight is a **separate follow-up**. The 1.2 DMG stays on Developer ID + `entitlements.plist`. See [docs/mas-and-testflight.md](docs/mas-and-testflight.md) and the unused `src-tauri/entitlements.mas.plist` skeleton. Do not convert this DMG path to MAS until whisper is statically linked or Phase B replaces the sidecar.
+Mac App Store / TestFlight is a **second flavor**, not this DMG path. `npm run build:dmg` / `scripts/release-macos.sh` stay on Developer ID + `entitlements.plist`. `npm run build:mas` uses the sandbox draft and **refuses unless** `MABEL_MAS_EXPERIMENT=1`. **1.1.7 and 1.2.0 local whisper sidecar builds are not MAS-ready.** See [docs/mas-and-testflight.md](docs/mas-and-testflight.md).
 
 ## Build with signing + notarization
 

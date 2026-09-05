@@ -33,7 +33,9 @@ Open source under the [MIT license](LICENSE). Fork it, build it, ship your own v
 
 | Engine | Where it runs | What's sent off-device |
 |---|---|---|
-| **Local (default)** | Whisper.cpp on your Mac via a sidecar binary | Nothing |
+| **Parakeet (default, new installs)** | FluidAudio CoreML in-process on the Neural Engine | Nothing |
+| **WhisperKit large-v3-turbo** | WhisperKit CoreML in-process (optional) | Nothing |
+| **whisper.cpp (Developer ID fallback)** | Phase A sidecar + ggml Large v3 Q5 | Nothing |
 | **Groq cloud** | Groq's hosted Whisper, opt-in | The audio of each clip |
 
 Local works completely offline once you download the model. Groq is faster and more accurate on long audio but requires a free API key from `console.groq.com`.
@@ -42,7 +44,7 @@ Local works completely offline once you download the model. Groq is faster and m
 
 - macOS 12 (Monterey) or later
 - Apple Silicon (M1 / M2 / M3 / M4). Intel build is not currently distributed.
-- ~1.1 GB free for the recommended Whisper Large v3 Q5 model; Small (~500 MB) and Medium (~1.5 GB) remain available as fallbacks.
+- ~1 GB free for the recommended Parakeet CoreML models (FluidAudio). WhisperKit large-v3-turbo and whisper.cpp Large v3 Q5 (~1.1 GB) are optional. Parakeet / WhisperKit need macOS 14+; the Developer ID whisper.cpp fallback still runs on the older floor.
 
 ## Install (end users)
 
@@ -51,7 +53,7 @@ Download the latest signed and notarized DMG from the [Releases](../../releases)
 On first launch:
 
 1. macOS asks for **Microphone** access. Click Allow.
-2. Mabel auto-downloads the Whisper Large v3 Q5 model (~1.1 GB) with a progress bar. One-time setup. You can switch to Medium or Small later.
+2. Mabel auto-downloads Parakeet with a progress bar. One-time setup. You can switch to WhisperKit or whisper.cpp later in Settings → Engine.
 3. Mabel triggers macOS's **Accessibility** dialog. Click Open System Settings, flip the Mabel toggle on.
 4. Press your hotkey and speak. macOS asks for **Automation (System Events)** the first time text is pasted. Click Allow.
 
@@ -68,6 +70,7 @@ If you want to fork Mabel, customize it, and ship your own signed/notarized DMG,
 ## Prerequisites
 
 - macOS 12+ on Apple Silicon (build host).
+- **Xcode 16+ / Swift 6** (macOS): needed to compile the in-process Parakeet / WhisperKit library (`npm run vendor-asr`). Command Line Tools alone are not enough for that target.
 - **Xcode Command Line Tools**: `xcode-select --install`
 - **Rust** (1.78+ recommended): `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 - **Node.js 20+** and npm: install via [nodejs.org](https://nodejs.org) or `brew install node`
@@ -187,12 +190,12 @@ The `entitlements.plist` file is already in `src-tauri/`. It declares:
 - Audio input (mic capture)
 - Network client (Groq API, model download)
 - Apple Events (paste via System Events)
-- JIT and unsigned executable memory (required by WebKit)
-- Disable library validation (required to load whisper-cpp sidecar binary)
+- JIT and unsigned executable memory (Developer ID DMG: WebKit + whisper.cpp sidecar fallback)
+- Disable library validation (Developer ID DMG only: whisper-cpp + ggml dylibs)
 
-The last two hardened-runtime entitlements, plus JIT, are security-sensitive. Keep them only while they are required by the WebKit runtime or the whisper-cpp sidecar loading path, and re-test builds after removing any one of them before shipping a tighter entitlement set.
+The last two hardened-runtime entitlements, plus JIT, are security-sensitive. They stay on the **Developer ID DMG** so the Phase A sidecar still loads. The default Parakeet / WhisperKit path does not need them.
 
-Mac App Store / TestFlight is a **second flavor**, not this DMG path. `npm run build:dmg` / `scripts/release-macos.sh` stay on Developer ID + `entitlements.plist`. `npm run build:mas` uses the sandbox draft and **refuses unless** `MABEL_MAS_EXPERIMENT=1`. **1.1.7 and 1.2.0 local whisper sidecar builds are not MAS-ready.** See [docs/mas-and-testflight.md](docs/mas-and-testflight.md).
+Mac App Store / TestFlight is a **second flavor**, not this DMG path. `npm run build:dmg` / `scripts/release-macos.sh` stay on Developer ID + `entitlements.plist`. `npm run build:mas` uses the sandbox draft and **refuses unless** `MABEL_MAS_EXPERIMENT=1`. **1.3.0 is not claimed MAS-ready** even though the default engine is structurally sandbox-clean. See [docs/mas-and-testflight.md](docs/mas-and-testflight.md).
 
 ## Build with signing + notarization
 
@@ -259,7 +262,7 @@ Mabel is a [Tauri 2](https://tauri.app) desktop app. The UI is vanilla TypeScrip
 | Backend | Rust 2021 edition |
 | Audio capture | `cpal` 0.15 |
 | WAV encoding | `hound` 3.5 |
-| Local transcription | `whisper.cpp` sidecar binary (Apple Silicon Metal build) |
+| Local transcription | FluidAudio Parakeet + WhisperKit (in-process CoreML); whisper.cpp sidecar fallback on Developer ID |
 | Cloud transcription | `reqwest` 0.12 against Groq's `whisper-large-v3` |
 | Async runtime | `tokio` 1 (full features) |
 | Floating overlay | `tauri-nspanel` v2 (NSPanel-backed window) |
@@ -283,7 +286,7 @@ src/                       Frontend (TypeScript + HTML + CSS)
 src-tauri/
   build.rs                 Embeds git hash + version at compile time
   entitlements.plist       Hardened-runtime entitlements for Developer ID DMG
-  entitlements.mas.plist   Unused MAS/TestFlight sandbox skeleton (see docs/mas-and-testflight.md)
+  entitlements.mas.plist   MAS/TestFlight sandbox draft (see docs/mas-and-testflight.md)
   src/
     main.rs                Tauri commands, plugin registration, app setup
     lib.rs                 Module roots + version constants
@@ -291,7 +294,9 @@ src-tauri/
     audio.rs               cpal recorder, ring buffer, RMS metering
     recorder.rs            Recording state machine, orchestration
     streaming.rs           VAD-driven chunking for live dictation
-    transcribe_local.rs    whisper.cpp sidecar invocation
+    local_engine.rs        Parakeet / WhisperKit / whisper.cpp choice
+    transcribe_native.rs   In-process CoreML FFI (macOS)
+    transcribe_local.rs    whisper.cpp sidecar invocation (DMG fallback)
     transcribe_groq.rs     Groq HTTP client
     cleanup.rs             Whisper output post-processing
     paste.rs               Clipboard + osascript paste, Return keystroke

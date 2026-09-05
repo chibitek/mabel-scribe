@@ -1,12 +1,12 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Mabel",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "identifier": "com.mabel.app",
   "build": {
-    "beforeDevCommand": "npm run vendor-llama && npm run dev",
+    "beforeDevCommand": "npm run vendor-llama && npm run vendor-asr && npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run vendor-llama && npm run build",
+    "beforeBuildCommand": "npm run vendor-llama && npm run vendor-asr && npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -60,7 +60,8 @@
         "dylibs/libggml-base.0.dylib",
         "dylibs/libggml-cpu.0.dylib",
         "dylibs/libggml-blas.0.dylib",
-        "dylibs/libggml-metal.0.dylib"
+        "dylibs/libggml-metal.0.dylib",
+        "native-asr/libMabelASR.dylib"
       ]
     }
   },

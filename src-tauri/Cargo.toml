@@ -1,6 +1,6 @@
 [package]
 name = "mabel"
-version = "1.2.0"
+version = "1.3.0"
 description = "Privacy-first macOS dictation. Audio never leaves your Mac."
 authors = ["Chibitek Labs"]
 license = "MIT"
@@ -9,6 +9,12 @@ edition = "2021"
 [lib]
 name = "mabel_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
+
+[features]
+default = ["whisper-cpp-sidecar"]
+# Developer ID DMG keeps the Phase A whisper.cpp sidecar. MAS builds
+# `--no-default-features` so that flavor cannot spawn the unsigned-dylib path.
+whisper-cpp-sidecar = []
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

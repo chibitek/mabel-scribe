@@ -1,6 +1,8 @@
 pub mod settings;
 pub mod audio;
+pub mod local_engine;
 pub mod transcribe_local;
+pub mod transcribe_native;
 pub mod transcribe_groq;
 pub mod cleanup;
 pub mod llm;

@@ -13,7 +13,7 @@ use crate::stats::StatsStore;
 use crate::streaming::{self, StreamingHandle};
 use crate::system_ui;
 use crate::transcribe_groq;
-use crate::transcribe_local;
+use crate::transcribe_native;
 
 pub const TEMP_RECORDING_WAV: &str = "temp_recording.wav";
 pub const LEGACY_LAST_RECORDING_WAV: &str = "last_recording.wav";
@@ -229,21 +229,16 @@ impl Recorder {
             println!("[Mabel] Transcription engine: {}", settings.engine);
             let raw_text = match settings.engine.as_str() {
                 "local" => {
-                    crate::debug_log::append(app_dir, "local transcription start");
-                    println!("[Mabel] Local transcription starting");
-                    let model_file = transcribe_local::model_filename(
-                        &settings.whisper_model,
-                        &settings.whisper_language,
-                    )?;
-                    let model_path = app_dir.join(model_file);
-                    transcribe_local::transcribe_local(
-                        app,
-                        &model_path,
-                        &temp_path,
-                        &settings.whisper_language,
-                        &settings.dictionary,
-                    )
-                    .await?
+                    crate::debug_log::append(
+                        app_dir,
+                        &format!("local transcription start engine={}", settings.local_engine),
+                    );
+                    println!(
+                        "[Mabel] Local transcription starting ({})",
+                        settings.local_engine
+                    );
+                    transcribe_native::transcribe_local_engine(app, app_dir, &temp_path, &settings)
+                        .await?
                 }
                 "cloud" => {
                     crate::debug_log::append(app_dir, "cloud transcription start");

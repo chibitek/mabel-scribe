@@ -13,7 +13,9 @@ use mabel_lib::recorder::{Recorder, RecordingState};
 use mabel_lib::settings::Settings;
 use mabel_lib::stats::{StatsStore, StatsSummary};
 use mabel_lib::system_ui;
+use mabel_lib::local_engine;
 use mabel_lib::transcribe_local;
+use mabel_lib::transcribe_native;
 
 struct AppState {
     recorder: Recorder,
@@ -220,6 +222,63 @@ async fn download_model(
 }
 
 #[tauri::command]
+fn list_local_engines() -> Vec<local_engine::LocalEngineInfo> {
+    local_engine::catalog()
+}
+
+#[tauri::command]
+fn check_local_engine_ready(
+    state: State<AppState>,
+    engine: String,
+    language: Option<String>,
+) -> bool {
+    let lang = language.unwrap_or_else(|| "en".to_string());
+    match engine.as_str() {
+        local_engine::PARAKEET | local_engine::WHISPERKIT => {
+            transcribe_native::engine_ready(&engine, &lang, &state.app_dir)
+        }
+        local_engine::WHISPER_CPP => {
+            if !local_engine::whisper_cpp_sidecar_compiled() {
+                return false;
+            }
+            let settings = state.settings.lock().unwrap();
+            match transcribe_local::model_filename(&settings.whisper_model, &lang) {
+                Ok(model_file) => state.app_dir.join(model_file).exists(),
+                Err(_) => false,
+            }
+        }
+        _ => false,
+    }
+}
+
+#[tauri::command]
+async fn download_local_engine(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    engine: String,
+    language: Option<String>,
+) -> Result<(), String> {
+    let lang = language.unwrap_or_else(|| "en".to_string());
+    match engine.as_str() {
+        local_engine::PARAKEET => transcribe_native::download_parakeet(app, &lang).await,
+        local_engine::WHISPERKIT => {
+            transcribe_native::download_whisperkit(app, &state.app_dir).await
+        }
+        local_engine::WHISPER_CPP => {
+            if !local_engine::whisper_cpp_sidecar_compiled() {
+                return Err("whisper.cpp is not in this flavor.".into());
+            }
+            let settings = state.settings.lock().unwrap().clone();
+            let url = transcribe_local::model_download_url(&settings.whisper_model, &lang)?;
+            let model_file = transcribe_local::model_filename(&settings.whisper_model, &lang)?;
+            let dest = state.app_dir.join(&model_file);
+            downloader::download_model(app, &url, &dest).await
+        }
+        other => Err(format!("Unknown local engine: {}", other)),
+    }
+}
+
+#[tauri::command]
 fn check_llm_model_downloaded(state: State<AppState>, model: String) -> bool {
     match mabel_lib::llm::model_filename(&model) {
         Ok(name) => state.app_dir.join(&name).exists(),
@@ -415,13 +474,13 @@ async fn do_toggle_recording(
             mabel_lib::debug_log::append(
                 &state.app_dir,
                 &format!(
-                    "start_recording mic={} engine={} model={} lang={}",
-                    mic, settings.engine, settings.whisper_model, settings.whisper_language
+                    "start_recording mic={} engine={} local={} model={} lang={}",
+                    mic, settings.engine, settings.local_engine, settings.whisper_model, settings.whisper_language
                 ),
             );
             println!(
-                "[Mabel] Starting recording (mic={}, engine={}, model={}, lang={})",
-                mic, settings.engine, settings.whisper_model, settings.whisper_language
+                "[Mabel] Starting recording (mic={}, engine={}, local={}, model={}, lang={})",
+                mic, settings.engine, settings.local_engine, settings.whisper_model, settings.whisper_language
             );
             state.recorder.start_recording(app, &mic, &settings, &state.app_dir)?;
             mabel_lib::debug_log::append(&state.app_dir, "recording started successfully");
@@ -498,6 +557,9 @@ fn main() {
             get_recording_state,
             check_model_downloaded,
             download_model,
+            list_local_engines,
+            check_local_engine_ready,
+            download_local_engine,
             toggle_recording,
             update_hotkey,
             get_version,

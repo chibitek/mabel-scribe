@@ -262,7 +262,7 @@
             <ol class="help-list">
               <li><b>Pick a microphone</b> in Settings &rarr; General.</li>
               <li><b>Pick an engine</b> in Settings &rarr; Engine. Local works offline; Groq cloud is faster but sends audio to Groq.</li>
-              <li>If you chose Local, click <b>Download</b> to fetch the Whisper model. New installs recommend Large v3 Q5 (~1.1&nbsp;GB); Small and Medium stay available as fallbacks.</li>
+              <li>If you chose Local, click <b>Download</b> for the selected on-device engine. New installs default to <b>Parakeet</b>. WhisperKit large-v3-turbo is optional. whisper.cpp Large v3 Q5 remains on the Developer ID build.</li>
               <li>Place your cursor in any text field, press the hotkey, speak, release (or press again).</li>
               <li>Mabel pastes the transcription at your cursor.</li>
             </ol>
@@ -296,7 +296,7 @@
 
           <div class="card help-card">
             <h2 class="help-h">Local vs Groq cloud</h2>
-            <p><b>Local</b> (the default) uses Whisper running on your Mac. Audio never leaves the device. Large v3 Q5 is the recommended model on Apple Silicon. Slower than cloud, but completely private.</p>
+            <p><b>Local</b> (the default) transcribes on your Mac. New installs use FluidAudio <b>Parakeet</b> in-process via CoreML. WhisperKit large-v3-turbo is an optional alternative. The Developer ID build still includes the Phase A whisper.cpp sidecar as a fallback. Audio never leaves the device.</p>
             <p><b>Groq cloud</b> uses Groq's hosted Whisper. Faster and more accurate on long audio, but each clip is sent to Groq's servers. Requires a free key from <a href="https://console.groq.com" target="_blank" rel="noopener">console.groq.com</a>. Your key is stored in the macOS Keychain, never in a config file.</p>
           </div>
 
@@ -330,7 +330,7 @@
             <h2 class="help-h">Troubleshooting</h2>
             <p><b>Nothing happens when I press the hotkey.</b> Check that the hotkey isn't already bound by another app. Try a different combination in Settings &rarr; General.</p>
             <p><b>Recording starts but nothing pastes.</b> Open System Settings &rarr; Privacy &amp; Security &rarr; Accessibility and confirm Mabel is toggled on. If you denied the Automation prompt, reset it with <code>tccutil reset AppleEvents com.mabel.app</code> in Terminal and try again.</p>
-            <p><b>Transcription is slow.</b> Switch to the Small model in Settings &rarr; Engine, or try Groq cloud.</p>
+            <p><b>Transcription is slow.</b> Parakeet is the usual on-device default. On the Developer ID build you can switch to whisper.cpp Small, or try Groq cloud.</p>
             <p><b>Wrong microphone.</b> Pick the one you want in Settings &rarr; General.</p>
           </div>
 
@@ -357,12 +357,12 @@
           </svg>
         </div>
         <h2 class="firstrun-title">Setting up Mabel</h2>
-        <p class="firstrun-body" id="firstrun-body">Downloading Whisper Large v3 Q5 (~1.1 GB) so dictation works fully offline. Recommended on Apple Silicon. This is a one-time setup.</p>
+        <p class="firstrun-body" id="firstrun-body">Downloading Parakeet so dictation works fully offline on this Mac. Recommended default. This is a one-time setup.</p>
         <div class="firstrun-progress">
           <div id="firstrun-bar"><div id="firstrun-fill"></div></div>
           <div class="firstrun-pct" id="firstrun-pct">0%</div>
         </div>
-        <p class="firstrun-foot" id="firstrun-foot">Need a smaller download or faster transcription? Switch to Medium or Small anytime in <b>Settings → Engine</b>.</p>
+        <p class="firstrun-foot" id="firstrun-foot">Want WhisperKit or the older whisper.cpp path? Switch anytime in <b>Settings → Engine</b>.</p>
         <button type="button" id="firstrun-done" class="btn-primary hidden">Get started</button>
         <button type="button" id="firstrun-retry" class="btn-secondary hidden">Retry download</button>
       </div>
@@ -492,22 +492,33 @@
               </div>
               <div class="row" id="local-settings">
                 <div class="row-text">
-                  <div class="row-label">Whisper model</div>
-                  <div class="row-hint">Larger models are more accurate, take more memory and time.</div>
+                  <div class="row-label">Local engine</div>
+                  <div class="row-hint" id="local-engine-hint">Parakeet is the default on-device engine (CoreML, no sidecar). WhisperKit is optional. whisper.cpp stays available on the Developer ID build.</div>
                 </div>
                 <div class="model-row">
-                  <select id="model-select" aria-label="Whisper model">
-                    <option value="large-v3">Large v3 Q5 (~1.1 GB, recommended)</option>
-                    <option value="medium">Medium (~1.5 GB)</option>
-                    <option value="small">Small (~466 MB)</option>
+                  <select id="local-engine-select" aria-label="Local engine">
+                    <option value="parakeet">Parakeet (default)</option>
+                    <option value="whisperkit">WhisperKit large-v3-turbo</option>
+                    <option value="whisper-cpp">whisper.cpp (Developer ID fallback)</option>
                   </select>
                   <button type="button" id="download-btn" class="btn-secondary">Download</button>
                 </div>
               </div>
+              <div class="row" id="whisper-cpp-settings">
+                <div class="row-text">
+                  <div class="row-label">Whisper model</div>
+                  <div class="row-hint">whisper.cpp sidecar + ggml. Larger models are more accurate, take more memory and time. Not used by Parakeet or WhisperKit.</div>
+                </div>
+                <select id="model-select" aria-label="Whisper model">
+                  <option value="large-v3">Large v3 Q5 (~1.1 GB)</option>
+                  <option value="medium">Medium (~1.5 GB)</option>
+                  <option value="small">Small (~466 MB)</option>
+                </select>
+              </div>
               <div class="row" id="language-settings">
                 <div class="row-text">
                   <div class="row-label">Language</div>
-                  <div class="row-hint">English-only models are trained harder on English and noticeably more accurate. Pick Multilingual if you dictate in other languages — switching may download a new file for Small/Medium. Large v3 Q5 is multilingual-only (no official .en Q5); the setting still forces the English decoder or auto-detect.</div>
+                  <div class="row-hint">English-only is recommended. Parakeet uses the English v2 checkpoint or multilingual v3. WhisperKit and whisper.cpp honor the same setting.</div>
                 </div>
                 <select id="language-select" aria-label="Whisper language">
                   <option value="en">English-only (recommended)</option>

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "createUpdaterArtifacts": false,
+    "macOS": {
+      "entitlements": "entitlements.mas.plist",
+      "signingIdentity": "Apple Distribution: Chibitek Labs (TEAMID)",
+      "hardenedRuntime": true
+    }
+  }
+}

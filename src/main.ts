@@ -295,6 +295,14 @@ function openDictionary() {
   document.querySelector('.nav-item[data-view="dictionary"]')?.classList.add("active");
   document.querySelector('.view[data-view="dictionary"]')?.classList.add("active");
 }
+
+function openSnippets() {
+  modal.classList.add("hidden");
+  document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
+  document.querySelectorAll<HTMLElement>(".view").forEach((s) => s.classList.remove("active"));
+  document.querySelector('.nav-item[data-view="snippets"]')?.classList.add("active");
+  document.querySelector('.view[data-view="snippets"]')?.classList.add("active");
+}
 $("open-pro").addEventListener("click", openPlans);
 $("cta-pro").addEventListener("click", openPlans);
 document.querySelectorAll(".pro-activate").forEach((b) => b.addEventListener("click", openPlans));
@@ -808,6 +816,14 @@ $("dictionary-stiki").addEventListener("click", () => {
   void signInWithStiki();
 });
 $("dict-pane-stiki").addEventListener("click", () => {
+  void signInWithStiki();
+});
+$("snippets-open").addEventListener("click", openSnippets);
+$("snippets-activate").addEventListener("click", openPlans);
+$("snippets-stiki").addEventListener("click", () => {
+  void signInWithStiki();
+});
+$("snippet-pane-stiki").addEventListener("click", () => {
   void signInWithStiki();
 });
 
@@ -1349,6 +1365,10 @@ function dictionarySurfaceReady() {
   return proSurfacesUnlocked();
 }
 
+function snippetsSurfaceReady() {
+  return proSurfacesUnlocked();
+}
+
 async function signInWithStiki() {
   // Re-read the fail-closed session file. Do not mock-grant sign-on.
   await refreshStikiSession();
@@ -1378,6 +1398,33 @@ function applyDictionaryGate() {
     dictNav.classList.toggle("locked", !ready);
     dictNav.toggleAttribute("data-pro", true);
     const lock = dictNav.querySelector<HTMLElement>(".lock-pill");
+    if (lock) lock.style.display = ready ? "none" : "";
+  }
+}
+
+function applySnippetsGate() {
+  const ready = snippetsSurfaceReady();
+  const entitled = !!currentEntitlement.entitled;
+  const signedIn = !!currentStiki.live;
+
+  document.querySelectorAll<HTMLElement>("[data-snippet-gate='lock']").forEach((el) => {
+    el.classList.toggle("hidden", ready);
+  });
+  document.querySelectorAll<HTMLElement>("[data-snippet-gate='unlock']").forEach((el) => {
+    el.classList.toggle("hidden", !ready);
+  });
+
+  $("snippets-open").classList.toggle("hidden", !ready);
+  $("snippets-activate").classList.toggle("hidden", entitled);
+  $("snippets-stiki").classList.toggle("hidden", signedIn);
+  $("snippet-pane-activate").classList.toggle("hidden", entitled);
+  $("snippet-pane-stiki").classList.toggle("hidden", signedIn);
+
+  const snipNav = document.querySelector<HTMLElement>('.nav-item[data-view="snippets"]');
+  if (snipNav) {
+    snipNav.classList.toggle("locked", !ready);
+    snipNav.toggleAttribute("data-pro", true);
+    const lock = snipNav.querySelector<HTMLElement>(".lock-pill");
     if (lock) lock.style.display = ready ? "none" : "";
   }
 }
@@ -1427,14 +1474,15 @@ function applyEntitlement(ent: Entitlement) {
   });
 
   document.querySelectorAll(".pro-lock").forEach((el) => {
-    if ((el as HTMLElement).dataset.dictGate) return;
+    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate) return;
     el.classList.toggle("hidden", unlocked);
   });
   document.querySelectorAll(".pro-unlock").forEach((el) => {
-    if ((el as HTMLElement).dataset.dictGate) return;
+    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate) return;
     el.classList.toggle("hidden", !unlocked);
   });
   applyDictionaryGate();
+  applySnippetsGate();
 
   const accountHint = document.getElementById("account-plan-hint");
   const accountPill = document.getElementById("account-plan-pill");
@@ -1654,6 +1702,9 @@ listen("open-plans", () => {
 listen("open-dictionary", () => {
   openDictionary();
 });
+listen("open-snippets", () => {
+  openSnippets();
+});
 listen<string>("open-settings-pane", (event) => {
   openSettingsPane(event.payload || "engine");
 });
@@ -1672,10 +1723,8 @@ async function loadDictionarySurface() {
   applyDictionary(terms);
 }
 
-async function loadProSurfaces() {
-  if (!proSurfacesUnlocked()) return;
-  await loadDictionarySurface();
-
+async function loadSnippetsSurface() {
+  if (!snippetsSurfaceReady()) return;
   const snippets = await invoke<Snippet[]>("snippets_get");
   const snippetList = document.getElementById("snippet-list");
   const snippetEmpty = document.getElementById("snippet-empty");
@@ -1686,14 +1735,24 @@ async function loadProSurfaces() {
         row(
           `<div><div>${s.trigger}</div><div class="pro-row-meta">${s.expansion}</div></div>`,
           async () => {
+            if (!snippetsSurfaceReady()) {
+              if (!currentEntitlement.entitled) openPlans();
+              return;
+            }
             await invoke("snippets_remove", { snippetId: s.id });
-            await loadProSurfaces();
+            await loadSnippetsSurface();
           }
         )
       );
     });
   }
   snippetEmpty?.classList.toggle("hidden", snippets.length > 0);
+}
+
+async function loadProSurfaces() {
+  if (!proSurfacesUnlocked()) return;
+  await loadDictionarySurface();
+  await loadSnippetsSurface();
 
   const style = await invoke<StylePrefs>("style_get");
   const tone = $<HTMLSelectElement>("style-tone");
@@ -1749,14 +1808,27 @@ function renderTeams(team: TeamState) {
 }
 
 document.getElementById("snippet-add-btn")?.addEventListener("click", async () => {
+  if (!snippetsSurfaceReady()) {
+    if (!currentEntitlement.entitled) openPlans();
+    return;
+  }
+  const errorEl = document.getElementById("snippet-error");
+  if (errorEl) {
+    errorEl.textContent = "";
+    errorEl.hidden = true;
+  }
   try {
     const trigger = $<HTMLInputElement>("snippet-trigger").value;
     const expansion = $<HTMLInputElement>("snippet-expansion").value;
     await invoke("snippets_add", { trigger, expansion });
     $<HTMLInputElement>("snippet-trigger").value = "";
     $<HTMLInputElement>("snippet-expansion").value = "";
-    await loadProSurfaces();
+    await loadSnippetsSurface();
   } catch (e) {
+    if (errorEl) {
+      errorEl.textContent = String(e);
+      errorEl.hidden = false;
+    }
     console.error("snippets_add:", e);
   }
 });

@@ -655,6 +655,12 @@ mod tests {
         assert!(dict.contains("no HIPAA/BAA"));
         assert!(dict.contains("Scratchpad/Insights local-only default"));
         assert!(dict.contains("fail closed if ACL missing"));
+        let snip = include_str!("snippets.rs");
+        assert!(snip.contains("ENFORCER_BOUND"));
+        assert!(snip.contains("Pro-gated + Stiki session"));
+        assert!(snip.contains("no Nexus/SIEM write"));
+        assert!(snip.contains("no HIPAA/BAA"));
+        assert!(snip.contains("fail closed if ACL missing"));
     }
 
     #[cfg(unix)]

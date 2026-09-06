@@ -242,23 +242,32 @@
           </div>
         </section>
         <section class="view" data-view="snippets">
-          <header class="view-header"><h1 class="view-title">Snippets</h1><p class="view-sub">Voice-triggered text expansion. Stored on this Mac.</p></header>
-          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro to expand short phrases into full templates by voice.</p><button type="button" class="btn-primary pro-activate">Activate Pro</button></div>
-          <div class="pro-unlock hidden">
+          <header class="view-header"><h1 class="view-title">Snippets</h1><p class="view-sub">Say a short trigger, and Mabel pastes the expansion you meant. She keeps this list on this Mac &mdash; no cloud, no sharing.</p></header>
+          <div class="card locked-card pro-lock" data-snippet-gate="lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and sign in with Stiki so Mabel can expand your personal shortcuts locally, like a house cat who already knows which leap you wanted.</p><div class="locked-actions"><button type="button" class="btn-primary pro-activate" id="snippet-pane-activate">Activate Pro</button><button type="button" class="btn-secondary" id="snippet-pane-stiki">Sign in with Stiki</button></div></div>
+          <div class="pro-unlock hidden" data-snippet-gate="unlock">
             <div class="card pane-card">
               <div class="row">
                 <div class="row-text">
                   <div class="row-label">Add a snippet</div>
-                  <div class="row-hint">Trigger is the short phrase. Expansion is what Mabel pastes. Local only.</div>
+                  <div class="row-hint">Trigger is the short phrase you say. Expansion is what she pastes. Distinct from Dictionary spellings, Polish tone, and Clipboard History. Local only.</div>
                 </div>
               </div>
               <div class="dict-input-row">
-                <input type="text" id="snippet-trigger" placeholder="Trigger, e.g. sig" autocomplete="off" />
+                <input type="text" id="snippet-trigger" placeholder="Trigger, e.g. insert my calendar link" autocomplete="off" />
                 <input type="text" id="snippet-expansion" placeholder="Expansion" autocomplete="off" />
                 <button type="button" id="snippet-add-btn" class="btn-secondary">Add</button>
               </div>
+              <div id="snippet-error" class="dict-error" hidden></div>
               <div id="snippet-list" class="pro-list"></div>
-              <div id="snippet-empty" class="dict-empty">No snippets yet.</div>
+              <div id="snippet-empty" class="dict-empty">No snippets yet. Add the shortcuts you say often.</div>
+            </div>
+            <div class="card pane-card">
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Privacy</div>
+                  <div class="row-hint">Snippets live on this Mac. They are not uploaded, not Nexus memory, and not shared with a team. Cloud and team share stay off.</div>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -734,6 +743,17 @@
                   <button type="button" class="btn-secondary hidden" id="dictionary-open">Open Dictionary</button>
                   <button type="button" class="btn-secondary" id="dictionary-activate">Activate Pro</button>
                   <button type="button" class="btn-secondary" id="dictionary-stiki">Sign in with Stiki</button>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Snippets</div>
+                  <div class="row-hint">Pro + Stiki. Personal trigger &rarr; expansion during dictation. Local on this Mac &mdash; not Dictionary, not Polish, not Clipboard History. Menu bar → Snippets…</div>
+                </div>
+                <div class="row-actions">
+                  <button type="button" class="btn-secondary hidden" id="snippets-open">Open Snippets</button>
+                  <button type="button" class="btn-secondary" id="snippets-activate">Activate Pro</button>
+                  <button type="button" class="btn-secondary" id="snippets-stiki">Sign in with Stiki</button>
                 </div>
               </div>
               <div class="row">

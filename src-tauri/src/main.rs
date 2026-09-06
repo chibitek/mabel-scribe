@@ -185,7 +185,7 @@ fn dictionary_promote() -> Result<(), String> {
 
 #[tauri::command]
 fn snippets_get(state: State<AppState>) -> Result<Vec<pro_features::Snippet>, String> {
-    pro_features::snippets_get(&state.app_dir)
+    mabel_lib::snippets::require_list(&state.app_dir)
 }
 
 #[tauri::command]
@@ -194,12 +194,24 @@ fn snippets_add(
     trigger: String,
     expansion: String,
 ) -> Result<Vec<pro_features::Snippet>, String> {
-    pro_features::snippets_add(&state.app_dir, trigger, expansion)
+    mabel_lib::snippets::add(&state.app_dir, trigger, expansion)
 }
 
 #[tauri::command]
 fn snippets_remove(state: State<AppState>, snippet_id: String) -> Result<Vec<pro_features::Snippet>, String> {
-    pro_features::snippets_remove(&state.app_dir, snippet_id)
+    mabel_lib::snippets::remove(&state.app_dir, snippet_id)
+}
+
+#[tauri::command]
+fn snippets_share() -> Result<(), String> {
+    // HELD: fail closed if Stiki/folder-style ACL is missing.
+    mabel_lib::snippets::share_cloud_or_team()
+}
+
+#[tauri::command]
+fn snippets_promote() -> Result<(), String> {
+    // BREAKS IF: private snippets auto-promote to company memory.
+    mabel_lib::snippets::promote_to_company_memory()
 }
 
 #[tauri::command]
@@ -1046,6 +1058,8 @@ fn main() {
             snippets_get,
             snippets_add,
             snippets_remove,
+            snippets_share,
+            snippets_promote,
             style_get,
             style_save,
             transforms_get,

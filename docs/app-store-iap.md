@@ -56,7 +56,7 @@ MAS flavor still keeps the #10 keys: `com.apple.security.device.audio-input` and
 ## What Pro unlocks
 
 - Teams: on-device org name, seats, invite codes (no cloud sync in v1)
-- Locked nav: Snippets, Style, Transforms, Scratchpad
+- Locked nav: Dictionary, Snippets, Style, Transforms, Scratchpad
 - Polish: Off / Casual / Professional / Polite (default Off; local Gemma; never invents)
 - Free remains personal-only
 

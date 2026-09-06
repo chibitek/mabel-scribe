@@ -116,6 +116,19 @@ private func parakeetVersion(from cString: UnsafePointer<CChar>?) -> AsrModelVer
     }
 }
 
+/// FluidAudio 0.15.6 `transcribe(_:decoderState:language:)` takes `Language?`,
+/// not `String?`. Mabel's C ABI still sends "en" / "multi" / nil.
+private func parakeetLanguage(from raw: String?) -> Language? {
+    guard let raw else { return nil }
+    let code = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    switch code {
+    case "", "multi", "auto":
+        return nil
+    default:
+        return Language(rawValue: code)
+    }
+}
+
 private func whisperKitModelName() -> String { "large-v3-turbo" }
 
 private func whisperKitFolder(cacheDir: String) -> URL {
@@ -194,14 +207,13 @@ public func mabel_asr_parakeet_transcribe(
             if !(await manager.isAvailable) {
                 throw ASRBridgeError.failed("Parakeet models are not available")
             }
-            // FluidAudio 0.15.6: transcribe(_:decoderState:language:), not
-            // transcribe(_:source:). language is v3-only; v2 English ignores it.
+            // FluidAudio 0.15.6: transcribe(_:decoderState:language: Language?).
             var state = try TdtDecoderState(decoderLayers: models.version.decoderLayers)
             let url = URL(fileURLWithPath: wavPath)
             let result = try await manager.transcribe(
                 url,
                 decoderState: &state,
-                language: languageHint
+                language: parakeetLanguage(from: languageHint)
             )
             return transcribedText(result.text as String?)
         }

@@ -219,9 +219,11 @@ mod tests {
             "FluidAudio 0.15.6 AsrManager.transcribe takes decoderState, not source:"
         );
         assert!(
-            swift.contains("language: languageHint"),
-            "FluidAudio 0.15.6 AsrManager.transcribe(_:decoderState:language:)"
+            swift.contains("parakeetLanguage(from: languageHint)"),
+            "C language string must map to FluidAudio Language?, not String?"
         );
+        assert!(swift.contains("Language(rawValue:"));
+        assert!(swift.contains("-> Language?"));
         assert!(!swift.contains("source: .system"));
         let manifest = include_str!("../../native/MabelASR/Package.swift");
         assert!(

@@ -16,24 +16,18 @@ pub struct Snippet {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct StylePrefs {
-    #[serde(default = "default_tone")]
-    pub tone: String,
-    #[serde(default = "default_casing")]
-    pub casing: String,
-    #[serde(default = "default_punctuation")]
-    pub punctuation: String,
+    /// Formal | Casual | Very casual register. Default OFF/unset until picked.
+    /// Not Polish tone. Not freeform casing/punctuation prefs.
+    #[serde(default = "default_style_mode")]
+    pub mode: String,
 }
 
-fn default_tone() -> String { "default".into() }
-fn default_casing() -> String { "as-said".into() }
-fn default_punctuation() -> String { "auto".into() }
+fn default_style_mode() -> String { "off".into() }
 
 impl Default for StylePrefs {
     fn default() -> Self {
         Self {
-            tone: default_tone(),
-            casing: default_casing(),
-            punctuation: default_punctuation(),
+            mode: default_style_mode(),
         }
     }
 }
@@ -151,26 +145,19 @@ pub fn snippets_remove_local(app_dir: &PathBuf, snippet_id: String) -> Result<Ve
 }
 
 
-pub fn style_get(app_dir: &PathBuf) -> Result<StylePrefs, String> {
-    stiki::require_pro_unlock(app_dir)?;
-    Ok(read_json(&app_dir.join("style.json")))
+/// Ungated local read. Product Style applies the dual gate before apply / mutate.
+pub fn style_read(app_dir: &PathBuf) -> StylePrefs {
+    read_json(&app_dir.join("style.json"))
 }
 
-pub fn style_save(app_dir: &PathBuf, prefs: StylePrefs) -> Result<StylePrefs, String> {
-    stiki::require_pro_unlock(app_dir)?;
-    let tone = match prefs.tone.as_str() {
-        "default" | "formal" | "casual" => prefs.tone,
-        _ => "default".into(),
+pub fn style_write_local(app_dir: &PathBuf, prefs: StylePrefs) -> Result<StylePrefs, String> {
+    let mode = match prefs.mode.trim().to_ascii_lowercase().as_str() {
+        "formal" => "formal".into(),
+        "casual" => "casual".into(),
+        "very-casual" | "very_casual" | "very casual" => "very-casual".into(),
+        _ => "off".into(),
     };
-    let casing = match prefs.casing.as_str() {
-        "as-said" | "sentence" | "title" => prefs.casing,
-        _ => "as-said".into(),
-    };
-    let punctuation = match prefs.punctuation.as_str() {
-        "auto" | "minimal" => prefs.punctuation,
-        _ => "auto".into(),
-    };
-    let clean = StylePrefs { tone, casing, punctuation };
+    let clean = StylePrefs { mode };
     write_json(app_dir, "style.json", &clean)?;
     Ok(clean)
 }
@@ -219,8 +206,8 @@ mod tests {
         let dir = tmp();
         assert!(crate::snippets::require_list(&dir).is_err());
         assert!(crate::snippets::add(&dir, "sig".into(), "Best".into()).is_err());
-        assert!(style_get(&dir).is_err());
-        assert!(style_save(&dir, StylePrefs::default()).is_err());
+        assert!(crate::style::require_prefs(&dir).is_err());
+        assert!(crate::style::set_mode(&dir, "formal".into()).is_err());
         assert!(transforms_get(&dir).is_err());
         assert!(scratchpad_get(&dir).is_err());
         assert!(scratchpad_save(&dir, "hello".into()).is_err());

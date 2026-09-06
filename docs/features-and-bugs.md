@@ -114,6 +114,9 @@ Personal terms / jargon. Sidebar Dictionary is first in the Pro catalog (Diction
 ### F3. Snippets (voice shortcuts) — SHIPPED as Pro (local-first)
 Personal trigger → expansion. Sidebar Snippets is second in the Pro catalog (Dictionary → Snippets → Style → Transforms → Scratchpad → Insights). Pro surface: StoreKit entitlement AND Stiki session. Free is locked with Activate Pro / Sign in with Stiki. Signed-in Pro add/edit/delete writes `snippets.json` on this Mac. Spoken triggers expand during cleanup / dictation paste. Distinct from Dictionary (spelling), Polish (tone), and Clipboard History. Cloud / team share is not shipped (stub fail-closed until Enforcer BOUND). Stiki session is not folder ACL.
 
+### F3.1. Style (register) — SHIPPED as Pro (local-first)
+Formal | Casual | Very casual register. Sidebar Style is third in the Pro catalog (Dictionary → Snippets → Style → Transforms → Scratchpad → Insights). Pro surface: StoreKit entitlement AND Stiki session. Free is locked with Activate Pro / Sign in with Stiki. Default OFF/unset until the user picks. Signed-in Pro pick/clear writes `style.json` on this Mac. Mabel applies that register locally during cleanup / dictation paste. Distinct from Dictionary (spelling), Snippets (trigger→expansion), Polish (Off|Casual|Professional|Polite Gemma tone rewrite), and Clipboard History. Not freeform casing/punctuation/formatting prefs. Cloud / team share is not shipped (stub fail-closed until Enforcer BOUND). Stiki session is not folder ACL.
+
 ### F4. Larger model option — SHIPPED in v1.2.0
 Whisper Large v3 Q5 (`ggml-large-v3-q5_0.bin`, ~1.1 GB) is the recommended default for new Apple Silicon installs. Small and Medium remain fallbacks. No official English-only large-v3 Q5 exists.
 

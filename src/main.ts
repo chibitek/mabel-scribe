@@ -308,6 +308,14 @@ function openSnippets() {
   document.querySelector('.view[data-view="snippets"]')?.classList.add("active");
 }
 
+function openStyle() {
+  modal.classList.add("hidden");
+  document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
+  document.querySelectorAll<HTMLElement>(".view").forEach((s) => s.classList.remove("active"));
+  document.querySelector('.nav-item[data-view="style"]')?.classList.add("active");
+  document.querySelector('.view[data-view="style"]')?.classList.add("active");
+}
+
 function openAccount(e?: Event) {
   e?.preventDefault();
   openSettingsPane("account");
@@ -856,6 +864,14 @@ $("snippets-stiki").addEventListener("click", () => {
 $("snippet-pane-stiki").addEventListener("click", () => {
   void signInWithStiki();
 });
+$("style-open").addEventListener("click", openStyle);
+$("style-activate").addEventListener("click", openPlans);
+$("style-stiki").addEventListener("click", () => {
+  void signInWithStiki();
+});
+$("style-pane-stiki").addEventListener("click", () => {
+  void signInWithStiki();
+});
 
 dictAddBtn.addEventListener("click", () => {
   void addOrSaveDictionaryEntry();
@@ -1365,9 +1381,7 @@ interface Snippet {
 }
 
 interface StylePrefs {
-  tone: string;
-  casing: string;
-  punctuation: string;
+  mode: string;
 }
 
 interface TransformPrefs {
@@ -1424,6 +1438,10 @@ function dictionarySurfaceReady() {
 }
 
 function snippetsSurfaceReady() {
+  return proSurfacesUnlocked();
+}
+
+function styleSurfaceReady() {
   return proSurfacesUnlocked();
 }
 
@@ -1496,6 +1514,33 @@ function applySnippetsGate() {
   }
 }
 
+function applyStyleGate() {
+  const ready = styleSurfaceReady();
+  const entitled = !!currentEntitlement.entitled;
+  const signedIn = stikiLive();
+
+  document.querySelectorAll<HTMLElement>("[data-style-gate='lock']").forEach((el) => {
+    el.classList.toggle("hidden", ready);
+  });
+  document.querySelectorAll<HTMLElement>("[data-style-gate='unlock']").forEach((el) => {
+    el.classList.toggle("hidden", !ready);
+  });
+
+  $("style-open").classList.toggle("hidden", !ready);
+  $("style-activate").classList.toggle("hidden", entitled);
+  $("style-stiki").classList.toggle("hidden", signedIn);
+  $("style-pane-activate").classList.toggle("hidden", entitled);
+  $("style-pane-stiki").classList.toggle("hidden", signedIn);
+
+  const styleNav = document.querySelector<HTMLElement>('.nav-item[data-view="style"]');
+  if (styleNav) {
+    styleNav.classList.toggle("locked", !ready);
+    styleNav.toggleAttribute("data-pro", true);
+    const lock = styleNav.querySelector<HTMLElement>(".lock-pill");
+    if (lock) lock.style.display = ready ? "none" : "";
+  }
+}
+
 function askProUnlock(err?: string) {
   if (err && String(err).includes("Sign in with Stiki")) {
     openAccount();
@@ -1516,15 +1561,16 @@ function applyProLocks() {
     if (lock) (lock as HTMLElement).style.display = unlocked ? "none" : "";
   });
   document.querySelectorAll(".pro-lock").forEach((el) => {
-    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate) return;
+    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate) return;
     el.classList.toggle("hidden", unlocked);
   });
   document.querySelectorAll(".pro-unlock").forEach((el) => {
-    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate) return;
+    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate) return;
     el.classList.toggle("hidden", !unlocked);
   });
   applyDictionaryGate();
   applySnippetsGate();
+  applyStyleGate();
   if (unlocked) loadStats();
   else resetStatsDisplay();
 }
@@ -1800,6 +1846,9 @@ listen("open-dictionary", () => {
 listen("open-snippets", () => {
   openSnippets();
 });
+listen("open-style", () => {
+  openStyle();
+});
 listen("open-account", () => {
   openAccount();
 });
@@ -1909,18 +1958,62 @@ async function loadSnippetsSurface() {
   snippetEmpty?.classList.toggle("hidden", snippets.length > 0);
 }
 
+function showStyleError(message: string) {
+  const errorEl = document.getElementById("style-error");
+  if (!errorEl) return;
+  errorEl.textContent = message;
+  errorEl.hidden = !message;
+}
+
+function renderStyleMode(mode: string) {
+  const picked = mode === "formal" || mode === "casual" || mode === "very-casual" ? mode : "";
+  document.querySelectorAll<HTMLButtonElement>("[data-style-mode]").forEach((btn) => {
+    btn.classList.toggle("active", !!picked && btn.dataset.styleMode === picked);
+  });
+}
+
+async function loadStyleSurface() {
+  if (!styleSurfaceReady()) return;
+  const style = await invoke<StylePrefs>("style_get");
+  renderStyleMode(style.mode);
+  showStyleError("");
+}
+
+async function pickStyleMode(mode: string) {
+  if (!styleSurfaceReady()) {
+    if (!currentEntitlement.entitled) openPlans();
+    return;
+  }
+  showStyleError("");
+  try {
+    const next = await invoke<StylePrefs>("style_set", { mode });
+    renderStyleMode(next.mode);
+  } catch (e) {
+    showStyleError(String(e));
+    console.error("style_set:", e);
+  }
+}
+
+async function clearStyleMode() {
+  if (!styleSurfaceReady()) {
+    if (!currentEntitlement.entitled) openPlans();
+    return;
+  }
+  showStyleError("");
+  try {
+    const next = await invoke<StylePrefs>("style_clear");
+    renderStyleMode(next.mode);
+  } catch (e) {
+    showStyleError(String(e));
+    console.error("style_clear:", e);
+  }
+}
+
 async function loadProSurfaces() {
   if (!proSurfacesUnlocked()) return;
   await loadDictionarySurface();
   await loadSnippetsSurface();
-
-  const style = await invoke<StylePrefs>("style_get");
-  const tone = $<HTMLSelectElement>("style-tone");
-  const casing = $<HTMLSelectElement>("style-casing");
-  const punct = $<HTMLSelectElement>("style-punctuation");
-  tone.value = style.tone;
-  casing.value = style.casing;
-  punct.value = style.punctuation;
+  await loadStyleSurface();
 
   const xf = await invoke<TransformPrefs>("transforms_get");
   setSwitch($<HTMLButtonElement>("xf-filler"), xf.fillerWords);
@@ -2155,18 +2248,14 @@ $("snippet-expansion").addEventListener("keydown", (e) => {
   }
 });
 
-async function saveStyle() {
-  await invoke("style_save", {
-    prefs: {
-      tone: $<HTMLSelectElement>("style-tone").value,
-      casing: $<HTMLSelectElement>("style-casing").value,
-      punctuation: $<HTMLSelectElement>("style-punctuation").value,
-    },
+document.querySelectorAll<HTMLButtonElement>("[data-style-mode]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    void pickStyleMode(btn.dataset.styleMode || "");
   });
-}
-$("style-tone").addEventListener("change", () => saveStyle().catch(console.error));
-$("style-casing").addEventListener("change", () => saveStyle().catch(console.error));
-$("style-punctuation").addEventListener("change", () => saveStyle().catch(console.error));
+});
+$("style-clear-btn").addEventListener("click", () => {
+  void clearStyleMode();
+});
 
 async function saveTransforms() {
   await invoke("transforms_save", {

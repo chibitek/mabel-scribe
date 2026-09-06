@@ -40,7 +40,8 @@ The public tree **already contains** the current main feature train. Nothing fro
 | Polish (Off / Casual / Professional / Polite, local Gemma) | Yes | **Pro** (StoreKit fail-closed) |
 | Dictionary (local terms) | Yes | **Pro + Stiki** |
 | Snippets (local trigger → expansion) | Yes | **Pro + Stiki** |
-| Teams, style, transforms, scratchpad | Yes | **Pro** |
+| Style (Formal / Casual / Very casual, local register) | Yes | **Pro + Stiki** |
+| Teams, transforms, scratchpad | Yes | **Pro** |
 | StoreKit 2 monthly / yearly + 30-day trial | Yes | App Store / local `.storekit` prove |
 | Mabel Spatial (visionOS sibling) | Yes | Separate listing later |
 

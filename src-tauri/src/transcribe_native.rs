@@ -348,4 +348,34 @@ mod tests {
         assert!(!engine_ready(local_engine::PARAKEET, "en", &PathBuf::from("/tmp")));
         assert!(!engine_ready(local_engine::WHISPERKIT, "en", &PathBuf::from("/tmp")));
     }
+
+    #[test]
+    fn native_bridge_keeps_asr_session_warm_across_takes() {
+        let swift = include_str!("../../native/MabelASR/Sources/MabelASR/MabelASR.swift");
+        assert!(
+            swift.contains("actor ParakeetWarmSession"),
+            "take 2+ must reuse the warm Parakeet manager, not loadModels again"
+        );
+        assert!(
+            !swift.contains("await manager.cleanup()"),
+            "must not unload CoreML between dictation takes"
+        );
+        let transcribe_fn = swift
+            .split("@_cdecl(\"mabel_asr_parakeet_transcribe\")")
+            .nth(1)
+            .and_then(|rest| rest.split("@_cdecl(\"mabel_asr_whisperkit_ready\")").next())
+            .expect("parakeet transcribe cdecl");
+        assert!(
+            transcribe_fn.contains("parakeetWarm.transcribe"),
+            "C ABI must call the warm session, not construct AsrManager per take"
+        );
+        assert!(
+            !transcribe_fn.contains("AsrManager(config"),
+            "constructing AsrManager in the C ABI is the sticky empty-take bug"
+        );
+        assert!(
+            !transcribe_fn.contains("downloadAndLoad"),
+            "downloadAndLoad on every take rebinds the process-wide CoreML cache"
+        );
+    }
 }

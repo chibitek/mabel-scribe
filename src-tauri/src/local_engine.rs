@@ -206,7 +206,7 @@ mod tests {
             "lastErrorC must live in a locked Sendable box"
         );
         assert!(
-            swift.contains("await manager.isAvailable"),
+            swift.contains("await manager.isAvailable") || swift.contains("await mgr.isAvailable"),
             "AsrManager.isAvailable is actor-isolated"
         );
         assert!(
@@ -217,6 +217,22 @@ mod tests {
         assert!(
             swift.contains("decoderState: &state"),
             "FluidAudio 0.15.6 AsrManager.transcribe takes decoderState, not source:"
+        );
+        assert!(
+            swift.contains("actor ParakeetWarmSession"),
+            "Parakeet must keep one AsrManager warm across takes"
+        );
+        assert!(
+            swift.contains("parakeetWarm.transcribe"),
+            "each take must reuse the warm Parakeet session"
+        );
+        assert!(
+            swift.contains("WhisperKitWarm"),
+            "WhisperKit must keep one kit warm across takes"
+        );
+        assert!(
+            !swift.contains("await manager.cleanup()"),
+            "do not teardown / unload AsrManager between takes"
         );
         assert!(
             swift.contains("parakeetLanguage(from: languageHint)"),

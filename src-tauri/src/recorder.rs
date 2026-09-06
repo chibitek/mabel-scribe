@@ -325,6 +325,12 @@ impl Recorder {
                 app_dir,
                 &format!("transcription returned chars={}", raw_text.chars().count()),
             );
+            if raw_text.trim().is_empty() {
+                crate::debug_log::append(
+                    app_dir,
+                    "ASR returned empty transcript on a captured take (not overlay-mapped silence)",
+                );
+            }
 
             let rule_cleaned = cleanup_text(&raw_text);
             let cleaned = crate::llm::polish_or_rules(
@@ -511,6 +517,30 @@ mod tests {
         assert!(
             !start.contains("spawn_vad_worker"),
             "this tip must not unpark live streaming"
+        );
+    }
+
+    #[test]
+    fn stop_does_not_teardown_asr_or_unpark_streaming() {
+        let src = include_str!("recorder.rs");
+        let stop = src
+            .split("pub async fn stop_and_transcribe")
+            .nth(1)
+            .expect("stop_and_transcribe")
+            .split("#[cfg(test)]")
+            .next()
+            .unwrap();
+        assert!(
+            !stop.contains("spawn_vad_worker"),
+            "this tip must not unpark live streaming"
+        );
+        assert!(
+            !stop.contains("mabel_asr") && !stop.contains(".cleanup("),
+            "stop must not teardown the in-process ASR session"
+        );
+        assert!(
+            stop.contains("to_paste.is_empty()"),
+            "empty ASR text is the Nothing recognized path, not a silent Ready"
         );
     }
 }

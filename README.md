@@ -10,6 +10,8 @@ Named after a long-haired Persian who would never share your transcripts with an
 
 Open source under the [MIT license](LICENSE). Fork it, build it, ship your own version.
 
+A native **visionOS** sibling — **Mabel Spatial** (`com.mabel.vision`, v0.1.0) — lives in [`MabelSpatial/`](MabelSpatial/README.md). It is SwiftUI + RealityKit + on-device Apple Speech, not a Tauri port and not Mac TestFlight on a headset. Mac 1.4.0 paths below are unchanged.
+
 ---
 
 ## What it does
@@ -315,6 +317,10 @@ src-tauri/
 native/MabelStoreKit/      StoreKit 2 Swift dylib (MAS/TF Pro)
 tools/MabelStoreKitProve/  Xcode scheme that launches Mabel.app under Mabel.storekit
 scripts/prove-storekit-mac.sh  CIO Mac prove: 1.4.0 + dylib + Run Mabel-StoreKit
+
+MabelSpatial/              Native visionOS app (SwiftUI + RealityKit)
+                           Apple Speech on-device. Separate ASC later.
+                           See MabelSpatial/README.md. Not in npm/tauri paths.
 ```
 
 ## Audio path

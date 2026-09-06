@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  visionOS TestFlight stub for com.mabel.vision (team DF9FB764AR).
+  New ASC listing — do not reuse Mac ASC 6809059582 / com.mabel.app.
+
+  Sandbox + microphone only. No JIT, no unsigned executable memory,
+  no disable-library-validation (those are Mac Developer ID / whisper.cpp).
+  No network client: Apple Speech is on-device. If first-run Speech
+  locale assets fail to install via AssetInventory, CIO may add
+  com.apple.security.network.client for that system download only —
+  never for telemetry.
+
+  StoreKit Pro share with Mac is a later soft follow-up. Do not add
+  IAP keys here until a visionOS ASC record exists.
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.device.audio-input</key>
+	<true/>
+</dict>
+</plist>

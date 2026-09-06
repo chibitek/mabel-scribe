@@ -1,5 +1,7 @@
 # Dual flavor: Developer ID DMG vs Mac App Store / TestFlight
 
+**Mabel Spatial** (`com.mabel.vision`, [`MabelSpatial/`](../MabelSpatial/README.md)) is a separate native visionOS listing. Do not upload it to Mac ASC `6809059582` / `com.mabel.app`.
+
 **This tree is not Mac App Store ready.** Do not upload a binary to MAS or Mac TestFlight. Do not ship 1.1.7 or 1.2.0 sidecar builds to the store. 1.3.0 lands the Phase B engines; it does **not** claim a passing MAS build.
 
 The outside-store channel stays the **GitHub notarized Developer ID DMG** (`scripts/release-macos.sh`). MAS / TestFlight is a second flavor: App Sandbox, Apple Distribution, a Mac App Store provisioning profile, and engines that do not need `disable-library-validation`.

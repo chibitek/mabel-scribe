@@ -35,12 +35,13 @@ need_file "$SP/MabelSpatial/Assets.xcassets/AppIcon.solidimagestack/Contents.jso
 need_file "$SP/README.md"
 
 # Identity
+TEAM_SETTING="DEVELOPMENT_TEAM = DF9FB764AR" # pragma: allowlist secret
 for pair in \
   "PRODUCT_BUNDLE_IDENTIFIER = com.mabel.vision" \
-  "DEVELOPMENT_TEAM = DF9FB764AR" \ # pragma: allowlist secret
+  "$TEAM_SETTING" \
   "SDKROOT = xros" \
   "TARGETED_DEVICE_FAMILY = 7" \
-  "XROS_DEPLOYMENT_TARGET = 26.0" \
+  "XROS_DEPLOYMENT_TARGET = 27.0" \
   "MARKETING_VERSION = 0.1.0" \
   "INFOPLIST_KEY_CFBundleDisplayName = \"Mabel Spatial\"" \
   "SUPPORTED_PLATFORMS = \"xros xrsimulator\"" \
@@ -119,6 +120,25 @@ if grep -q 'SpeechAnalyzer\|SpeechTranscriber\|requiresOnDeviceRecognition' \
   ok "Apple Speech on-device engine present"
 else
   bad "OnDeviceSpeechEngine missing Apple Speech types"
+fi
+if grep -n 'SpeechDetector(sensitivityLevel:' "$SP/MabelSpatial/Speech/OnDeviceSpeechEngine.swift" \
+  | grep -v '^\s*//' | grep -v '///' >/tmp/mabel-spatial-detector-init.txt; then
+  bad "SpeechDetector still uses the non-XROS27 sensitivity-only initializer"
+  cat /tmp/mabel-spatial-detector-init.txt
+else
+  ok "no SpeechDetector sensitivity-only initializer"
+fi
+if grep -q 'result.isVolatile' "$SP/MabelSpatial/Speech/OnDeviceSpeechEngine.swift"; then
+  bad "result.isVolatile is not on XROS27 SpeechTranscriber.Result"
+else
+  ok "uses result.isFinal, not isVolatile"
+fi
+if grep -q 'detectionOptions: SpeechDetector.DetectionOptions' \
+  "$SP/MabelSpatial/Speech/OnDeviceSpeechEngine.swift" \
+  && grep -q 'result.isFinal' "$SP/MabelSpatial/Speech/OnDeviceSpeechEngine.swift"; then
+  ok "XROS27 SpeechDetector DetectionOptions + Result.isFinal"
+else
+  bad "missing XROS27 SpeechDetector/Result API usage"
 fi
 
 if grep -q 'ListenOrbMarker\|HoverEffectComponent\|SpatialTapGesture' \

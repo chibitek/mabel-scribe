@@ -34,7 +34,7 @@ StoreKit Pro share with Mac is a later soft follow-up. Do not add IAP until a vi
 
 ## Open and run on Apple Silicon (Erick / M5 Max)
 
-Linux CI **cannot** compile visionOS. Run these on the Mac with Xcode 26+ (visionOS 26/27 SDK).
+Linux CI **cannot** compile visionOS. Run these on the Mac with **Xcode-beta + XROS27** (visionOS 27 SDK). Deployment floor is **visionOS 27.0** so the scheme matches RealityDevice14,1 / visionOS 27 beta.
 
 ### Xcode GUI → Vision Pro (RealityDevice14,1 / visionOS 27 beta)
 
@@ -119,6 +119,7 @@ bash MabelSpatial/scripts/validate-spatial-scaffold.sh
 - Display name: **Mabel Spatial** (Product Name `MabelSpatial`; home screen uses the display name)
 - Team: `DF9FB764AR`
 - Marketing version: `0.1.0` / build `1` (spatial is versioned separately from Mac 1.4.0)
+- Deployment: `XROS_DEPLOYMENT_TARGET = 27.0` (Xcode-beta / XROS27 / RealityDevice14,1)
 - Entitlements: sandbox + `device.audio-input` only. No JIT / unsigned exec / disable-library-validation.
 - First-run Speech locale assets use Apple `AssetInventory` (system). If that install fails on-device, CIO may add `com.apple.security.network.client` for that download only — never for analytics.
 
@@ -140,12 +141,15 @@ MabelSpatial/
     Assets.xcassets/               visionOS layered App Icon
 ```
 
-## Compile notes (Mac Xcode 26 / 27)
+## Compile notes (Xcode-beta / XROS27)
 
-SpeechAnalyzer landed in the visionOS 26 SDK (WWDC25 session 277). If a beta header renamed a symbol, the usual one-line fixes in `OnDeviceSpeechEngine.swift` are:
+`XROS_DEPLOYMENT_TARGET` is **27.0**. SpeechAnalyzer exists since visionOS 26; this target floors at 27 so Erick’s Xcode-beta + RealityDevice14,1 build does not fight a 26.0 destination.
 
-- `analyzer.start(inputSequence:)` vs `analyzeSequence(_:)`
-- `result.isVolatile` vs `!result.isFinal`
+XROS27 Speech surface used by `OnDeviceSpeechEngine.swift` (Apple Speech headers / WWDC25 session 277):
+
+- `SpeechDetector(detectionOptions: SpeechDetector.DetectionOptions(sensitivityLevel:), reportResults:)` — **not** `SpeechDetector(sensitivityLevel:)`
+- `SpeechTranscriber.Result.isFinal` — **not** `isVolatile`. Partial/live tail is `isFinal == false` when `reportingOptions` includes `.volatileResults`
+- `analyzer.start(inputSequence:)` + `finalizeAndFinishThroughEndOfInput()`
 - `SpeechAnalyzer.bestAvailableAudioFormat(compatibleWith:)`
 - `AssetInventory.assetInstallationRequest(supporting:)`
 

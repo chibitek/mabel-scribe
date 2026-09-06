@@ -28,10 +28,17 @@ enum SpeechEngineError: LocalizedError {
 
 /// Apple Speech only. No whisper.cpp, Parakeet, WhisperKit, or Tauri.
 ///
-/// Primary path: SpeechAnalyzer + SpeechTranscriber (visionOS 26+).
+/// Primary path: SpeechAnalyzer + SpeechTranscriber (visionOS 27 / XROS27).
 /// Fallback: SFSpeechRecognizer with `requiresOnDeviceRecognition = true`.
 /// The audio engine and AVAudioSession are torn down in `stop()` so the
 /// microphone is powered only while listening.
+///
+/// XROS27 surface (do not regress):
+/// - Construct SpeechDetector with detectionOptions + reportResults.
+///   Sensitivity lives on SpeechDetector.DetectionOptions, not the
+///   detector's own unlabeled sensitivity argument.
+/// - SpeechTranscriber.Result.isFinal. Partial/live tail is
+///   isFinal == false when reportingOptions includes volatileResults.
 final class OnDeviceSpeechEngine: @unchecked Sendable {
     private let engine = AVAudioEngine()
     private var analyzer: SpeechAnalyzer?
@@ -48,13 +55,11 @@ final class OnDeviceSpeechEngine: @unchecked Sendable {
         sink = handler
         try await requestMicrophone()
 
-        if #available(visionOS 26.0, *) {
-            do {
-                try await startAnalyzer()
-                return
-            } catch {
-                handler(.status("Analyzer unavailable — trying on-device dictation fallback"))
-            }
+        do {
+            try await startAnalyzer()
+            return
+        } catch {
+            handler(.status("Analyzer unavailable — trying on-device dictation fallback"))
         }
 
         try await startOnDeviceSFSpeech()
@@ -108,9 +113,8 @@ final class OnDeviceSpeechEngine: @unchecked Sendable {
         }
     }
 
-    // MARK: - SpeechAnalyzer (visionOS 26+)
+    // MARK: - SpeechAnalyzer (visionOS 27 / XROS27)
 
-    @available(visionOS 26.0, *)
     private func startAnalyzer() async throws {
         let locale = preferredLocale()
         try await installAssetsIfNeeded(locale: locale)
@@ -121,7 +125,12 @@ final class OnDeviceSpeechEngine: @unchecked Sendable {
             reportingOptions: [.volatileResults],
             attributeOptions: []
         )
-        let detector = SpeechDetector(sensitivityLevel: .high)
+        // Official XROS27 init. Sensitivity is on DetectionOptions, not SpeechDetector.
+        // reportResults: false — VAD is a power gate, not a second transcript stream.
+        let detector = SpeechDetector(
+            detectionOptions: SpeechDetector.DetectionOptions(sensitivityLevel: .high),
+            reportResults: false
+        )
         let analyzer = SpeechAnalyzer(modules: [transcriber, detector])
         self.transcriber = transcriber
         self.analyzer = analyzer
@@ -135,10 +144,11 @@ final class OnDeviceSpeechEngine: @unchecked Sendable {
             do {
                 for try await result in transcriber.results {
                     let piece = Self.plainText(result.text)
-                    if result.isVolatile {
-                        self.sink?(.volatile(piece))
-                    } else {
+                    // SpeechTranscriber.Result.isFinal (WWDC25 / XROS27). No isVolatile.
+                    if result.isFinal {
                         self.sink?(.final(piece))
+                    } else {
+                        self.sink?(.volatile(piece))
                     }
                 }
             } catch is CancellationError {
@@ -151,7 +161,6 @@ final class OnDeviceSpeechEngine: @unchecked Sendable {
         try await startMicTap(feedingAnalyzer: true)
     }
 
-    @available(visionOS 26.0, *)
     private func installAssetsIfNeeded(locale: Locale) async throws {
         let supported = await SpeechTranscriber.supportedLocales
         let localeID = locale.identifier(.bcp47)

@@ -11,7 +11,7 @@ SCHEME="MabelSpatial"
 if [[ "$(uname -s)" != "Darwin" ]]; then
   cat <<'EOF' >&2
 Mabel Spatial cannot be compiled on Linux. Run these on an Apple Silicon Mac
-with Xcode 26+ (visionOS 26/27 SDK), from the repo root:
+with Xcode-beta + XROS27 (visionOS 27 SDK), from the repo root:
 
   xcodebuild -project MabelSpatial/MabelSpatial.xcodeproj \
     -scheme MabelSpatial \

@@ -533,18 +533,22 @@ mod tests {
 
     #[test]
     fn breaks_if_nexus_or_siem_write() {
-        let nexus_write = format!("{}{}", "nexus", "_write");
-        let siem_write = format!("{}{}", "siem", "_write");
+        let nexus = format!("{}{}", "nexus", "_write");
+        let siem = format!("{}{}", "siem", "_write");
+        let snippets_prod = include_str!("snippets.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .expect("snippets prod");
         for hay in [
             include_str!("main.rs"),
-            include_str!("snippets.rs"),
+            snippets_prod,
             include_str!("pro_features.rs"),
             include_str!("settings.rs"),
             include_str!("../../src/main.ts"),
             include_str!("../../index.html"),
         ] {
-            assert!(!hay.contains(&nexus_write), "BREAKS IF: Nexus write");
-            assert!(!hay.contains(&siem_write), "BREAKS IF: Nexus write");
+            assert!(!hay.contains(&nexus), "BREAKS IF: Nexus write");
+            assert!(!hay.contains(&siem), "BREAKS IF: Nexus write");
         }
     }
 

@@ -282,16 +282,25 @@ mod tests {
             "BREAKS IF: Dictionary dropped from Pro lock list"
         );
 
-        let main = include_str!("main.rs");
-        assert!(main.contains("dictionary::effective_terms"));
-        assert!(main.contains("dictionary_add"));
-        assert!(main.contains("share_cloud_or_team"));
+        let commands = include_str!("main.rs");
+        assert!(commands.contains("dictionary::effective_terms"));
+        assert!(commands.contains("dictionary_add"));
+        assert!(commands.contains("share_cloud_or_team"));
         let nexus_write = format!("{}{}", "nexus", "_write");
-        assert!(!main.contains(&nexus_write), "BREAKS IF: Nexus write");
-        let src = include_str!("dictionary.rs");
-        assert!(!src.contains(&nexus_write), "BREAKS IF: Nexus write");
-        assert!(!src.contains("MabelSpatial"), "BREAKS IF: Spatial touched");
-        assert!(src.contains("fail-closed"));
+        assert!(
+            !commands.contains(&nexus_write),
+            "BREAKS IF: Nexus write in commands"
+        );
+        assert!(
+            !include_str!("settings.rs").contains(&nexus_write),
+            "BREAKS IF: Nexus write in settings"
+        );
+        assert!(
+            !include_str!("../../src/main.ts").contains(&nexus_write),
+            "BREAKS IF: Nexus write in UI"
+        );
+        assert!(!commands.contains("MabelSpatial"), "BREAKS IF: Spatial touched");
+        assert!(include_str!("dictionary.rs").contains("fail-closed"));
 
         let whisper = include_str!("transcribe_local.rs");
         assert!(whisper.contains("build_prompt"));

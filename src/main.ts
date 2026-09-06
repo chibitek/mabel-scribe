@@ -1571,10 +1571,9 @@ function applyEntitlement(ent: Entitlement) {
   pill.classList.toggle("trial", label === "Trial");
 
   const cta = $("cta-pro");
-  const openPro = $("open-pro");
+  const openProLabel = document.getElementById("open-pro-label");
   cta.textContent = entitled ? "Manage Pro" : "Activate Pro";
-  const openProText = Array.from(openPro.childNodes).find((n) => n.nodeType === Node.TEXT_NODE);
-  if (openProText) openProText.textContent = entitled ? " Manage Pro" : " Activate Pro";
+  if (openProLabel) openProLabel.textContent = entitled ? "Manage Pro" : "Activate Pro";
 
   applyProLocks();
 

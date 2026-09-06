@@ -116,6 +116,13 @@ private func parakeetVersion(from cString: UnsafePointer<CChar>?) -> AsrModelVer
     }
 }
 
+private func parakeetVersionTag(_ version: AsrModelVersion) -> String {
+    switch version {
+    case .v2: return "v2"
+    default: return "v3"
+    }
+}
+
 /// FluidAudio 0.15.6 `transcribe(_:decoderState:language:)` takes `Language?`,
 /// not `String?`. Mabel's C ABI still sends "en" / "multi" / nil.
 private func parakeetLanguage(from raw: String?) -> Language? {
@@ -148,6 +155,79 @@ private func whisperKitLooksReady(at folder: URL) -> Bool {
 private func transcribedText(_ raw: String?) -> String {
     raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 }
+
+/// Process-wide Parakeet session. FluidAudio's CoreML / `sharedMLArrayCache`
+/// is global: constructing a new `AsrManager` and calling `loadModels` on
+/// every take leaves the ANE session in a finished/empty state. Take 1
+/// works; take 2+ returns no text until the process quits. Keep the manager
+/// warm and only mint a fresh `TdtDecoderState` per utterance.
+private actor ParakeetWarmSession {
+    private var manager: AsrManager?
+    private var loadedTag: String = ""
+    private var decoderLayers: Int = 0
+
+    func transcribe(
+        version: AsrModelVersion,
+        wavPath: String,
+        languageHint: String?
+    ) async throws -> String {
+        let tag = parakeetVersionTag(version)
+        if manager == nil || loadedTag != tag {
+            let models = try await AsrModels.downloadAndLoad(version: version)
+            let mgr = AsrManager(config: .default)
+            try await mgr.loadModels(models)
+            if !(await mgr.isAvailable) {
+                throw ASRBridgeError.failed("Parakeet models are not available")
+            }
+            manager = mgr
+            loadedTag = tag
+            decoderLayers = models.version.decoderLayers
+        }
+        guard let manager else {
+            throw ASRBridgeError.failed("Parakeet session is not available")
+        }
+        var state = try TdtDecoderState(decoderLayers: decoderLayers)
+        let result = try await manager.transcribe(
+            URL(fileURLWithPath: wavPath),
+            decoderState: &state,
+            language: parakeetLanguage(from: languageHint)
+        )
+        return transcribedText(result.text as String?)
+    }
+}
+
+private let parakeetWarm = ParakeetWarmSession()
+
+/// Same class of sticky state for WhisperKit: `WhisperKit(config)` with
+/// `load: true` every take rebinds CoreML models that are already warm.
+private final class WhisperKitWarm: @unchecked Sendable {
+    private let lock = NSLock()
+    private var kit: WhisperKit?
+    private var folderPath: String?
+
+    func load(folder: URL) async throws -> WhisperKit {
+        lock.lock()
+        if let kit, folderPath == folder.path {
+            let existing = kit
+            lock.unlock()
+            return existing
+        }
+        lock.unlock()
+        let config = WhisperKitConfig(
+            model: whisperKitModelName(),
+            downloadBase: folder,
+            load: true
+        )
+        let created = try await WhisperKit(config)
+        lock.lock()
+        kit = created
+        folderPath = folder.path
+        lock.unlock()
+        return created
+    }
+}
+
+private let whisperKitWarm = WhisperKitWarm()
 
 // MARK: - Parakeet
 
@@ -200,22 +280,13 @@ public func mabel_asr_parakeet_transcribe(
     let languageHint = languageC.flatMap { String(cString: $0) }
     do {
         let text = try runBlocking {
-            let models = try await AsrModels.downloadAndLoad(version: version)
-            let manager = AsrManager(config: .default)
-            try await manager.loadModels(models)
-            // AsrManager is an actor in FluidAudio 0.15; isAvailable is isolated.
-            if !(await manager.isAvailable) {
-                throw ASRBridgeError.failed("Parakeet models are not available")
-            }
-            // FluidAudio 0.15.6: transcribe(_:decoderState:language: Language?).
-            var state = try TdtDecoderState(decoderLayers: models.version.decoderLayers)
-            let url = URL(fileURLWithPath: wavPath)
-            let result = try await manager.transcribe(
-                url,
-                decoderState: &state,
-                language: parakeetLanguage(from: languageHint)
+            // Reuse the warm AsrManager. Soft-reset is a fresh TdtDecoderState
+            // inside ParakeetWarmSession — do not cleanup() or loadModels again.
+            try await parakeetWarm.transcribe(
+                version: version,
+                wavPath: wavPath,
+                languageHint: languageHint
             )
-            return transcribedText(result.text as String?)
         }
         if let outText {
             outText.pointee = strdup(text)
@@ -290,12 +361,7 @@ public func mabel_asr_whisperkit_transcribe(
     let language = languageC.flatMap { String(cString: $0) } ?? "en"
     do {
         let text = try runBlocking {
-            let config = WhisperKitConfig(
-                model: whisperKitModelName(),
-                downloadBase: folder,
-                load: true
-            )
-            let kit = try await WhisperKit(config)
+            let kit = try await whisperKitWarm.load(folder: folder)
             let detect = language != "en"
             let options = DecodingOptions(
                 task: .transcribe,

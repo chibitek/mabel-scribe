@@ -53,15 +53,26 @@ whisper.cpp/
 # Local credentials and signing material
 .env
 .env.*
+.envrc
 !.env.example
 *.key
 *.pem
 *.p8
 *.p12
+*.pfx
+*.p7b
 *.cer
 *.certSigningRequest
 *.mobileprovision
 *.provisionprofile
+*.jks
+*.keystore
+id_rsa
+id_ed25519
+id_ecdsa
+credentials.json
+*_credentials.json
+.secrets/
 
 # Local experiments + reference patches not for shipping
 swift-fm/

@@ -7,15 +7,27 @@ Scope: `https://github.com/erickgrau/Mabel` (this repo) and `https://github.com/
 
 **`erickgrau/Mabel` is the public source of truth.** It is a public, non-fork repo. `main` at this audit is **1.4.0** after [#15 Polish](https://github.com/erickgrau/Mabel/pull/15) and [#16 P0 history + StoreKit](https://github.com/erickgrau/Mabel/pull/16) (`15999ec`). Clone, fork, and ship from here.
 
-**`chibitek/mabel-scribe` is a public GitHub fork of `erickgrau/Mabel`, not a second SoT.** Last push 2026-05-02. Tip is **v1.1.3** (`526eb44`). It is missing the May 12 signing-placeholder pass and the entire 1.2–1.4 train (Parakeet, StoreKit Pro, clipboard history, Polish). Do not clone it for new work.
+**`chibitek/mabel-scribe` is a public GitHub fork / mirror of that SoT, not a second SoT.** On 2026-09-06 its `main` was fast-forwarded from `526eb44` (v1.1.3, May) to **`15999ec`** (same commit as `erickgrau/Mabel` `main`; GitHub compare `identical`, ahead 0 / behind 0). Develop and open PRs on `erickgrau/Mabel` only.
 
-### What Erick / CIO should do with the fork
+### Keeping the mirror current
 
-This agent cannot update `chibitek/mabel-scribe` from the SoT remote. Pick one:
+This Cloud Agent token can **read** `chibitek/mabel-scribe` and **cannot push** (no `push` permission). After each SoT `main` merge, someone with Chibitek org write access should:
 
-1. **Preferred:** Archive or unpublish `chibitek/mabel-scribe`, and leave a repo note that SoT is `erickgrau/Mabel`.
-2. **If a Chibitek-org mirror is required:** Fast-forward `mabel-scribe` `main` from `erickgrau/Mabel` `main` (GitHub “Sync fork”), then add a README banner: *mirror only — SoT is erickgrau/Mabel*.
-3. Do not keep the May 2026 tip public without that banner. That tip still has a real Developer ID identity string in `src-tauri/tauri.conf.json`.
+1. Open https://github.com/chibitek/mabel-scribe
+2. **Sync fork → Update branch** (fast-forward `main` from `erickgrau/Mabel`)
+3. Or, from a machine that can push the fork:
+
+```bash
+git clone https://github.com/chibitek/mabel-scribe.git
+cd mabel-scribe
+git remote add upstream https://github.com/erickgrau/Mabel.git
+git fetch upstream
+git checkout main
+git merge --ff-only upstream/main
+git push origin main
+```
+
+Optional: archive the fork if a Chibitek-org mirror is not required. Do not develop on it. The May 2026 tip (`526eb44`) still exists in fork history with a real Developer ID identity string in `tauri.conf.json` — same public team/identity as old SoT history, not a private key.
 
 ## Feature train: public vs Pro-only
 
@@ -57,13 +69,13 @@ Hunt covered working tree, git history (added/deleted secret-like files and comm
 | Sev | Path / location | What | Action |
 |---|---|---|---|
 | **Medium** | `scripts/release-macos.sh` (main, pre-this-PR) | Default `MABEL_SIGNING_IDENTITY` was a real `Developer ID Application: <name> (<team>)` string. Not a private key, but it taught forks the official identity. | **Scrubbed this PR.** Set the env var locally. History still has the old default — see rotation. |
-| **Medium** | `chibitek/mabel-scribe` @ `526eb44` `src-tauri/tauri.conf.json` | Same real signing identity + team id still checked in (pre–May 12 SoT). | **Erick/CIO:** sync or archive the fork. Do not treat that file as current. |
+| **Medium** | `chibitek/mabel-scribe` history @ `526eb44` `src-tauri/tauri.conf.json` | Same identity was on the May 2026 tip. **`main` now matches SoT `15999ec`.** | Keep the mirror synced via GitHub Sync fork after each SoT merge. |
 | **Low** | Git history of `erickgrau/Mabel` (`0a4b932` … `aff7605`) | Same identity lived in `tauri.conf.json` until 2026-05-12. | No history rewrite (would break #15/#16 SHAs). Team IDs are public on signed binaries. |
 | **Info** | `MabelSpatial/**` (`DEVELOPMENT_TEAM`, `SpatialConstants.swift`, README) | Apple Team ID for the official visionOS target. Marked `pragma: allowlist secret`. | **Keep.** This is a public Apple team identifier, required for the official Xcode project. Not a credential. |
 | **Info** | `src-tauri/src/storekit.rs`, docs, `.storekit` | ASC app Apple ID `6809059582`. | **Keep.** Public App Store record id. |
-| **Info** | `docs/features-and-bugs.md`, `src-tauri/src/storage.rs` tests, `docs/superpowers/plans/...` | Machine paths (`/Users/erick/...`, `/Users/albertbakhoj/Desktop/typr`). No credentials. | Leave. Soft nits later. |
+| **Info** | `src-tauri/src/storage.rs` tests | Used `/Users/erick/...` as a container-path fixture. | **Scrubbed this PR** to `/Users/dev/...`. |
 | **Info** | README notarization examples | `APPLE_PASSWORD="abcd-efgh-ijkl-mnop"` is Apple’s documented example shape, not a live password. | Leave as placeholder. |
-| **Info** | `src-tauri/src/clipboard_history.rs` tests | Synthetic `gsk_` / `ghp_` / JWT-header fixtures, concatenated in tests. | Leave. Not live keys. |
+| **Info** | `src-tauri/src/clipboard_history.rs` tests | Synthetic token fixtures, assembled at runtime. JWT header prefix split further this PR. | Not live keys. |
 | **Clear** | Groq / ASC API / 1Password / Railway / Supabase / p12 / pem / shared secret | None found on either public tip. | No rotation from those classes. |
 
 ## Rotation (Erick / CIO)
@@ -72,7 +84,7 @@ Do **not** treat this list as leaked key material. Nothing that looks like a liv
 
 1. **No Groq, ASC `.p8`, updater private key, or notarization password was in git.** If any of those were ever pasted into a chat, ticket, or CI log outside this audit, rotate that specific item. Do not publish the new value.
 2. **Apple Team ID / Developer ID display name** cannot be “rotated” without a new team. They already appear on notarized binaries. Confirm the Developer ID certificate itself was never exported into git (this audit found no cert files).
-3. **`mabel-scribe`:** after sync or archive, assume crawlers copied the May 2026 `tauri.conf.json` identity string. Same as (2) — identity name, not a key.
+3. **`mabel-scribe`:** `main` matches `15999ec`. Assume crawlers copied the May 2026 `tauri.conf.json` identity string from history. Same as (2) — identity name, not a key. Re-sync the fork after this PR merges.
 4. If an App Store Connect **shared secret** was created for the old subscription API, do not put it in this repo. StoreKit 2 on 1.4.0 does not need it.
 
 ## Hygiene lock

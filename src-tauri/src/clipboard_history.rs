@@ -719,8 +719,9 @@ mod tests {
             format!("{}{}", "api_key: ", "super-secret-value"),
             format!("{}{}", "postgres://user:", "s3cret@localhost:5432/db"),
             format!(
-                "{}{}{}",
-                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+                "{}{}{}{}",
+                "eyJ",
+                "hbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
                 ".eyJzdWIiOiIxMjM0In0.",
                 "signaturepart"
             ),

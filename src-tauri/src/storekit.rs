@@ -608,6 +608,7 @@ mod tests {
         let mas = include_str!("../tauri.mas.conf.json");
         let release = include_str!("../../scripts/release-macos.sh");
         let sot = include_str!("../../docs/oss-source-of-truth.md");
+        let gitignore = include_str!("../../.gitignore");
         assert!(conf.contains("Your Name (TEAMID)"));
         assert!(conf.contains("\"providerShortName\": \"TEAMID\""));
         assert!(!conf.contains("Erick Grau"));
@@ -620,6 +621,11 @@ mod tests {
         assert!(sot.contains("erickgrau/Mabel"));
         assert!(sot.contains("chibitek/mabel-scribe"));
         assert!(sot.contains("1.4.0"));
+        assert!(gitignore.contains(".env"));
+        assert!(gitignore.contains("!.env.example"));
+        assert!(gitignore.contains("*.p8"));
+        assert!(gitignore.contains("*.p12"));
+        assert!(gitignore.contains("src-tauri/tauri.local.conf.json"));
     }
 
     #[test]

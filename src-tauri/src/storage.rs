@@ -686,12 +686,12 @@ mod tests {
 
     #[test]
     fn container_home_strips_to_real_home() {
-        let container = PathBuf::from("/Users/erick/Library/Containers/com.mabel.app/Data");
+        let container = PathBuf::from("/Users/dev/Library/Containers/com.mabel.app/Data");
         assert_eq!(
             strip_container_prefix(&container).as_deref(),
-            Some(Path::new("/Users/erick"))
+            Some(Path::new("/Users/dev"))
         );
-        assert_eq!(strip_container_prefix(Path::new("/Users/erick")), None);
+        assert_eq!(strip_container_prefix(Path::new("/Users/dev")), None);
     }
 
     #[test]

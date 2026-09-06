@@ -10,7 +10,7 @@ Named after a long-haired Persian who would never share your transcripts with an
 
 Open source under the [MIT license](LICENSE). Fork it, build it, ship your own version.
 
-**Public source of truth is this repo (`erickgrau/Mabel`).** `chibitek/mabel-scribe` is a stale public fork (last v1.1.3, May 2026) — do not treat it as current. Pro features (Polish, teams, snippets, and the rest of the StoreKit gate) ship in this tree and unlock at runtime. Signing keys, notarization passwords, updater private keys, and API tokens stay out of git. See [docs/oss-source-of-truth.md](docs/oss-source-of-truth.md).
+**Public source of truth is this repo (`erickgrau/Mabel`).** `chibitek/mabel-scribe` is a public GitHub fork / mirror — not a second SoT. Develop and open PRs here. After each SoT `main` merge, refresh the mirror with GitHub → Sync fork (see [docs/oss-source-of-truth.md](docs/oss-source-of-truth.md)). Pro features (Polish, teams, snippets, and the rest of the StoreKit gate) ship in this tree and unlock at runtime. Signing keys, notarization passwords, updater private keys, and API tokens stay out of git.
 
 A native **visionOS** sibling — **Mabel Spatial** (`com.mabel.vision`, v0.1.0) — lives in [`MabelSpatial/`](MabelSpatial/README.md). It is SwiftUI + RealityKit + on-device Apple Speech, not a Tauri port and not Mac TestFlight on a headset. Mac 1.4.0 paths below are unchanged.
 

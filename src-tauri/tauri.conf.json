@@ -4,9 +4,9 @@
   "version": "1.4.0",
   "identifier": "com.mabel.app",
   "build": {
-    "beforeDevCommand": "npm run vendor-llama && npm run vendor-asr && npm run dev",
+    "beforeDevCommand": "npm run vendor-llama && npm run vendor-asr && npm run vendor-storekit && npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run vendor-llama && npm run vendor-asr && npm run build",
+    "beforeBuildCommand": "npm run vendor-llama && npm run vendor-asr && npm run vendor-storekit && npm run build",
     "frontendDist": "../dist"
   },
   "app": {

@@ -51,6 +51,8 @@ The UI **must** show StoreKit `displayPrice` and intro-offer text from `Product`
 
 In-App Purchase is an **App ID + profile** capability. It is **not** a key in `entitlements.plist` / `entitlements.mas.plist`. Do **not** add `com.apple.developer.in-app-payments` (that is Apple Pay). Developer ID DMG entitlements stay unchanged so notarized builds are not broken.
 
+MAS flavor still keeps the #10 keys: `com.apple.security.device.audio-input` and `temporary-exception.apple-events` → `com.apple.systemevents`.
+
 ## What Pro unlocks
 
 - Teams: on-device org name, seats, invite codes (no cloud sync in v1)
@@ -59,21 +61,120 @@ In-App Purchase is an **App ID + profile** capability. It is **not** a key in `e
 
 There is no web upgrade. Settings → Plans and Billing is StoreKit purchase / restore / manage only. Do not point Activate Pro at chibiteklabs.com or chibiteklabs.ai.
 
-## Local StoreKit testing
+## CIO Mac prove (purchase + trial)
 
-`src-tauri/Mabel.storekit` is an Xcode StoreKit Configuration (monthly + yearly + 1-month free trial). On a Mac:
+Local StoreKit products exist **only** when the running process was launched by Xcode with **StoreKit Configuration = `src-tauri/Mabel.storekit`**. That file is a local (not ASC-synced) Xcode 16 v4 config: monthly + yearly, 30-day (`P1M` free) intro, no `storefrontTimeZone` (that field made Xcode report `_lastMigrationError` and left `SKTestSession` hung / `NO_PRODUCTS`).
 
-1. Open the configuration in Xcode.
-2. Product → Scheme → Edit Scheme → Run → Options → StoreKit Configuration → `Mabel.storekit`.
-3. Or pass the file when running the `.app` from Xcode.
+`npm run tauri -- dev`, double-clicking a `.app`, and anything under `/Applications` (including **`Mabel 2.app`**) do **not** attach the configuration. Those paths are why prove went RED on tip `0178e46c` even after the scheme path was edited.
 
-Sandbox Apple IDs are required for TestFlight / ASC sandbox. The configuration file does not ship paid entitlement.
+### 0. Use this branch's 1.4.0 binary
+
+Wrong binary for prove:
+
+- Installed `/Applications/Mabel.app` or `/Applications/Mabel 2.app` at **1.3.0 without StoreKit**
+- Any build where `Contents/Frameworks/libMabelStoreKit.dylib` is missing
+- Any build where Swift compile failed and cargo used to warn-and-continue (that is now a hard error on macOS)
+
+```bash
+git checkout cursor/storekit2-pro-iap-cfa6
+git pull
+# One-shot: dylib + 1.4.0 .app + catalog smoke + open Xcode
+bash scripts/prove-storekit-mac.sh
+```
+
+### 1. MabelStoreKit dylib (Apple Silicon / Xcode 16)
+
+Full **Xcode.app** (not Command Line Tools):
+
+```bash
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+xcode-select -p   # must contain Xcode.app
+xcrun swift --version   # Swift 6 / Xcode 16+
+```
+
+Exact compile command:
+
+```bash
+export MACOSX_DEPLOYMENT_TARGET=14.0
+xcrun swift build -c release --arch arm64 --product MabelStoreKit \
+  --package-path native/MabelStoreKit
+```
+
+Or the wrapper that stages the dylib for Tauri (`@rpath/libMabelStoreKit.dylib`):
+
+```bash
+npm run vendor-storekit
+# → src-tauri/native-storekit/libMabelStoreKit.dylib
+ls -l src-tauri/native-storekit/libMabelStoreKit.dylib
+xcrun otool -D src-tauri/native-storekit/libMabelStoreKit.dylib
+```
+
+`tauri.conf.json` `beforeDevCommand` / `beforeBuildCommand` now run `vendor-storekit`. On macOS, `src-tauri/build.rs` **fails the Rust compile** if the dylib is missing so you cannot get a silent 1.4.0-without-StoreKit binary. `MABEL_SKIP_NATIVE_STOREKIT=1` is fail-closed Free only.
+
+### 2. Package 1.4.0 with the dylib inside the .app
+
+```bash
+npx tauri build --bundles app
+APP=src-tauri/target/release/bundle/macos/Mabel.app
+defaults read "$APP/Contents/Info" CFBundleShortVersionString   # must be 1.4.0
+ls "$APP/Contents/Frameworks/libMabelStoreKit.dylib"            # must exist
+```
+
+If Finder already has `Mabel.app`, Tauri may write `Mabel 2.app` in the bundle folder. Check **that** tree's version and Frameworks — still do not use `/Applications/Mabel 2.app`.
+
+MAS overlay (`tauri.mas.conf.json`) also lists `native-storekit/libMabelStoreKit.dylib`.
+
+### 3. Attach `Mabel.storekit` and actually Run
+
+Checked-in project: `tools/MabelStoreKitProve/MabelStoreKitProve.xcodeproj`
+
+| Scheme | What it does |
+|---|---|
+| **Mabel-StoreKit** | PathRunnable → the Tauri `Mabel.app` you just built, with StoreKit Configuration on. **This is the purchase / trial prove.** |
+| MabelStoreKitProve | XCTest catalog smoke. StoreKit Configuration is on the Test action. Do **not** create `SKTestSession` (hangs when the scheme already has a config). |
+
+In Xcode:
+
+1. Open `tools/MabelStoreKitProve/MabelStoreKitProve.xcodeproj` (the prove script does this).
+2. Select scheme **Mabel-StoreKit** (not ProveHost).
+3. Product → Scheme → Edit Scheme → **Run → Options → StoreKit Configuration** → `Mabel.storekit`.
+4. Press **Run (⌘R)**. Confirm the debug title / console is the `target/release/bundle/macos/Mabel.app` path, not `/Applications`.
+
+Catalog-only smoke without the UI:
+
+```bash
+xcodebuild test \
+  -project tools/MabelStoreKitProve/MabelStoreKitProve.xcodeproj \
+  -scheme MabelStoreKitProve \
+  -destination 'platform=macOS'
+```
+
+### 4. Confirm products loaded
+
+Settings → Plans and Billing must show **two** cards with StoreKit `displayPrice` and a **30-day / 1 month free trial** line for:
+
+- `com.mabel.app.pro.monthly`
+- `com.mabel.app.pro.yearly`
+
+If the UI says `NO_PRODUCTS` or “App Store prices are unavailable”, the process is not under that configuration (or you launched 1.3.0). Stop; do not treat restore-empty as a product prove.
+
+### 5. Checklist
+
+| Case | Expect |
+|---|---|
+| **Purchase + trial** | Subscribe Monthly (or Yearly). StoreKit sheet from the Xcode config. Entitlement `status=trial`, `isTrial=true`, Pro unlocks (teams + locked nav). |
+| **Restore** | Fresh config with no transactions: restore succeeds, still Free (empty). After a trial purchase: restore returns that trial. |
+| **Fail-closed** | Quit, or Debug → StoreKit → refund / expire in Xcode. App is Free. No mock paid path. Missing dylib cannot compile on macOS unless `MABEL_SKIP_NATIVE_STOREKIT=1`, which stays Free. |
+
+Sandbox Apple IDs are for TestFlight / ASC sandbox, not this local configuration. The `.storekit` file does not ship paid entitlement.
+
+Do **not** merge this draft on a RED purchase+trial.
 
 ## Build notes
 
-- Native bridge: `native/MabelStoreKit` (StoreKit 2, C ABI) staged by `scripts/build-mabel-storekit.sh` / `npm run vendor-storekit`.
+- Native bridge: `native/MabelStoreKit` (StoreKit 2, C ABI, pure Swift package) staged by `scripts/build-mabel-storekit.sh` / `npm run vendor-storekit`.
 - Rust fail-closed parser: `src-tauri/src/storekit.rs`.
-- MAS flavor still uses `entitlements.mas.plist` + `tauri.mas.conf.json`. IAP does not add sandbox keys and does not change Developer ID `entitlements.plist`.
+- MAS flavor still uses `entitlements.mas.plist` + `tauri.mas.conf.json` (device.audio-input + System Events AE exception). IAP does not add sandbox keys and does not change Developer ID `entitlements.plist`.
 - Release builds have **no** mock paid entitlement. Missing dylib / non-macOS / unverified transaction → Free.
 
 ## Still required before a free MAS ship

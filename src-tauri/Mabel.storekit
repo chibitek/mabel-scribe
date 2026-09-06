@@ -1,5 +1,5 @@
 {
-  "identifier" : "MabelProStoreKit",
+  "identifier" : "A17C6809",
   "nonRenewingSubscriptions" : [
 
   ],
@@ -24,12 +24,47 @@
         "current" : null,
         "enabled" : false,
         "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
       }
     ]
   },
   "subscriptionGroups" : [
     {
-      "id" : "MABELPRO",
+      "id" : "E5F60718",
       "localizations" : [
         {
           "description" : "Teams plus every Pro feature. Personal use stays free.",
@@ -49,10 +84,10 @@
           "displayPrice" : "5.00",
           "familyShareable" : false,
           "groupNumber" : 1,
-          "internalID" : "MABELPROMONTHLY",
+          "internalID" : "B3104D2A",
           "introductoryOffer" : {
-            "displayPrice" : "0",
-            "internalID" : "MABELPROMONTHLYINTRO",
+            "displayPrice" : "0.00",
+            "internalID" : "C8E91F03",
             "numberOfPeriods" : 1,
             "paymentMode" : "free",
             "subscriptionPeriod" : "P1M"
@@ -67,8 +102,11 @@
           "productID" : "com.mabel.app.pro.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Mabel Pro Monthly",
-          "subscriptionGroupID" : "MABELPRO",
-          "type" : "RecurringSubscription"
+          "subscriptionGroupID" : "E5F60718",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
         },
         {
           "adHocOffers" : [
@@ -80,10 +118,10 @@
           "displayPrice" : "48.00",
           "familyShareable" : false,
           "groupNumber" : 2,
-          "internalID" : "MABELPROYEARLY",
+          "internalID" : "D42A7B19",
           "introductoryOffer" : {
-            "displayPrice" : "0",
-            "internalID" : "MABELPROYEARLYINTRO",
+            "displayPrice" : "0.00",
+            "internalID" : "F0A16C5E",
             "numberOfPeriods" : 1,
             "paymentMode" : "free",
             "subscriptionPeriod" : "P1M"
@@ -98,14 +136,17 @@
           "productID" : "com.mabel.app.pro.yearly",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Mabel Pro Yearly",
-          "subscriptionGroupID" : "MABELPRO",
-          "type" : "RecurringSubscription"
+          "subscriptionGroupID" : "E5F60718",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
         }
       ]
     }
   ],
   "version" : {
-    "major" : 3,
+    "major" : 4,
     "minor" : 0
   }
 }

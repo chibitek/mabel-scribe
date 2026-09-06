@@ -76,28 +76,35 @@ fn try_link_native_storekit() {
     match status {
         Ok(s) if s.success() => {}
         Ok(s) => {
-            println!(
-                "cargo:warning=MabelStoreKit build failed (exit {}). StoreKit 2 will be unavailable (fail-closed).",
+            panic!(
+                "MabelStoreKit Swift dylib failed (exit {}). \
+                 On Apple Silicon / Xcode 16: \
+                 MACOSX_DEPLOYMENT_TARGET=14.0 xcrun swift build -c release --arch arm64 \
+                 --product MabelStoreKit --package-path native/MabelStoreKit \
+                 && npm run vendor-storekit. \
+                 Do not keep going — a 1.4.0 binary without this dylib is the wrong prove binary. \
+                 Set MABEL_SKIP_NATIVE_STOREKIT=1 only if you intend fail-closed Free.",
                 s.code().unwrap_or(-1)
             );
-            return;
         }
         Err(e) => {
-            println!("cargo:warning=could not run build-mabel-storekit.sh: {}", e);
-            return;
+            panic!("could not run build-mabel-storekit.sh: {e}");
         }
     }
 
     let dylib = Path::new(&manifest_dir).join("native-storekit/libMabelStoreKit.dylib");
     if !dylib.exists() {
-        println!("cargo:warning=libMabelStoreKit.dylib not staged; StoreKit unlinked (fail-closed)");
-        return;
+        panic!(
+            "libMabelStoreKit.dylib not staged at {}. \
+             Run: npm run vendor-storekit",
+            dylib.display()
+        );
     }
 
-    println!(
-        "cargo:rustc-link-search=native={}",
-        dylib.parent().unwrap().display()
-    );
+    let search = dylib.parent().unwrap();
+    println!("cargo:rustc-link-search=native={}", search.display());
+    println!("cargo:rustc-link-arg=-Wl,-rpath,{}", search.display());
+    println!("cargo:rustc-link-arg=-Wl,-rpath,@executable_path/../Frameworks");
     println!("cargo:rustc-link-lib=dylib=MabelStoreKit");
     println!("cargo:rustc-link-lib=framework=Foundation");
     println!("cargo:rustc-link-lib=framework=StoreKit");

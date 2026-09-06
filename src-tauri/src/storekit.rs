@@ -435,6 +435,14 @@ mod tests {
         let mas = include_str!("../entitlements.mas.plist");
         assert!(mas.contains("In-App Purchase"));
         assert!(!mas.contains("<key>com.apple.developer.in-app-payments</key>"));
+        assert!(
+            mas.contains("<key>com.apple.security.device.audio-input</key>"),
+            "#10 MAS mic entitlement must stay on this branch"
+        );
+        assert!(
+            mas.contains("com.apple.systemevents"),
+            "#10 System Events AE exception must stay on this branch"
+        );
         let dmg = include_str!("../entitlements.plist");
         assert!(!dmg.contains("com.apple.security.app-sandbox"));
     }
@@ -446,6 +454,57 @@ mod tests {
         assert!(cfg.contains(PRODUCT_YEARLY));
         assert!(cfg.contains("\"paymentMode\" : \"free\""));
         assert!(cfg.contains("6809059582"));
+        assert!(
+            cfg.contains("\"major\" : 4"),
+            "Xcode 16 loads v4; older handwritten files failed to migrate"
+        );
+        assert!(
+            cfg.contains("winbackOffers"),
+            "Xcode 16 schema expects winbackOffers on subscriptions"
+        );
+        assert!(
+            !cfg.contains("storefrontTimeZone"),
+            "storefrontTimeZone caused '_lastMigrationError' / SKTestSession hang"
+        );
+        assert!(!cfg.contains("_lastMigrationError"));
+    }
+
+    #[test]
+    fn tauri_vendors_storekit_before_dev_and_build() {
+        let conf = include_str!("../tauri.conf.json");
+        assert!(conf.contains("vendor-storekit"));
+        assert!(conf.contains("\"version\": \"1.4.0\""));
+        assert!(conf.contains("native-storekit/libMabelStoreKit.dylib"));
+        let pkg = include_str!("../../package.json");
+        assert!(pkg.contains("prove-storekit"));
+    }
+
+    #[test]
+    fn storekit_package_is_pure_swift_dynamic_library() {
+        let manifest = include_str!("../../native/MabelStoreKit/Package.swift");
+        assert!(manifest.contains(".dynamic"));
+        assert!(
+            !manifest.contains("publicHeadersPath"),
+            "mixed-language + dynamic is a common Xcode 16 swift build failure"
+        );
+        assert!(manifest.contains("swiftLanguageMode"));
+    }
+
+    #[test]
+    fn cio_prove_recipe_names_scheme_and_dylib_command() {
+        let docs = include_str!("../../docs/app-store-iap.md");
+        assert!(docs.contains("Mabel-StoreKit"));
+        assert!(docs.contains("xcrun swift build"));
+        assert!(docs.contains("--arch arm64"));
+        assert!(docs.contains("libMabelStoreKit.dylib"));
+        assert!(docs.contains("StoreKit Configuration"));
+        assert!(docs.contains("Mabel 2.app"));
+        assert!(docs.contains("device.audio-input"));
+        assert!(docs.contains("com.apple.systemevents"));
+        let script = include_str!("../../scripts/prove-storekit-mac.sh");
+        assert!(script.contains("Mabel-StoreKit"));
+        assert!(script.contains("1.4.0"));
+        assert!(script.contains("libMabelStoreKit.dylib"));
     }
 
     #[test]

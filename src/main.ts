@@ -1081,7 +1081,7 @@ function renderProducts(products: StoreProduct[], ent: Entitlement) {
   if (!root) return;
   root.innerHTML = "";
   if (!products.length) {
-    root.innerHTML = `<p class="row-hint">App Store prices are unavailable here. Use a Mac App Store or TestFlight build after CIO creates the subscription products. Restore Purchases if you already subscribed.</p>`;
+    root.innerHTML = `<p class="row-hint">NO_PRODUCTS: StoreKit catalog is empty. Launch the 1.4.0 Mabel.app from the Mabel-StoreKit Xcode scheme (StoreKit Configuration = src-tauri/Mabel.storekit). Do not open /Applications/Mabel.app or Mabel 2.app. See docs/app-store-iap.md.</p>`;
     return;
   }
   for (const product of products) {

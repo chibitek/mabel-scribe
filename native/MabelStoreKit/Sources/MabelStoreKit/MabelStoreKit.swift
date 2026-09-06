@@ -16,6 +16,10 @@ private let productIds: Set<String> = [
     "com.mabel.app.pro.yearly",
 ]
 
+/// C ABI callback. Kept in Swift so Package.swift can be a pure Swift
+/// target (mixed-language + `.dynamic` is a common Xcode 16 build break).
+public typealias mabel_storekit_update_cb = @convention(c) (UnsafePointer<CChar>?) -> Void
+
 private let lock = NSLock()
 private var lastErrorC: UnsafeMutablePointer<CChar>?
 private var updateCallback: mabel_storekit_update_cb?
@@ -294,6 +298,11 @@ public func mabel_storekit_products_json() -> UnsafeMutablePointer<CChar>? {
     do {
         let json = try runBlocking {
             let products = try await Product.products(for: productIds)
+            if products.isEmpty {
+                throw StoreBridgeError.failed(
+                    "NO_PRODUCTS: StoreKit returned no catalog for com.mabel.app.pro.monthly / com.mabel.app.pro.yearly. Launch the 1.4.0 Mabel.app from the Mabel-StoreKit Xcode scheme (StoreKit Configuration = src-tauri/Mabel.storekit). Do not run /Applications/Mabel.app or Mabel 2.app. See docs/app-store-iap.md."
+                )
+            }
             let ordered = products.sorted { lhs, rhs in
                 if lhs.id.contains("monthly") { return true }
                 if rhs.id.contains("monthly") { return false }
@@ -333,7 +342,9 @@ public func mabel_storekit_purchase(_ productId: UnsafePointer<CChar>?) -> Int32
         try runBlocking {
             let products = try await Product.products(for: [id])
             guard let product = products.first else {
-                throw StoreBridgeError.failed("Product \(id) is not available from App Store")
+                throw StoreBridgeError.failed(
+                    "NO_PRODUCTS: \(id) is not available. The process is not running under src-tauri/Mabel.storekit (Xcode scheme Mabel-StoreKit) and App Store Connect has not returned the product. See docs/app-store-iap.md."
+                )
             }
             let result = try await product.purchase()
             switch result {

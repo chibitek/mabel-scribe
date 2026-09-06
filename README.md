@@ -195,7 +195,7 @@ The `entitlements.plist` file is already in `src-tauri/`. It declares:
 
 The last two hardened-runtime entitlements, plus JIT, are security-sensitive. They stay on the **Developer ID DMG** so the Phase A sidecar still loads. The default Parakeet / WhisperKit path does not need them.
 
-Mac App Store / TestFlight is a **second flavor**, not this DMG path. `npm run build:dmg` / `scripts/release-macos.sh` stay on Developer ID + `entitlements.plist`. `npm run build:mas` uses the sandbox draft and **refuses unless** `MABEL_MAS_EXPERIMENT=1`. **1.4.0 wires StoreKit 2 Pro IAP** but is **not claimed MAS-ready** until ASC products exist and a Mac binary completes purchase. See [docs/mas-and-testflight.md](docs/mas-and-testflight.md) and [docs/app-store-iap.md](docs/app-store-iap.md).
+Mac App Store / TestFlight is a **second flavor**, not this DMG path. `npm run build:dmg` / `scripts/release-macos.sh` stay on Developer ID + `entitlements.plist`. `npm run build:mas` uses the sandbox draft and **refuses unless** `MABEL_MAS_EXPERIMENT=1`. **1.4.0 wires StoreKit 2 Pro IAP** but is **not claimed MAS-ready** until ASC products exist and a Mac binary completes purchase. Local purchase/trial prove: `bash scripts/prove-storekit-mac.sh` (must Run `Mabel.app` from the **Mabel-StoreKit** Xcode scheme — not `/Applications/Mabel 2.app`). See [docs/mas-and-testflight.md](docs/mas-and-testflight.md) and [docs/app-store-iap.md](docs/app-store-iap.md).
 
 ## Build with signing + notarization
 
@@ -287,7 +287,7 @@ src-tauri/
   build.rs                 Embeds git hash + version at compile time
   entitlements.plist       Hardened-runtime entitlements for Developer ID DMG
   entitlements.mas.plist   MAS/TestFlight sandbox draft (see docs/mas-and-testflight.md)
-  Mabel.storekit           Local StoreKit 2 config (monthly + yearly + trial)
+  Mabel.storekit           Local StoreKit 2 config (monthly + yearly + 30-day trial)
   src/
     main.rs                Tauri commands, plugin registration, app setup
     lib.rs                 Module roots + version constants
@@ -313,6 +313,8 @@ src-tauri/
     llama-runtime/         Vendored llama-server + dylibs (see scripts/vendor-llama-server.sh)
 
 native/MabelStoreKit/      StoreKit 2 Swift dylib (MAS/TF Pro)
+tools/MabelStoreKitProve/  Xcode scheme that launches Mabel.app under Mabel.storekit
+scripts/prove-storekit-mac.sh  CIO Mac prove: 1.4.0 + dylib + Run Mabel-StoreKit
 ```
 
 ## Audio path

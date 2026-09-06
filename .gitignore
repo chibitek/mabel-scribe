@@ -35,6 +35,8 @@ native/MabelASR/.build/
 src-tauri/native-storekit/*
 !src-tauri/native-storekit/.gitkeep
 native/MabelStoreKit/.build/
+tools/MabelStoreKitProve/MabelStoreKitProve.xcodeproj/xcuserdata/
+tools/MabelStoreKitProve/MabelStoreKitProve.xcodeproj/project.xcworkspace/
 
 # App-specific
 src-tauri/binaries/

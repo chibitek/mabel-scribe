@@ -1,6 +1,6 @@
 import Foundation
-import FluidAudio
-import WhisperKit
+@preconcurrency import FluidAudio
+@preconcurrency import WhisperKit
 
 /// In-process C ABI for Mabel's MAS-friendly local engines.
 ///
@@ -9,26 +9,65 @@ import WhisperKit
 /// `allow-unsigned-executable-memory`.
 ///
 /// Pinned to FluidAudio 0.15.6 and WhisperKit 1.1.0. See Package.swift.
+/// Swift 6 (macosx14.0): C callback is a Swift typealias, last-error is a
+/// locked Sendable box, AsrManager.isAvailable is awaited, WhisperKit text
+/// is treated as a non-optional String.
 
-private let lock = NSLock()
-private var lastErrorC: UnsafeMutablePointer<CChar>?
+/// C ABI progress callback. Kept in Swift so Package.swift can be a pure
+/// Swift target (the C header is not visible as a mixed-language module).
+public typealias mabel_asr_progress_cb = @convention(c) (Double, UnsafeMutableRawPointer?) -> Void
+
+private final class LastErrorBox: @unchecked Sendable {
+    private let lock = NSLock()
+    private var ptr: UnsafeMutablePointer<CChar>?
+
+    func set(_ message: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        if let old = ptr { free(old) }
+        ptr = strdup(message)
+        fputs("[MabelASR] \(message)\n", stderr)
+    }
+
+    func clear() {
+        lock.lock()
+        defer { lock.unlock() }
+        if let old = ptr {
+            free(old)
+            ptr = nil
+        }
+    }
+
+    func peek() -> UnsafePointer<CChar>? {
+        lock.lock()
+        defer { lock.unlock() }
+        return UnsafePointer(ptr)
+    }
+}
+
+private let lastError = LastErrorBox()
 
 private func setError(_ message: String) {
-    lock.lock()
-    defer { lock.unlock() }
-    if let old = lastErrorC {
-        free(old)
-    }
-    lastErrorC = strdup(message)
-    fputs("[MabelASR] \(message)\n", stderr)
+    lastError.set(message)
 }
 
 private func clearError() {
-    lock.lock()
-    defer { lock.unlock() }
-    if let old = lastErrorC {
-        free(old)
-        lastErrorC = nil
+    lastError.clear()
+}
+
+private final class ProgressSink: @unchecked Sendable {
+    let cb: mabel_asr_progress_cb?
+    let user: UnsafeMutableRawPointer?
+
+    init(_ cb: mabel_asr_progress_cb?, _ user: UnsafeMutableRawPointer?) {
+        self.cb = cb
+        self.user = user
+    }
+
+    func report(_ fraction: Double) {
+        guard let cb else { return }
+        let pct = min(100.0, max(0.0, fraction * 100.0))
+        cb(pct, user)
     }
 }
 
@@ -77,12 +116,6 @@ private func parakeetVersion(from cString: UnsafePointer<CChar>?) -> AsrModelVer
     }
 }
 
-private func reportProgress(_ cb: mabel_asr_progress_cb?, _ user: UnsafeMutableRawPointer?, _ fraction: Double) {
-    guard let cb else { return }
-    let pct = min(100.0, max(0.0, fraction * 100.0))
-    cb(pct, user)
-}
-
 private func whisperKitModelName() -> String { "large-v3-turbo" }
 
 private func whisperKitFolder(cacheDir: String) -> URL {
@@ -97,6 +130,10 @@ private func whisperKitLooksReady(at folder: URL) -> Bool {
     }
     return items.contains { $0.hasSuffix(".mlmodelc") || $0.hasSuffix(".mlpackage") }
         || fm.fileExists(atPath: folder.appendingPathComponent(".mabel-ready").path)
+}
+
+private func transcribedText(_ raw: String?) -> String {
+    raw?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 }
 
 // MARK: - Parakeet
@@ -115,16 +152,17 @@ public func mabel_asr_parakeet_download(
     _ user: UnsafeMutableRawPointer?
 ) -> Int32 {
     let version = parakeetVersion(from: versionC)
+    let sink = ProgressSink(cb, user)
     do {
         try runBlocking {
             _ = try await AsrModels.download(
                 version: version,
                 progressHandler: { progress in
-                    reportProgress(cb, user, progress.fractionCompleted)
+                    sink.report(progress.fractionCompleted)
                 }
             )
         }
-        reportProgress(cb, user, 1.0)
+        sink.report(1.0)
         clearError()
         return 0
     } catch {
@@ -150,17 +188,18 @@ public func mabel_asr_parakeet_transcribe(
     do {
         let text = try runBlocking {
             let models = try await AsrModels.downloadAndLoad(version: version)
-            let manager = AsrManager(config: .default, models: models)
-            if !manager.isAvailable {
-                try await manager.loadModels(models)
+            let manager = AsrManager(config: .default)
+            try await manager.loadModels(models)
+            // AsrManager is an actor in FluidAudio 0.15; isAvailable is isolated.
+            if !(await manager.isAvailable) {
+                throw ASRBridgeError.failed("Parakeet models are not available")
             }
-            var state = try TdtDecoderState(decoderLayers: models.version.decoderLayers)
-            let url = URL(fileURLWithPath: wavPath)
             // Language hint is v3-only in FluidAudio 0.15; English installs
             // already use the v2 checkpoint. Keep the decoder default.
             _ = languageHint
-            let result = try await manager.transcribe(url, decoderState: &state)
-            return result.text
+            let url = URL(fileURLWithPath: wavPath)
+            let result = try await manager.transcribe(url, source: .system)
+            return transcribedText(result.text as String?)
         }
         if let outText {
             outText.pointee = strdup(text)
@@ -194,9 +233,10 @@ public func mabel_asr_whisperkit_download(
     }
     let cacheDir = String(cString: cacheDirC)
     let folder = whisperKitFolder(cacheDir: cacheDir)
+    let sink = ProgressSink(cb, user)
     do {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        reportProgress(cb, user, 0.05)
+        sink.report(0.05)
         try runBlocking {
             let config = WhisperKitConfig(
                 model: whisperKitModelName(),
@@ -209,7 +249,7 @@ public func mabel_asr_whisperkit_download(
             atPath: folder.appendingPathComponent(".mabel-ready").path,
             contents: Data("large-v3-turbo\n".utf8)
         )
-        reportProgress(cb, user, 1.0)
+        sink.report(1.0)
         clearError()
         return 0
     } catch {
@@ -246,14 +286,16 @@ public func mabel_asr_whisperkit_transcribe(
                 language: detect ? nil : "en",
                 detectLanguage: detect
             )
-            let results = try await kit.transcribe(audioPath: wavPath, decodeOptions: options)
-            if let results {
-                return results
-                    .compactMap { $0.text?.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    .filter { !$0.isEmpty }
-                    .joined(separator: " ")
-            }
-            return ""
+            // Annotate [TranscriptionResult] so Swift 6 does not bind the
+            // deprecated optional-single-result overload. `.text` is String.
+            let results: [TranscriptionResult] = try await kit.transcribe(
+                audioPath: wavPath,
+                decodeOptions: options
+            )
+            return results
+                .map { transcribedText($0.text as String?) }
+                .filter { !$0.isEmpty }
+                .joined(separator: " ")
         }
         if let outText {
             outText.pointee = strdup(text)
@@ -273,7 +315,5 @@ public func mabel_asr_string_free(_ s: UnsafeMutablePointer<CChar>?) {
 
 @_cdecl("mabel_asr_last_error")
 public func mabel_asr_last_error() -> UnsafePointer<CChar>? {
-    lock.lock()
-    defer { lock.unlock() }
-    return UnsafePointer(lastErrorC)
+    lastError.peek()
 }

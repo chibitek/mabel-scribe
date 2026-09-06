@@ -7,7 +7,9 @@
 //   WhisperKit 1.1.0   — large-v3-turbo
 //
 // Built on macOS by scripts/build-mabel-asr.sh (Xcode 16 + Swift 6).
-// Linux / CI skips this package.
+// Pure Swift target: the C header is excluded so `mabel_asr_progress_cb`
+// is a Swift typealias (same pattern as MabelStoreKit). Linux / CI skips
+// this package.
 
 import PackageDescription
 
@@ -31,7 +33,11 @@ let package = Package(
                 .product(name: "WhisperKit", package: "WhisperKit"),
             ],
             path: "Sources/MabelASR",
-            publicHeadersPath: "include"
+            exclude: ["include"],
+            linkerSettings: [
+                .linkedFramework("Foundation"),
+                .linkedFramework("CoreML"),
+            ]
         ),
     ]
 )

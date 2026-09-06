@@ -1,4 +1,7 @@
 #pragma once
+/* C ABI mirror for the Rust FFI. Not compiled into the Swift package
+ * (Package.swift excludes this header so the dylib stays a pure Swift
+ * dynamic library). */
 
 #ifdef __cplusplus
 extern "C" {

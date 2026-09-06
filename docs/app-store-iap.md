@@ -111,6 +111,19 @@ xcrun otool -D src-tauri/native-storekit/libMabelStoreKit.dylib
 
 `tauri.conf.json` `beforeDevCommand` / `beforeBuildCommand` now run `vendor-storekit`. On macOS, `src-tauri/build.rs` **fails the Rust compile** if the dylib is missing so you cannot get a silent 1.4.0-without-StoreKit binary. `MABEL_SKIP_NATIVE_STOREKIT=1` is fail-closed Free only.
 
+The prove script also needs **Parakeet / WhisperKit** (`vendor-asr`) before `tauri build`. Same Xcode 16 / Swift 6 / macosx14.0:
+
+```bash
+export MACOSX_DEPLOYMENT_TARGET=14.0
+xcrun swift build -c release --arch arm64 --product MabelASR \
+  --package-path native/MabelASR
+# or
+npm run vendor-asr
+# → src-tauri/native-asr/libMabelASR.dylib
+```
+
+`MabelASR.swift` is Swift 6-clean: locked Sendable last-error box, `mabel_asr_progress_cb` typealias (no mixed-language header), `await` on actor `isAvailable`, WhisperKit `[TranscriptionResult]` + non-optional `text`.
+
 ### 2. Package 1.4.0 with the dylib inside the .app
 
 ```bash

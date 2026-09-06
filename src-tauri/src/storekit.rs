@@ -507,6 +507,7 @@ mod tests {
         assert!(script.contains("libMabelStoreKit.dylib"));
         assert!(docs.contains("MACOSX_DEPLOYMENT_TARGET=14.0"));
         assert!(docs.contains("Do **not** raise the package or the app to macOS 15"));
+        assert!(docs.contains("npm run vendor-asr"));
     }
 
     #[test]

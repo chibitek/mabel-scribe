@@ -193,4 +193,34 @@ mod tests {
             "Apple Events exception must name System Events"
         );
     }
+
+    #[test]
+    fn mabel_asr_swift6_fixes_match_cio_report() {
+        let swift = include_str!("../../native/MabelASR/Sources/MabelASR/MabelASR.swift");
+        assert!(
+            swift.contains("typealias mabel_asr_progress_cb"),
+            "C callback must be a Swift typealias — mixed-language header is not visible"
+        );
+        assert!(
+            swift.contains("LastErrorBox"),
+            "lastErrorC must live in a locked Sendable box"
+        );
+        assert!(
+            swift.contains("await manager.isAvailable"),
+            "AsrManager.isAvailable is actor-isolated"
+        );
+        assert!(
+            !swift.contains("$0.text?"),
+            "WhisperKit text is String, not String?"
+        );
+        assert!(swift.contains("[TranscriptionResult]"));
+        let manifest = include_str!("../../native/MabelASR/Package.swift");
+        assert!(
+            !manifest.contains("publicHeadersPath"),
+            "pure Swift target so mabel_asr_progress_cb is defined in Swift"
+        );
+        let docs = include_str!("../../docs/app-store-iap.md");
+        assert!(docs.contains("npm run vendor-asr"));
+        assert!(docs.contains("--product MabelASR"));
+    }
 }

@@ -16,6 +16,8 @@ Parakeet / WhisperKit are **structurally MAS-clean for the transcription path**:
 
 Still open before any store upload:
 
+- **App Store Connect IAP** on app `6809059582`: subscription group + `com.mabel.app.pro.monthly` / `com.mabel.app.pro.yearly` with 30-day (1-month) free intro. See [app-store-iap.md](app-store-iap.md). No free MAS ship until a Mac binary completes purchase / restore / manage.
+- Enable **In-App Purchase** on App ID `com.mabel.app` and regenerate the MAS provisioning profile. This is not a plist key; do not add Apple Pay merchant entitlements. Developer ID `entitlements.plist` stays unchanged.
 - Sandboxed WebKit may still need `allow-jit` (omitted today; add only with an App Review justification).
 - `llama-server` AI cleanup is a sidecar on the DMG. Keep it off or replace it before MAS.
 - `NemoTextProcessing.framework` (FluidAudio) must be re-signed with the same team as the app.
@@ -118,6 +120,8 @@ It does set:
 - `com.apple.security.automation.apple-events` (paste)
 - `com.apple.security.temporary-exception.apple-events` → `com.apple.systemevents` (sandboxed osascript paste)
 - `com.apple.security.files.user-selected.read-write` (manual model file pick)
+
+In-App Purchase is enabled on the App ID / MAS profile, not as a sandbox key in this file. See [app-store-iap.md](app-store-iap.md).
 
 `allow-jit` is omitted. If sandboxed WebKit will not start, add it back with an App Review justification. Do **not** re-add library-validation disable or unsigned-executable-memory to the MAS file.
 

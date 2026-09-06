@@ -55,6 +55,63 @@ fn try_link_native_asr() {
     println!("cargo:rustc-cfg=mabel_native_asr");
 }
 
+fn try_link_native_storekit() {
+    println!("cargo:rerun-if-changed=../native/MabelStoreKit/Sources/MabelStoreKit/MabelStoreKit.swift");
+    println!("cargo:rerun-if-changed=../native/MabelStoreKit/Package.swift");
+    println!("cargo:rerun-if-changed=../scripts/build-mabel-storekit.sh");
+    println!("cargo:rerun-if-env-changed=MABEL_SKIP_NATIVE_STOREKIT");
+    println!("cargo:rustc-check-cfg=cfg(mabel_native_storekit)");
+
+    if std::env::var("CARGO_CFG_TARGET_OS").ok().as_deref() != Some("macos") {
+        return;
+    }
+    if std::env::var("MABEL_SKIP_NATIVE_STOREKIT").ok().as_deref() == Some("1") {
+        println!("cargo:warning=MabelStoreKit skipped (MABEL_SKIP_NATIVE_STOREKIT=1)");
+        return;
+    }
+
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let script = Path::new(&manifest_dir).join("../scripts/build-mabel-storekit.sh");
+    let status = Command::new("bash").arg(&script).status();
+    match status {
+        Ok(s) if s.success() => {}
+        Ok(s) => {
+            panic!(
+                "MabelStoreKit Swift dylib failed (exit {}). \
+                 On Apple Silicon / Xcode 16: \
+                 MACOSX_DEPLOYMENT_TARGET=14.0 xcrun swift build -c release --arch arm64 \
+                 --product MabelStoreKit --package-path native/MabelStoreKit \
+                 && npm run vendor-storekit. \
+                 Do not keep going — a 1.4.0 binary without this dylib is the wrong prove binary. \
+                 Set MABEL_SKIP_NATIVE_STOREKIT=1 only if you intend fail-closed Free.",
+                s.code().unwrap_or(-1)
+            );
+        }
+        Err(e) => {
+            panic!("could not run build-mabel-storekit.sh: {e}");
+        }
+    }
+
+    let dylib = Path::new(&manifest_dir).join("native-storekit/libMabelStoreKit.dylib");
+    if !dylib.exists() {
+        panic!(
+            "libMabelStoreKit.dylib not staged at {}. \
+             Run: npm run vendor-storekit",
+            dylib.display()
+        );
+    }
+
+    let search = dylib.parent().unwrap();
+    println!("cargo:rustc-link-search=native={}", search.display());
+    println!("cargo:rustc-link-arg=-Wl,-rpath,{}", search.display());
+    println!("cargo:rustc-link-arg=-Wl,-rpath,@executable_path/../Frameworks");
+    println!("cargo:rustc-link-lib=dylib=MabelStoreKit");
+    println!("cargo:rustc-link-lib=framework=Foundation");
+    println!("cargo:rustc-link-lib=framework=StoreKit");
+    println!("cargo:rustc-link-lib=framework=AppKit");
+    println!("cargo:rustc-cfg=mabel_native_storekit");
+}
+
 fn main() {
     let hash = Command::new("git")
         .args(["rev-parse", "--short=7", "HEAD"])
@@ -79,6 +136,7 @@ fn main() {
 
     compile_mic_permission();
     try_link_native_asr();
+    try_link_native_storekit();
     tauri_build::build()
 }
 

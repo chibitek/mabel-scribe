@@ -10,7 +10,8 @@
       "signingIdentity": "Apple Distribution: Chibitek Labs (TEAMID)",
       "hardenedRuntime": true,
       "frameworks": [
-        "native-asr/libMabelASR.dylib"
+        "native-asr/libMabelASR.dylib",
+        "native-storekit/libMabelStoreKit.dylib"
       ]
     }
   }

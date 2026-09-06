@@ -1,4 +1,4 @@
-//! Menu-bar extra: clipboard history + Polish + Dictionary + Snippets + Style + Transforms + Scratchpad + Settings.
+//! Menu-bar extra: clipboard history + Polish + Dictionary + Snippets + Style + Transforms + Scratchpad + Insights + Settings.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -92,11 +92,13 @@ fn build_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, String> 
         .map_err(|e| e.to_string())?;
     let scratchpad = MenuItem::with_id(app, "scratchpad", "Scratchpad…", true, None::<&str>)
         .map_err(|e| e.to_string())?;
+    let insights = MenuItem::with_id(app, "insights", "Insights…", true, None::<&str>)
+        .map_err(|e| e.to_string())?;
     let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)
         .map_err(|e| e.to_string())?;
     let quit = MenuItem::with_id(app, "quit", "Quit Mabel", true, None::<&str>)
         .map_err(|e| e.to_string())?;
-    Menu::with_items(app, &[&history, &polish_menu, &dictionary, &snippets, &style, &transforms, &scratchpad, &settings, &quit])
+    Menu::with_items(app, &[&history, &polish_menu, &dictionary, &snippets, &style, &transforms, &scratchpad, &insights, &settings, &quit])
         .map_err(|e| e.to_string())
 }
 
@@ -183,6 +185,10 @@ pub fn install_tray(app: &AppHandle) -> Result<(), String> {
             "scratchpad" => {
                 show_main_window(app);
                 let _ = app.emit("open-scratchpad", ());
+            }
+            "insights" => {
+                show_main_window(app);
+                let _ = app.emit("open-insights", ());
             }
             "settings" => show_main_window(app),
             "quit" => app.exit(0),

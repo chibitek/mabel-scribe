@@ -662,6 +662,13 @@ mod tests {
             "BREAKS IF: Scratchpad not folded into Sign-on BOUND"
         );
         assert!(connectors.contains("enforcer_bound_scratchpad_v1_suite_b6530197"));
+        assert!(
+            connectors.contains("Insights requires Stiki + StoreKit"),
+            "BREAKS IF: Insights not folded into Sign-on BOUND"
+        );
+        assert!(connectors.contains("enforcer_bound_insights_v1_suite_b6530197"));
+        assert!(connectors.contains("Insights NOT MCP source/sink v1"));
+        assert!(connectors.contains("Insights v1 CONFIRMED local-only"));
         let stiki = include_str!("stiki.rs");
         assert!(stiki.contains("SESSION_FILE"));
         assert!(stiki.contains("sign_in"));
@@ -745,6 +752,32 @@ mod tests {
         assert!(pad.contains("Free dictate no Stiki"));
         assert!(pad.contains("fail-closed"));
         assert!(pad.contains("enforcer_bound_scratchpad_v1_suite_b6530197"));
+        let ins = include_str!("insights.rs");
+        assert!(ins.contains("ENFORCER_BOUND"));
+        assert!(ins.contains("b6530197"));
+        assert!(ins.contains("StoreKit Pro + Stiki dual gate"));
+        assert!(ins.contains("CONFIRMED Suite b6530197"));
+        assert!(ins.contains("local-only stats / usage insights on this Mac"));
+        assert!(ins.contains("dictation counts, streaks, time-saved style"));
+        assert!(ins.contains("Insights NOT MCP source/sink v1"));
+        assert!(ins.contains("Insights v1 CONFIRMED local-only"));
+        assert!(ins.contains("no cloud/team/Nexus/Mochii auto-push"));
+        assert!(ins.contains("no cloud sync"));
+        assert!(ins.contains("no team/company dashboards"));
+        assert!(ins.contains("no Nexus/SIEM write"));
+        assert!(ins.contains("no third-party analytics vendor"));
+        assert!(ins.contains("sign-out locks Insights"));
+        assert!(ins.contains("distinct Scratchpad/Dictionary/Snippets/Style/Transforms/Polish/Clipboard"));
+        assert!(ins.contains("no HIPAA/BAA"));
+        assert!(ins.contains("Free dictate no Stiki"));
+        assert!(ins.contains("fail-closed"));
+        assert!(ins.contains("enforcer_bound_insights_v1_suite_b6530197"));
+        assert!(ins.contains("BREAKS IF: without dual gate"));
+        assert!(ins.contains("BREAKS IF: cloud analytics"));
+        assert!(ins.contains("BREAKS IF: cross-device sync"));
+        assert!(ins.contains("BREAKS IF: Nexus write"));
+        assert!(ins.contains("BREAKS IF: Free dictate gated"));
+        assert!(ins.contains("BREAKS IF: HIPAA"));
     }
 
     #[cfg(unix)]

@@ -24,7 +24,7 @@ A native **iOS** sibling — **Mabel** (`com.mabel.ios`, v0.1.0) — lives in [`
 - Toggle mode (press to start, press to stop) or push-to-talk (hold while speaking).
 - Single-paste dictation: record, transcribe once when you stop, then paste a clean result. Live chunked dictation is paused while the streaming worker is being stabilized.
 - Floating overlay shows a live waveform while recording. It floats over fullscreen apps and never steals focus from the app you are typing into.
-- Local stats on usage: words per minute, total words dictated, daily streak. Counts only, never content.
+- Local Insights (Pro + Stiki): dictation counts, streaks, and time saved on this Mac. Counts only, never content. Free dictation still works without an account.
 - Voice command: end a dictation with "press enter" / "new line" and Mabel submits after pasting.
 
 ## Privacy by default

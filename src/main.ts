@@ -45,6 +45,7 @@ interface StatsSummary {
   total_words: number;
   wpm: number;
   last30: number[];
+  time_saved_minutes: number;
 }
 
 interface MicDevice {
@@ -332,6 +333,14 @@ function openScratchpad() {
   document.querySelector('.view[data-view="scratchpad"]')?.classList.add("active");
 }
 
+function openInsights() {
+  modal.classList.add("hidden");
+  document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
+  document.querySelectorAll<HTMLElement>(".view").forEach((s) => s.classList.remove("active"));
+  document.querySelector('.nav-item[data-view="insights"]')?.classList.add("active");
+  document.querySelector('.view[data-view="insights"]')?.classList.add("active");
+}
+
 function openAccount(e?: Event) {
   e?.preventDefault();
   openSettingsPane("account");
@@ -531,8 +540,10 @@ updateInstallBtn.addEventListener("click", () => {
 
 const insWpm = document.getElementById("ins-wpm");
 const insTotalWords = document.getElementById("ins-total-words");
+const insToday = document.getElementById("ins-today");
 const insTotal = document.getElementById("ins-total");
 const insStreak = document.getElementById("ins-streak");
+const insTimeSaved = document.getElementById("ins-time-saved");
 const streakGrid = document.getElementById("streak-grid");
 const statToday = document.getElementById("stat-today");
 const statTotal = document.getElementById("stat-total");
@@ -546,27 +557,35 @@ function resetStatsDisplay() {
   if (statToday) statToday.textContent = "0";
   if (statTotal) statTotal.textContent = "0";
   if (statStreak) statStreak.textContent = "0";
+  if (insToday) insToday.textContent = "0";
   if (insWpm) insWpm.textContent = "0";
   if (insTotalWords) insTotalWords.textContent = "0";
   if (insTotal) insTotal.textContent = "0";
   if (insStreak) insStreak.textContent = "0";
+  if (insTimeSaved) insTimeSaved.textContent = "0";
   if (streakGrid) streakGrid.innerHTML = "";
 }
 
+function renderStatsSummary(s: StatsSummary) {
+  if (statToday) statToday.textContent = fmt(s.today);
+  if (statTotal) statTotal.textContent = fmt(s.total);
+  if (statStreak) statStreak.textContent = fmt(s.streak);
+  if (insToday) insToday.textContent = fmt(s.today);
+  if (insWpm) insWpm.textContent = fmt(s.wpm);
+  if (insTotalWords) insTotalWords.textContent = fmt(s.total_words);
+  if (insTotal) insTotal.textContent = fmt(s.total);
+  if (insStreak) insStreak.textContent = fmt(s.streak);
+  if (insTimeSaved) insTimeSaved.textContent = fmt(s.time_saved_minutes);
+}
+
 async function loadStats() {
-  if (!proUnlocked()) {
+  if (!insightsSurfaceReady()) {
     resetStatsDisplay();
     return;
   }
   try {
     const s = await invoke<StatsSummary>("get_stats");
-    if (statToday) statToday.textContent = fmt(s.today);
-    if (statTotal) statTotal.textContent = fmt(s.total);
-    if (statStreak) statStreak.textContent = fmt(s.streak);
-    if (insWpm) insWpm.textContent = fmt(s.wpm);
-    if (insTotalWords) insTotalWords.textContent = fmt(s.total_words);
-    if (insTotal) insTotal.textContent = fmt(s.total);
-    if (insStreak) insStreak.textContent = fmt(s.streak);
+    renderStatsSummary(s);
     if (streakGrid) {
       const max = Math.max(1, ...s.last30);
       streakGrid.innerHTML = "";
@@ -902,6 +921,14 @@ $("scratchpad-stiki").addEventListener("click", () => {
   void signInWithStiki();
 });
 $("scratch-pane-stiki").addEventListener("click", () => {
+  void signInWithStiki();
+});
+$("insights-open").addEventListener("click", openInsights);
+$("insights-activate").addEventListener("click", openPlans);
+$("insights-stiki").addEventListener("click", () => {
+  void signInWithStiki();
+});
+$("insights-pane-stiki").addEventListener("click", () => {
   void signInWithStiki();
 });
 
@@ -1485,6 +1512,10 @@ function scratchpadSurfaceReady() {
   return proSurfacesUnlocked();
 }
 
+function insightsSurfaceReady() {
+  return proSurfacesUnlocked();
+}
+
 function proUnlocked(): boolean {
   return proSurfacesUnlocked();
 }
@@ -1635,6 +1666,33 @@ function applyScratchpadGate() {
   }
 }
 
+function applyInsightsGate() {
+  const ready = insightsSurfaceReady();
+  const entitled = !!currentEntitlement.entitled;
+  const signedIn = stikiLive();
+
+  document.querySelectorAll<HTMLElement>("[data-insights-gate='lock']").forEach((el) => {
+    el.classList.toggle("hidden", ready);
+  });
+  document.querySelectorAll<HTMLElement>("[data-insights-gate='unlock']").forEach((el) => {
+    el.classList.toggle("hidden", !ready);
+  });
+
+  $("insights-open").classList.toggle("hidden", !ready);
+  $("insights-activate").classList.toggle("hidden", entitled);
+  $("insights-stiki").classList.toggle("hidden", signedIn);
+  $("insights-pane-activate").classList.toggle("hidden", entitled);
+  $("insights-pane-stiki").classList.toggle("hidden", signedIn);
+
+  const insNav = document.querySelector<HTMLElement>('.nav-item[data-view="insights"]');
+  if (insNav) {
+    insNav.classList.toggle("locked", !ready);
+    insNav.toggleAttribute("data-pro", true);
+    const lock = insNav.querySelector<HTMLElement>(".lock-pill");
+    if (lock) lock.style.display = ready ? "none" : "";
+  }
+}
+
 function askProUnlock(err?: string) {
   if (err && String(err).includes("Sign in with Stiki")) {
     openAccount();
@@ -1655,11 +1713,11 @@ function applyProLocks() {
     if (lock) (lock as HTMLElement).style.display = unlocked ? "none" : "";
   });
   document.querySelectorAll(".pro-lock").forEach((el) => {
-    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate || (el as HTMLElement).dataset.xfGate || (el as HTMLElement).dataset.scratchGate) return;
+    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate || (el as HTMLElement).dataset.xfGate || (el as HTMLElement).dataset.scratchGate || (el as HTMLElement).dataset.insightsGate) return;
     el.classList.toggle("hidden", unlocked);
   });
   document.querySelectorAll(".pro-unlock").forEach((el) => {
-    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate || (el as HTMLElement).dataset.xfGate || (el as HTMLElement).dataset.scratchGate) return;
+    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate || (el as HTMLElement).dataset.xfGate || (el as HTMLElement).dataset.scratchGate || (el as HTMLElement).dataset.insightsGate) return;
     el.classList.toggle("hidden", !unlocked);
   });
   applyDictionaryGate();
@@ -1667,6 +1725,7 @@ function applyProLocks() {
   applyStyleGate();
   applyTransformsGate();
   applyScratchpadGate();
+  applyInsightsGate();
   if (unlocked) loadStats();
   else resetStatsDisplay();
 }
@@ -1951,6 +2010,9 @@ listen("open-transforms", () => {
 listen("open-scratchpad", () => {
   openScratchpad();
 });
+listen("open-insights", () => {
+  openInsights();
+});
 listen("open-account", () => {
   openAccount();
 });
@@ -2184,6 +2246,38 @@ async function loadScratchpadSurface() {
   showScratchpadError("");
 }
 
+async function loadInsightsSurface() {
+  if (!insightsSurfaceReady()) {
+    resetStatsDisplay();
+    return;
+  }
+  try {
+    const s = await invoke<StatsSummary>("insights_get");
+    renderStatsSummary(s);
+    if (streakGrid) {
+      const max = Math.max(1, ...s.last30);
+      streakGrid.innerHTML = "";
+      s.last30.forEach((count) => {
+        const cell = document.createElement("span");
+        cell.className = "streak-cell";
+        if (count === 0) cell.classList.add("l0");
+        else {
+          const pct = count / max;
+          if (pct > 0.75) cell.classList.add("l4");
+          else if (pct > 0.5) cell.classList.add("l3");
+          else if (pct > 0.25) cell.classList.add("l2");
+          else cell.classList.add("l1");
+        }
+        cell.title = `${count} dictation${count === 1 ? "" : "s"}`;
+        streakGrid.appendChild(cell);
+      });
+    }
+  } catch (e) {
+    console.error("insights_get failed:", e);
+    resetStatsDisplay();
+  }
+}
+
 async function saveScratchpad() {
   if (!scratchpadSurfaceReady()) {
     if (!currentEntitlement.entitled) openPlans();
@@ -2223,6 +2317,7 @@ async function loadProSurfaces() {
   await loadStyleSurface();
   await loadTransformsSurface();
   await loadScratchpadSurface();
+  await loadInsightsSurface();
 
   try {
     const team = await invoke<TeamState>("teams_get");

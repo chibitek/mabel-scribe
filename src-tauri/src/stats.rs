@@ -34,7 +34,10 @@ pub struct Stats {
     pub total_seconds: f64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+/// Assumed typing speed for the local time-saved estimate. Never a vendor event.
+pub const TYPING_WPM: f64 = 40.0;
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct StatsSummary {
     pub today: u64,
     pub total: u64,
@@ -44,6 +47,30 @@ pub struct StatsSummary {
     pub wpm: u32,
     /// Last 30 days, oldest → newest. Each entry is the dictation count.
     pub last30: Vec<u32>,
+    /// Minutes not spent typing, assuming [`TYPING_WPM`]. Counts only. Local file.
+    pub time_saved_minutes: u64,
+}
+
+impl StatsSummary {
+    pub fn empty() -> Self {
+        Self {
+            today: 0,
+            total: 0,
+            streak: 0,
+            total_words: 0,
+            wpm: 0,
+            last30: vec![0; 30],
+            time_saved_minutes: 0,
+        }
+    }
+}
+
+pub fn time_saved_minutes(total_words: u64) -> u64 {
+    if total_words == 0 {
+        0
+    } else {
+        (total_words as f64 / TYPING_WPM).round() as u64
+    }
 }
 
 pub struct StatsStore {
@@ -115,6 +142,7 @@ impl StatsStore {
             total_words: s.total_words,
             wpm,
             last30,
+            time_saved_minutes: time_saved_minutes(s.total_words),
         }
     }
 }
@@ -213,7 +241,19 @@ mod tests {
         let (store, err) = StatsStore::load_with_status(&dir);
         assert!(err.is_none());
         assert_eq!(store.summary().total, 4);
+        assert_eq!(store.summary().time_saved_minutes, 1);
         assert_eq!(fs::read_to_string(&path).unwrap(), raw);
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn time_saved_is_local_typing_estimate() {
+        assert_eq!(time_saved_minutes(0), 0);
+        assert_eq!(time_saved_minutes(40), 1);
+        assert_eq!(time_saved_minutes(120), 3);
+        let empty = StatsSummary::empty();
+        assert_eq!(empty.total, 0);
+        assert_eq!(empty.time_saved_minutes, 0);
+        assert_eq!(empty.last30.len(), 30);
     }
 }

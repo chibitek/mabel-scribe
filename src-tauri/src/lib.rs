@@ -25,6 +25,7 @@ pub mod storage;
 pub mod teams;
 pub mod pro_features;
 pub mod dictionary;
+pub mod snippets;
 pub mod clipboard_history;
 #[cfg(target_os = "macos")]
 pub mod pasteboard_macos;

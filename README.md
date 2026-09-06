@@ -299,8 +299,9 @@ src-tauri/
     lib.rs                 Module roots + version constants
     storekit.rs            StoreKit 2 entitlement (fail-closed)
     teams.rs               On-device org / seats / invites (Pro-gated)
-    pro_features.rs        Snippets / style / transforms / scratchpad stores
+    pro_features.rs        Style / transforms / scratchpad stores (+ snippet JSON I/O)
     dictionary.rs          Pro + Stiki local-first terms (ASR prompt + cleanup hints)
+    snippets.rs            Pro + Stiki local-first trigger → expansion (dictation)
     stiki_session.rs       Local Stiki sign-on (Pro surfaces; not cloud ACL)
     settings.rs            Persisted user prefs (config.json)
     audio.rs               cpal recorder, ring buffer, RMS metering

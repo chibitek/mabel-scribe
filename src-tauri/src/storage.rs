@@ -655,6 +655,16 @@ mod tests {
         assert!(dict.contains("no HIPAA/BAA"));
         assert!(dict.contains("Scratchpad/Insights local-only default"));
         assert!(dict.contains("fail closed if ACL missing"));
+        let snip = include_str!("snippets.rs");
+        assert!(snip.contains("ENFORCER_BOUND"));
+        assert!(snip.contains("b6530197"));
+        assert!(snip.contains("StoreKit Pro + Stiki dual gate"));
+        assert!(snip.contains("no Nexus/SIEM write"));
+        assert!(snip.contains("no auto-promote"));
+        assert!(snip.contains("no HIPAA/BAA"));
+        assert!(snip.contains("Free dictate no Stiki"));
+        assert!(snip.contains("distinct from Polish/Clipboard/Dictionary stores"));
+        assert!(snip.contains("fail-closed"));
     }
 
     #[cfg(unix)]

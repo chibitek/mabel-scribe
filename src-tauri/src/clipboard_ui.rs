@@ -1,4 +1,4 @@
-//! Menu-bar extra: clipboard history + Polish + Dictionary + Settings.
+//! Menu-bar extra: clipboard history + Polish + Dictionary + Snippets + Settings.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -81,11 +81,13 @@ fn build_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, String> 
     .map_err(|e| e.to_string())?;
     let dictionary = MenuItem::with_id(app, "dictionary", "Dictionary…", true, None::<&str>)
         .map_err(|e| e.to_string())?;
+    let snippets = MenuItem::with_id(app, "snippets", "Snippets…", true, None::<&str>)
+        .map_err(|e| e.to_string())?;
     let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)
         .map_err(|e| e.to_string())?;
     let quit = MenuItem::with_id(app, "quit", "Quit Mabel", true, None::<&str>)
         .map_err(|e| e.to_string())?;
-    Menu::with_items(app, &[&history, &polish_menu, &dictionary, &settings, &quit])
+    Menu::with_items(app, &[&history, &polish_menu, &dictionary, &snippets, &settings, &quit])
         .map_err(|e| e.to_string())
 }
 
@@ -153,6 +155,10 @@ pub fn install_tray(app: &AppHandle) -> Result<(), String> {
             "dictionary" => {
                 show_main_window(app);
                 let _ = app.emit("open-dictionary", ());
+            }
+            "snippets" => {
+                show_main_window(app);
+                let _ = app.emit("open-snippets", ());
             }
             "settings" => show_main_window(app),
             "quit" => app.exit(0),

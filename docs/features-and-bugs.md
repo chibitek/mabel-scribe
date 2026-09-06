@@ -111,8 +111,8 @@ Both Wispr and Glaido run an LLM cleanup after transcription: strip filler ("um"
 ### F2. Custom dictionary / personal vocabulary — SHIPPED as Pro (local-first)
 Personal terms / jargon. Sidebar Dictionary is first in the Pro catalog (Dictionary → Snippets → Style → Transforms → Scratchpad → Insights). Pro surface: StoreKit entitlement AND Stiki session. Free is locked with Activate Pro / Sign in with Stiki. Signed-in Pro add/edit/delete writes `config.json` on this Mac. Terms feed the existing whisper.cpp `--prompt` hook and local Gemma spelling hints. Cloud / team share is not shipped (stub fail-closed until Enforcer BOUND). Stiki session is not folder ACL.
 
-### F3. Snippets (voice shortcuts)
-"insert my calendar link" → expands to a stored URL. "standard reply" → full email template. Dictionary of trigger phrase → replacement string, applied during the cleanup pass.
+### F3. Snippets (voice shortcuts) — SHIPPED as Pro (local-first)
+Personal trigger → expansion. Sidebar Snippets is second in the Pro catalog (Dictionary → Snippets → Style → Transforms → Scratchpad → Insights). Pro surface: StoreKit entitlement AND Stiki session. Free is locked with Activate Pro / Sign in with Stiki. Signed-in Pro add/edit/delete writes `snippets.json` on this Mac. Spoken triggers expand during cleanup / dictation paste. Distinct from Dictionary (spelling), Polish (tone), and Clipboard History. Cloud / team share is not shipped (stub fail-closed until Enforcer BOUND). Stiki session is not folder ACL.
 
 ### F4. Larger model option — SHIPPED in v1.2.0
 Whisper Large v3 Q5 (`ggml-large-v3-q5_0.bin`, ~1.1 GB) is the recommended default for new Apple Silicon installs. Small and Medium remain fallbacks. No official English-only large-v3 Q5 exists.

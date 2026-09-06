@@ -295,6 +295,7 @@ impl Recorder {
             )
             .await;
             let cleaned = crate::dictionary::apply_replacements(&cleaned, &settings.dictionary);
+            let cleaned = crate::snippets::apply_expansions_for_dir(&cleaned, app_dir);
 
             let (to_paste, press_enter) =
                 extract_press_enter_command(&cleaned, settings.press_enter_command);

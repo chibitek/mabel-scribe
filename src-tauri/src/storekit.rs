@@ -112,13 +112,22 @@ pub fn entitlement_from_json(raw: &str) -> Entitlement {
     }
 }
 
+/// Pro surfaces need StoreKit **and** a live Stiki session.
+/// Offer-code redeem does not call this — the sheet stays ungated.
 pub fn require_pro() -> Result<Entitlement, String> {
     let entitlement = current_entitlement();
-    if entitlement.entitled {
-        Ok(entitlement)
-    } else {
-        Err("Mabel Pro requires an active App Store subscription (the 30-day trial counts).".into())
+    if !entitlement.entitled {
+        return Err(
+            "Mabel Pro requires an active App Store subscription (the 30-day trial counts)."
+                .into(),
+        );
     }
+    crate::stiki_session::require_session()?;
+    Ok(entitlement)
+}
+
+pub fn pro_surfaces_unlocked() -> bool {
+    current_entitlement().entitled && crate::stiki_session::is_live()
 }
 
 pub fn attach(app: tauri::AppHandle) {
@@ -506,6 +515,37 @@ mod tests {
         assert!(!current_entitlement().entitled);
         assert!(load_products().is_err());
         assert!(require_pro().is_err());
+        assert!(!pro_surfaces_unlocked());
+    }
+
+    #[test]
+    fn require_pro_needs_stiki_session_too() {
+        assert!(!crate::stiki_session::is_live());
+        assert!(
+            !pro_surfaces_unlocked(),
+            "StoreKit alone must not unlock Pro surfaces"
+        );
+        let err = require_pro().unwrap_err();
+        assert!(
+            err.contains("subscription") || err.contains("Stiki"),
+            "fail closed on StoreKit or Stiki: {err}"
+        );
+    }
+
+    #[test]
+    fn redeem_is_not_gated_on_stiki() {
+        let rust = include_str!("storekit.rs");
+        let start = rust
+            .find("pub fn redeem_offer_code()")
+            .expect("redeem_offer_code");
+        let chunk = &rust[start..start + 500];
+        assert!(
+            !chunk.contains("stiki"),
+            "Have a code? must not require a Stiki session to open the sheet"
+        );
+        let err = redeem_offer_code().unwrap_err();
+        assert!(!err.contains("Stiki"), "redeem error must not be a Stiki gate: {err}");
+        assert!(!current_entitlement().entitled);
     }
 
     #[test]
@@ -534,6 +574,8 @@ mod tests {
         assert!(docs.contains("Have a code?"));
         assert!(docs.contains("offerCodeRedemption"));
         assert!(docs.contains("Offer codes need a newer macOS"));
+        assert!(docs.contains("Stiki"));
+        assert!(docs.contains("StoreKit alone"));
     }
 
     #[test]
@@ -717,5 +759,15 @@ mod tests {
         assert!(ts.contains("storekit_redeem_offer_code"));
         assert!(ts.contains("Offer codes need a newer macOS"));
         assert!(!ts.contains("chibiteklabs.com/redeem"));
+        assert!(ts.contains("stiki_session"));
+        assert!(ts.contains("proSurfacesUnlocked"));
+        assert!(ts.contains("StoreKit alone is not enough"));
+        let rust = include_str!("storekit.rs");
+        assert!(
+            rust.contains("stiki_session::require_session"),
+            "Pro surface unlock must AND a live Stiki session"
+        );
+        let docs = include_str!("../../docs/app-store-iap.md");
+        assert!(docs.contains("Stiki"));
     }
 }

@@ -7,7 +7,7 @@ The in-app first-launch popup reads from this file. Every Mabel release MUST add
 ### New
 - Polish (Pro): toggle default Off, modes Off / Casual / Professional / Polite. Free is locked with an in-app upsell. After ASR, local Gemma autocorrects and lightly rewords — never invents facts, never expands meaning, never leaves this Mac. Not Nexus or company memory; Coach cannot rewrite dictation. Settings → Engine and the menu-bar Polish submenu. Upgrade stays in Settings → Plans.
 - Mabel Pro is an App Store subscription: monthly and yearly, each with a 30-day free trial. Prices come from the App Store.
-- Activate Pro, Restore Purchases, Manage Subscriptions, and Have a code? live in Settings → Plans and Billing. There is no website upgrade or redeem. Offer codes open Apple’s system sheet (macOS 15+); cancel or an unverified code stays Free.
+- Activate Pro, Restore Purchases, Manage Subscriptions, and Have a code? live in Settings → Plans and Billing. There is no website upgrade or redeem. Offer codes open Apple’s system sheet (macOS 15+); cancel or an unverified code stays Free. Pro surfaces also need a Stiki sign-on — StoreKit alone is not enough. The redeem sheet does not require Stiki.
 - Pro unlocks teams (organization, seats, local invites) plus snippets, style, transforms, and scratchpad. Free stays personal-only.
 - Transcribe a local WAV, MP3, OGG, or FLAC file to TXT, JSON, SRT, or VTT. Processing stays on this Mac (whisper.cpp sidecar / Developer ID).
 - The whisper.cpp path can download a small Silero VAD model and drop silence before decode, which cuts empty-audio hallucinations.

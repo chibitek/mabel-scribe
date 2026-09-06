@@ -19,6 +19,7 @@ use mabel_lib::system_ui;
 use mabel_lib::local_engine;
 use mabel_lib::pro_features;
 use mabel_lib::storage;
+use mabel_lib::stiki_session;
 use mabel_lib::storekit;
 use mabel_lib::teams;
 use mabel_lib::transcribe_local;
@@ -966,6 +967,7 @@ fn main() {
             storekit::storekit_manage_subscriptions,
             storekit::storekit_redeem_offer_code,
             storekit::storekit_offer_codes_supported,
+            stiki_session::stiki_session,
             teams_get,
             teams_set_org,
             teams_add_seat,
@@ -989,6 +991,7 @@ fn main() {
         ])
         .setup(move |app| {
             storekit::attach(app.handle().clone());
+            stiki_session::attach(app_dir.clone());
             if let Some(msg) = app.state::<AppState>().storage_status.visible_error() {
                 let _ = app.emit("storage-status-error", msg);
             }

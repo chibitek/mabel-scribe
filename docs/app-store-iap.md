@@ -92,7 +92,7 @@ xcode-select -p   # must contain Xcode.app
 xcrun swift --version   # Swift 6 / Xcode 16+
 ```
 
-Exact compile command:
+Exact compile command. **Deployment target stays macOS 14.0** (same as `Package.swift` `.macOS(.v14)`). Do **not** raise the package or the app to macOS 15. `OfferType.winBack` and `AppStore.showManageSubscriptions(in:)` are macOS 15 / iOS-scene APIs and are not referenced; Manage Subscriptions opens Apple’s account URL instead.
 
 ```bash
 export MACOSX_DEPLOYMENT_TARGET=14.0

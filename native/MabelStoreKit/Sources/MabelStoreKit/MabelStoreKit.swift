@@ -131,10 +131,12 @@ private func introOfferDict(_ offer: Product.SubscriptionOffer) -> [String: Any]
     default: break
     }
     var offerType = "unknown"
+    // Do not name the macOS 15 win-back OfferType case here.
+    // `swift build` for macosx14.0 fails even when the rest of StoreKit 2
+    // is fine. Intro / promo cover the locked Pro catalog.
     switch offer.type {
     case .introductory: offerType = "introductory"
     case .promotional: offerType = "promotional"
-    case .winBack: offerType = "winBack"
     default: break
     }
     let period = periodLabel(offer.period)
@@ -251,15 +253,6 @@ private func entitlementPayload() async -> [String: Any] {
         "expirationDate": iso(best.expiration) as Any,
         "environment": best.environment,
     ]
-}
-
-@MainActor
-private func showManageSubscriptions() async throws {
-    if let window = NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first {
-        try await AppStore.showManageSubscriptions(in: window)
-        return
-    }
-    throw StoreBridgeError.failed("No window available for subscription management")
 }
 
 private func notifyUpdate() {
@@ -397,20 +390,20 @@ public func mabel_storekit_restore() -> Int32 {
 @_cdecl("mabel_storekit_manage")
 public func mabel_storekit_manage() -> Int32 {
     clearError()
-    do {
-        try runBlocking { () -> Void in
-            try await showManageSubscriptions()
-        }
+    // The StoreKit manage-subscriptions sheet is UIWindowScene-based and
+    // is not in the macOS 14 SDK (compile error on macosx14.0). Native
+    // Mac opens Apple's account subscriptions page instead — not a
+    // marketing / upgrade URL.
+    if let url = URL(string: "macappstore://apps.apple.com/account/subscriptions") {
+        NSWorkspace.shared.open(url)
         return 0
-    } catch {
-        // Apple's subscription management page — not a marketing / upgrade URL.
-        if let url = URL(string: "macappstore://apps.apple.com/account/subscriptions") {
-            NSWorkspace.shared.open(url)
-            return 0
-        }
-        setError(error.localizedDescription)
-        return -1
     }
+    if let url = URL(string: "https://apps.apple.com/account/subscriptions") {
+        NSWorkspace.shared.open(url)
+        return 0
+    }
+    setError("Could not open App Store subscription management")
+    return -1
 }
 
 @_cdecl("mabel_storekit_free")

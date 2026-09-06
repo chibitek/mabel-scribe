@@ -505,6 +505,24 @@ mod tests {
         assert!(script.contains("Mabel-StoreKit"));
         assert!(script.contains("1.4.0"));
         assert!(script.contains("libMabelStoreKit.dylib"));
+        assert!(docs.contains("MACOSX_DEPLOYMENT_TARGET=14.0"));
+        assert!(docs.contains("Do **not** raise the package or the app to macOS 15"));
+    }
+
+    #[test]
+    fn storekit_swift_compiles_for_macosx14() {
+        let swift = include_str!("../../native/MabelStoreKit/Sources/MabelStoreKit/MabelStoreKit.swift");
+        assert!(
+            !swift.contains("case .winBack"),
+            "OfferType.winBack is macOS 15+ and breaks swift build for macosx14.0"
+        );
+        assert!(
+            !swift.contains("showManageSubscriptions"),
+            "AppStore.showManageSubscriptions is not in the macOS 14 SDK"
+        );
+        assert!(swift.contains("macappstore://apps.apple.com/account/subscriptions"));
+        assert!(swift.contains(PRODUCT_MONTHLY));
+        assert!(swift.contains(PRODUCT_YEARLY));
     }
 
     #[test]

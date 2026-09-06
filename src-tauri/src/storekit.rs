@@ -747,6 +747,32 @@ mod tests {
     }
 
     #[test]
+    fn checked_in_signing_is_placeholder() {
+        let conf = include_str!("../tauri.conf.json");
+        let mas = include_str!("../tauri.mas.conf.json");
+        let release = include_str!("../../scripts/release-macos.sh");
+        let sot = include_str!("../../docs/oss-source-of-truth.md");
+        let gitignore = include_str!("../../.gitignore");
+        assert!(conf.contains("Your Name (TEAMID)"));
+        assert!(conf.contains("\"providerShortName\": \"TEAMID\""));
+        assert!(!conf.contains("Erick Grau"));
+        assert!(mas.contains("Apple Distribution: Chibitek Labs (TEAMID)"));
+        assert!(release.contains("MABEL_SIGNING_IDENTITY"));
+        assert!(
+            !release.contains("Erick Grau"),
+            "release-macos.sh must not default to a real Developer ID identity"
+        );
+        assert!(sot.contains("erickgrau/Mabel"));
+        assert!(sot.contains("chibitek/mabel-scribe"));
+        assert!(sot.contains("1.4.0"));
+        assert!(gitignore.contains(".env"));
+        assert!(gitignore.contains("!.env.example"));
+        assert!(gitignore.contains("*.p8"));
+        assert!(gitignore.contains("*.p12"));
+        assert!(gitignore.contains("src-tauri/tauri.local.conf.json"));
+    }
+
+    #[test]
     fn frontend_does_not_open_marketing_upgrade() {
         let ts = include_str!("../../src/main.ts");
         let html = include_str!("../../index.html");

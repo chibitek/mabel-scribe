@@ -45,3 +45,4 @@ tauri-plugin-dialog = "2.7.1"
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3", features = ["NSWindow", "NSResponder"] }
 tauri-nspanel = { git = "https://github.com/ahkohd/tauri-nspanel", branch = "v2" }
+tauri = { version = "2", features = ["macos-private-api", "tray-icon"] }

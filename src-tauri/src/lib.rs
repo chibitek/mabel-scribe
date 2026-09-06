@@ -21,6 +21,9 @@ pub mod debug_log;
 pub mod storekit;
 pub mod teams;
 pub mod pro_features;
+pub mod clipboard_history;
+#[cfg(target_os = "macos")]
+pub mod pasteboard_macos;
 
 pub const MABEL_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub const MABEL_GIT_HASH: &str = env!("MABEL_GIT_HASH");

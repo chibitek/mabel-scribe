@@ -417,6 +417,11 @@
           </div>
 
           <div class="card help-card">
+            <h2 class="help-h">Clipboard History</h2>
+            <p>Mac only, off by default. Open <b>Clipboard History…</b> from the menu-bar extra, or Settings → Privacy. When on, Mabel keeps recent <b>text</b> copies in Application Support on this Mac. Free keeps the last 25 items; Pro is treated as unlimited with a 10,000-item ceiling. Concealed, transient, auto-generated, and known password-manager pasteboard types are skipped. Turning the feature off wipes the store. Nothing is uploaded.</p>
+          </div>
+
+          <div class="card help-card">
             <h2 class="help-h">Mabel on your desktop (companion)</h2>
             <p>Settings &rarr; System &rarr; <b>Mabel on your desktop</b>. Off by default. When on, Mabel walks across your screen now and then &mdash; she enters from one edge, pauses to sit and blink, then walks off. Adjust her size, how often she visits, and how long each visit lasts. Use <b>Show now</b> to preview, click again to dismiss mid-walk.</p>
           </div>
@@ -847,10 +852,35 @@
 
           <div class="modal-pane" data-pane="privacy">
             <h2 class="pane-title">Privacy</h2>
+            <div class="card pane-card">
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Clipboard History</div>
+                  <div class="row-hint">Off by default. When on, Mabel keeps recent text copies on this Mac only. Menu bar → Clipboard History…. Free keeps the last 25; Pro raises the cap. Passwords and concealed pasteboard items are skipped.</div>
+                </div>
+                <button type="button" id="clipboard-history-toggle" class="switch" role="switch" aria-checked="false" aria-label="Clipboard History">
+                  <span class="switch-thumb"></span>
+                </button>
+              </div>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Clear clipboard history</div>
+                  <div class="row-hint">Wipe stored copies immediately. Turning the feature off also wipes.</div>
+                </div>
+                <button type="button" id="clipboard-history-clear" class="btn-secondary">Clear</button>
+              </div>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Open history</div>
+                  <div class="row-hint">Same panel as the menu-bar item.</div>
+                </div>
+                <button type="button" id="clipboard-history-open" class="btn-secondary">Open</button>
+              </div>
+            </div>
             <div class="card pane-card privacy-card">
               <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">Audio is deleted after transcription</div><div class="row-hint">Recordings are written to a temp file, transcribed, and removed.</div></div></div>
               <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">Transcripts are never logged</div><div class="row-hint">Mabel never writes the text of your dictation to disk or sends it anywhere.</div></div></div>
-              <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">No telemetry, no analytics</div><div class="row-hint">No usage tracking, no phoning home.</div></div></div>
+              <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">No telemetry, no analytics</div><div class="row-hint">No usage tracking, no phoning home. Clipboard History never leaves this Mac.</div></div></div>
               <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">Keys live in the OS Keychain</div><div class="row-hint">Your Groq key, if you provide one, is never written to a config file.</div></div></div>
               <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">Local stats are counts only</div><div class="row-hint">Dictation counts and dates, never content.</div></div></div>
             </div>

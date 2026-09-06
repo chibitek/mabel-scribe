@@ -70,6 +70,10 @@ pub struct Settings {
     /// locally only.
     #[serde(default)]
     pub dictionary: Vec<String>,
+    /// Opt-in Mac clipboard history. Default off. When off, Mabel must not
+    /// poll or read pasteboard contents. Turning off wipes the local store.
+    #[serde(rename = "clipboardHistoryEnabled", default)]
+    pub clipboard_history_enabled: bool,
 }
 
 fn default_streaming() -> bool { false }
@@ -124,6 +128,8 @@ struct DiskSettings {
     whisper_language: String,
     #[serde(default)]
     dictionary: Vec<String>,
+    #[serde(rename = "clipboardHistoryEnabled", default)]
+    clipboard_history_enabled: bool,
 }
 
 impl From<&Settings> for DiskSettings {
@@ -150,6 +156,7 @@ impl From<&Settings> for DiskSettings {
             last_seen_version: s.last_seen_version.clone(),
             whisper_language: s.whisper_language.clone(),
             dictionary: s.dictionary.clone(),
+            clipboard_history_enabled: s.clipboard_history_enabled,
         }
     }
 }
@@ -179,6 +186,7 @@ impl Default for Settings {
             last_seen_version: String::new(),
             whisper_language: "en".to_string(),
             dictionary: Vec::new(),
+            clipboard_history_enabled: false,
         }
     }
 }
@@ -229,6 +237,7 @@ impl Settings {
                         last_seen_version: d.last_seen_version,
                         whisper_language: d.whisper_language,
                         dictionary: d.dictionary,
+                        clipboard_history_enabled: d.clipboard_history_enabled,
                     })
                     .unwrap_or_default();
 
@@ -321,6 +330,23 @@ mod tests {
         assert_eq!(settings.recording_mode, "toggle");
         assert_eq!(settings.hotkey, "CmdOrCtrl+D");
         assert!(!settings.streaming);
+        assert!(
+            !settings.clipboard_history_enabled,
+            "clipboard history is opt-in and must default off"
+        );
+    }
+
+    #[test]
+    fn missing_clipboard_history_field_defaults_off() {
+        let json = r#"{
+            "microphone": "default",
+            "engine": "local",
+            "whisperModel": "large-v3",
+            "recordingMode": "toggle",
+            "hotkey": "CmdOrCtrl+D"
+        }"#;
+        let parsed: DiskSettings = serde_json::from_str(json).unwrap();
+        assert!(!parsed.clipboard_history_enabled);
     }
 
     #[test]

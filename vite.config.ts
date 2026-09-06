@@ -12,6 +12,7 @@ export default defineConfig(async () => ({
         main: "index.html",
         overlay: "src/overlay.html",
         companion: "src/companion.html",
+        clipboardHistory: "src/clipboard-history.html",
       },
     },
   },

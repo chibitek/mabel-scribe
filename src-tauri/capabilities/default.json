@@ -1,10 +1,12 @@
 {
   "identifier": "default",
   "description": "Default capabilities",
-  "windows": ["main", "overlay", "companion"],
+  "windows": ["main", "overlay", "companion", "clipboard-history"],
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",
+    "core:tray:default",
+    "core:menu:default",
     "global-shortcut:default",
     "shell:allow-open",
     "autostart:default",

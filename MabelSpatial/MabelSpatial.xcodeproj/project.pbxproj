@@ -1,0 +1,348 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A1B10001A1B10201 /* MabelSpatialApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B10001A1B10101 /* MabelSpatialApp.swift */; };
+		A1B10001A1B10202 /* SpatialConstants.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B10001A1B10102 /* SpatialConstants.swift */; };
+		A1B10001A1B10203 /* SpatialSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B10001A1B10103 /* SpatialSession.swift */; };
+		A1B10001A1B10204 /* OnDeviceSpeechEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B10001A1B10104 /* OnDeviceSpeechEngine.swift */; };
+		A1B10001A1B10205 /* ListeningOrbEntity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B10001A1B10105 /* ListeningOrbEntity.swift */; };
+		A1B10001A1B10206 /* ImmersiveSpaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B10001A1B10106 /* ImmersiveSpaceView.swift */; };
+		A1B10001A1B10207 /* WindowRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B10001A1B10107 /* WindowRootView.swift */; };
+		A1B10001A1B10208 /* ListeningOrbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B10001A1B10108 /* ListeningOrbView.swift */; };
+		A1B10001A1B10209 /* FloatingTranscriptPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B10001A1B10109 /* FloatingTranscriptPanel.swift */; };
+		A1B10001A1B1020A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A1B10001A1B1010A /* Assets.xcassets */; };
+		A1B10001A1B1020D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A1B10001A1B1010D /* PrivacyInfo.xcprivacy */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A1B10001A1B10020 /* MabelSpatial.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MabelSpatial.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A1B10001A1B10101 /* MabelSpatialApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MabelSpatialApp.swift; sourceTree = "<group>"; };
+		A1B10001A1B10102 /* SpatialConstants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialConstants.swift; sourceTree = "<group>"; };
+		A1B10001A1B10103 /* SpatialSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpatialSession.swift; sourceTree = "<group>"; };
+		A1B10001A1B10104 /* OnDeviceSpeechEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceSpeechEngine.swift; sourceTree = "<group>"; };
+		A1B10001A1B10105 /* ListeningOrbEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListeningOrbEntity.swift; sourceTree = "<group>"; };
+		A1B10001A1B10106 /* ImmersiveSpaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImmersiveSpaceView.swift; sourceTree = "<group>"; };
+		A1B10001A1B10107 /* WindowRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowRootView.swift; sourceTree = "<group>"; };
+		A1B10001A1B10108 /* ListeningOrbView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ListeningOrbView.swift; sourceTree = "<group>"; };
+		A1B10001A1B10109 /* FloatingTranscriptPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingTranscriptPanel.swift; sourceTree = "<group>"; };
+		A1B10001A1B1010A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A1B10001A1B1010B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A1B10001A1B1010C /* MabelSpatial.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MabelSpatial.entitlements; sourceTree = "<group>"; };
+		A1B10001A1B1010D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A1B10001A1B10302 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A1B10001A1B10010 = {
+			isa = PBXGroup;
+			children = (
+				A1B10001A1B10012 /* MabelSpatial */,
+				A1B10001A1B10011 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A1B10001A1B10011 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A1B10001A1B10020 /* MabelSpatial.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A1B10001A1B10012 /* MabelSpatial */ = {
+			isa = PBXGroup;
+			children = (
+				A1B10001A1B10101 /* MabelSpatialApp.swift */,
+				A1B10001A1B10013 /* Models */,
+				A1B10001A1B10014 /* Speech */,
+				A1B10001A1B10015 /* Reality */,
+				A1B10001A1B10016 /* Views */,
+				A1B10001A1B1010A /* Assets.xcassets */,
+				A1B10001A1B1010B /* Info.plist */,
+				A1B10001A1B1010C /* MabelSpatial.entitlements */,
+				A1B10001A1B1010D /* PrivacyInfo.xcprivacy */,
+			);
+			path = MabelSpatial;
+			sourceTree = "<group>";
+		};
+		A1B10001A1B10013 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				A1B10001A1B10102 /* SpatialConstants.swift */,
+				A1B10001A1B10103 /* SpatialSession.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A1B10001A1B10014 /* Speech */ = {
+			isa = PBXGroup;
+			children = (
+				A1B10001A1B10104 /* OnDeviceSpeechEngine.swift */,
+			);
+			path = Speech;
+			sourceTree = "<group>";
+		};
+		A1B10001A1B10015 /* Reality */ = {
+			isa = PBXGroup;
+			children = (
+				A1B10001A1B10105 /* ListeningOrbEntity.swift */,
+				A1B10001A1B10106 /* ImmersiveSpaceView.swift */,
+			);
+			path = Reality;
+			sourceTree = "<group>";
+		};
+		A1B10001A1B10016 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A1B10001A1B10107 /* WindowRootView.swift */,
+				A1B10001A1B10108 /* ListeningOrbView.swift */,
+				A1B10001A1B10109 /* FloatingTranscriptPanel.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A1B10001A1B10030 /* MabelSpatial */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1B10001A1B10501 /* Build configuration list for PBXNativeTarget "MabelSpatial" */;
+			buildPhases = (
+				A1B10001A1B10301 /* Sources */,
+				A1B10001A1B10302 /* Frameworks */,
+				A1B10001A1B10303 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MabelSpatial;
+			productName = MabelSpatial;
+			productReference = A1B10001A1B10020 /* MabelSpatial.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A1B10001A1B10001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2600;
+				LastUpgradeCheck = 2600;
+				TargetAttributes = {
+					A1B10001A1B10030 = {
+						CreatedOnToolsVersion = 26.0;
+					};
+				};
+			};
+			buildConfigurationList = A1B10001A1B10502 /* Build configuration list for PBXProject "MabelSpatial" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en; /* pragma: allowlist secret */
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A1B10001A1B10010;
+			productRefGroup = A1B10001A1B10011 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A1B10001A1B10030 /* MabelSpatial */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A1B10001A1B10303 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B10001A1B1020A /* Assets.xcassets in Resources */,
+				A1B10001A1B1020D /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A1B10001A1B10301 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A1B10001A1B10201 /* MabelSpatialApp.swift in Sources */,
+				A1B10001A1B10202 /* SpatialConstants.swift in Sources */,
+				A1B10001A1B10203 /* SpatialSession.swift in Sources */,
+				A1B10001A1B10204 /* OnDeviceSpeechEngine.swift in Sources */,
+				A1B10001A1B10205 /* ListeningOrbEntity.swift in Sources */,
+				A1B10001A1B10206 /* ImmersiveSpaceView.swift in Sources */,
+				A1B10001A1B10207 /* WindowRootView.swift in Sources */,
+				A1B10001A1B10208 /* ListeningOrbView.swift in Sources */,
+				A1B10001A1B10209 /* FloatingTranscriptPanel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A1B10001A1B10401 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = xros;
+				SUPPORTED_PLATFORMS = "xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Debug;
+		};
+		A1B10001A1B10402 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				SDKROOT = xros;
+				SUPPORTED_PLATFORMS = "xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Release;
+		};
+		A1B10001A1B10403 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MabelSpatial/MabelSpatial.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DF9FB764AR; /* pragma: allowlist secret */
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MabelSpatial/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Mabel Spatial";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright (c) 2026 Chibitek Labs. All rights reserved.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mabel Spatial uses the microphone only while you are listening, to transcribe dictation on this Vision Pro. Audio is not uploaded.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mabel Spatial uses on-device Apple Speech so your words become text on this Vision Pro. Recognition does not use a Mabel cloud service.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mabel.vision;
+				PRODUCT_NAME = MabelSpatial;
+				SDKROOT = xros;
+				SUPPORTED_PLATFORMS = "xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Debug;
+		};
+		A1B10001A1B10404 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MabelSpatial/MabelSpatial.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DF9FB764AR; /* pragma: allowlist secret */
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MabelSpatial/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Mabel Spatial";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright (c) 2026 Chibitek Labs. All rights reserved.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mabel Spatial uses the microphone only while you are listening, to transcribe dictation on this Vision Pro. Audio is not uploaded.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mabel Spatial uses on-device Apple Speech so your words become text on this Vision Pro. Recognition does not use a Mabel cloud service.";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mabel.vision;
+				PRODUCT_NAME = MabelSpatial;
+				SDKROOT = xros;
+				SUPPORTED_PLATFORMS = "xros xrsimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 7;
+				XROS_DEPLOYMENT_TARGET = 27.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A1B10001A1B10501 /* Build configuration list for PBXNativeTarget "MabelSpatial" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B10001A1B10403 /* Debug */,
+				A1B10001A1B10404 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A1B10001A1B10502 /* Build configuration list for PBXProject "MabelSpatial" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A1B10001A1B10401 /* Debug */,
+				A1B10001A1B10402 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A1B10001A1B10001 /* Project object */;
+}

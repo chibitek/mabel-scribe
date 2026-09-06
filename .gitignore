@@ -38,6 +38,11 @@ native/MabelStoreKit/.build/
 tools/MabelStoreKitProve/MabelStoreKitProve.xcodeproj/xcuserdata/
 tools/MabelStoreKitProve/MabelStoreKitProve.xcodeproj/project.xcworkspace/
 
+# Native visionOS sibling (Mabel Spatial) — local Xcode noise only
+MabelSpatial/MabelSpatial.xcodeproj/xcuserdata/
+MabelSpatial/MabelSpatial.xcodeproj/project.xcworkspace/xcuserdata/
+MabelSpatial/DerivedData/
+
 # App-specific
 src-tauri/binaries/
 src-tauri/llama-runtime/*

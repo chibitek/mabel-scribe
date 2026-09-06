@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Native visionOS only (com.mabel.vision). Do not point this at Mac Tauri
+  com.mabel.app / ASC 6809059582. Usage strings are also mirrored as
+  INFOPLIST_KEY_* in the Xcode target for GENERATE_INFOPLIST_FILE merge.
+-->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>Mabel Spatial</string>
+	<key>CFBundleName</key>
+	<string>Mabel Spatial</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright (c) 2026 Chibitek Labs. All rights reserved.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mabel Spatial uses the microphone only while you are listening, to transcribe dictation on this Vision Pro. Audio is not uploaded.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Mabel Spatial uses on-device Apple Speech so your words become text on this Vision Pro. Recognition does not use a Mabel cloud service.</string>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationPreferredDefaultSceneSessionRole</key>
+		<string>UIWindowSceneSessionRoleApplication</string>
+		<key>UISceneConfigurations</key>
+		<dict>
+			<key>UISceneSessionRoleImmersiveSpaceApplication</key>
+			<array>
+				<dict>
+					<key>UISceneInitialImmersionStyle</key>
+					<string>UIImmersionStyleMixed</string>
+				</dict>
+			</array>
+		</dict>
+	</dict>
+</dict>
+</plist>

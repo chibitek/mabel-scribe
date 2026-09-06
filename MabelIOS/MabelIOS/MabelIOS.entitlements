@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  iOS host for com.mabel.ios (team DF9FB764AR).
+  New ASC listing — do not reuse Mac ASC 6809059582 / com.mabel.app
+  or Spatial com.mabel.vision.
+
+  App Group is for keyboard Full Access pairing only.
+  No StoreKit, no iCloud, no associated domains, no JIT.
+-->
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.mabel.ios</string>
+	</array>
+</dict>
+</plist>

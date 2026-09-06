@@ -1,0 +1,520 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		B2C20001B2C10201 /* MabelIOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10101 /* MabelIOSApp.swift */; };
+		B2C20001B2C10202 /* HostRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10102 /* HostRootView.swift */; };
+		B2C20001B2C10203 /* HostDictatePlayground.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10103 /* HostDictatePlayground.swift */; };
+		B2C20001B2C10210 /* IOSIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10110 /* IOSIdentity.swift */; };
+		B2C20001B2C10211 /* DictatePermissionGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10111 /* DictatePermissionGate.swift */; };
+		B2C20001B2C10212 /* OnDeviceSpeechEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10112 /* OnDeviceSpeechEngine.swift */; };
+		B2C20001B2C10213 /* SpeechSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10113 /* SpeechSession.swift */; };
+		B2C20001B2C10214 /* CatChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10114 /* CatChrome.swift */; };
+		B2C20001B2C10215 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10105 /* Assets.xcassets */; };
+		B2C20001B2C10216 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10108 /* PrivacyInfo.xcprivacy */; };
+		B2C20001B2C10220 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10120 /* KeyboardViewController.swift */; };
+		B2C20001B2C10221 /* KeyboardRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10121 /* KeyboardRootView.swift */; };
+		B2C20001B2C10222 /* IOSIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10110 /* IOSIdentity.swift */; };
+		B2C20001B2C10223 /* DictatePermissionGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10111 /* DictatePermissionGate.swift */; };
+		B2C20001B2C10224 /* OnDeviceSpeechEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10112 /* OnDeviceSpeechEngine.swift */; };
+		B2C20001B2C10225 /* SpeechSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10113 /* SpeechSession.swift */; };
+		B2C20001B2C10226 /* CatChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10114 /* CatChrome.swift */; };
+		B2C20001B2C10227 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10124 /* PrivacyInfo.xcprivacy */; };
+		B2C20001B2C10228 /* MabelKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10021 /* MabelKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B2C20001B2C10601 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B2C20001B2C10001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B2C20001B2C10031;
+			remoteInfo = MabelKeyboard;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B2C20001B2C10304 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B2C20001B2C10228 /* MabelKeyboard.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		B2C20001B2C10020 /* Mabel.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mabel.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B2C20001B2C10021 /* MabelKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = MabelKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		B2C20001B2C10101 /* MabelIOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MabelIOSApp.swift; sourceTree = "<group>"; };
+		B2C20001B2C10102 /* HostRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostRootView.swift; sourceTree = "<group>"; };
+		B2C20001B2C10103 /* HostDictatePlayground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostDictatePlayground.swift; sourceTree = "<group>"; };
+		B2C20001B2C10105 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		B2C20001B2C10106 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B2C20001B2C10107 /* MabelIOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MabelIOS.entitlements; sourceTree = "<group>"; };
+		B2C20001B2C10108 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		B2C20001B2C10110 /* IOSIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSIdentity.swift; sourceTree = "<group>"; };
+		B2C20001B2C10111 /* DictatePermissionGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictatePermissionGate.swift; sourceTree = "<group>"; };
+		B2C20001B2C10112 /* OnDeviceSpeechEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceSpeechEngine.swift; sourceTree = "<group>"; };
+		B2C20001B2C10113 /* SpeechSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechSession.swift; sourceTree = "<group>"; };
+		B2C20001B2C10114 /* CatChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatChrome.swift; sourceTree = "<group>"; };
+		B2C20001B2C10120 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
+		B2C20001B2C10121 /* KeyboardRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardRootView.swift; sourceTree = "<group>"; };
+		B2C20001B2C10122 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B2C20001B2C10123 /* MabelKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MabelKeyboard.entitlements; sourceTree = "<group>"; };
+		B2C20001B2C10124 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		B2C20001B2C10302 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B2C20001B2C10312 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		B2C20001B2C10010 = {
+			isa = PBXGroup;
+			children = (
+				B2C20001B2C10012 /* MabelIOS */,
+				B2C20001B2C10013 /* Shared */,
+				B2C20001B2C10014 /* MabelKeyboard */,
+				B2C20001B2C10011 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		B2C20001B2C10011 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B2C20001B2C10020 /* Mabel.app */,
+				B2C20001B2C10021 /* MabelKeyboard.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		B2C20001B2C10012 /* MabelIOS */ = {
+			isa = PBXGroup;
+			children = (
+				B2C20001B2C10101 /* MabelIOSApp.swift */,
+				B2C20001B2C10015 /* Views */,
+				B2C20001B2C10105 /* Assets.xcassets */,
+				B2C20001B2C10106 /* Info.plist */,
+				B2C20001B2C10107 /* MabelIOS.entitlements */,
+				B2C20001B2C10108 /* PrivacyInfo.xcprivacy */,
+			);
+			path = MabelIOS;
+			sourceTree = "<group>";
+		};
+		B2C20001B2C10013 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				B2C20001B2C10110 /* IOSIdentity.swift */,
+				B2C20001B2C10111 /* DictatePermissionGate.swift */,
+				B2C20001B2C10112 /* OnDeviceSpeechEngine.swift */,
+				B2C20001B2C10113 /* SpeechSession.swift */,
+				B2C20001B2C10114 /* CatChrome.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		B2C20001B2C10014 /* MabelKeyboard */ = {
+			isa = PBXGroup;
+			children = (
+				B2C20001B2C10120 /* KeyboardViewController.swift */,
+				B2C20001B2C10121 /* KeyboardRootView.swift */,
+				B2C20001B2C10122 /* Info.plist */,
+				B2C20001B2C10123 /* MabelKeyboard.entitlements */,
+				B2C20001B2C10124 /* PrivacyInfo.xcprivacy */,
+			);
+			path = MabelKeyboard;
+			sourceTree = "<group>";
+		};
+		B2C20001B2C10015 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				B2C20001B2C10102 /* HostRootView.swift */,
+				B2C20001B2C10103 /* HostDictatePlayground.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		B2C20001B2C10030 /* MabelIOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B2C20001B2C10501 /* Build configuration list for PBXNativeTarget "MabelIOS" */;
+			buildPhases = (
+				B2C20001B2C10301 /* Sources */,
+				B2C20001B2C10302 /* Frameworks */,
+				B2C20001B2C10303 /* Resources */,
+				B2C20001B2C10304 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B2C20001B2C10602 /* PBXTargetDependency */,
+			);
+			name = MabelIOS;
+			productName = Mabel;
+			productReference = B2C20001B2C10020 /* Mabel.app */;
+			productType = "com.apple.product-type.application";
+		};
+		B2C20001B2C10031 /* MabelKeyboard */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B2C20001B2C10503 /* Build configuration list for PBXNativeTarget "MabelKeyboard" */;
+			buildPhases = (
+				B2C20001B2C10311 /* Sources */,
+				B2C20001B2C10312 /* Frameworks */,
+				B2C20001B2C10313 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MabelKeyboard;
+			productName = MabelKeyboard;
+			productReference = B2C20001B2C10021 /* MabelKeyboard.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		B2C20001B2C10001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					B2C20001B2C10030 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+					B2C20001B2C10031 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = B2C20001B2C10502 /* Build configuration list for PBXProject "MabelIOS" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en; /* pragma: allowlist secret */
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = B2C20001B2C10010;
+			productRefGroup = B2C20001B2C10011 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				B2C20001B2C10030 /* MabelIOS */,
+				B2C20001B2C10031 /* MabelKeyboard */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B2C20001B2C10303 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B2C20001B2C10215 /* Assets.xcassets in Resources */,
+				B2C20001B2C10216 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B2C20001B2C10313 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B2C20001B2C10227 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B2C20001B2C10301 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B2C20001B2C10201 /* MabelIOSApp.swift in Sources */,
+				B2C20001B2C10202 /* HostRootView.swift in Sources */,
+				B2C20001B2C10203 /* HostDictatePlayground.swift in Sources */,
+				B2C20001B2C10210 /* IOSIdentity.swift in Sources */,
+				B2C20001B2C10211 /* DictatePermissionGate.swift in Sources */,
+				B2C20001B2C10212 /* OnDeviceSpeechEngine.swift in Sources */,
+				B2C20001B2C10213 /* SpeechSession.swift in Sources */,
+				B2C20001B2C10214 /* CatChrome.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B2C20001B2C10311 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B2C20001B2C10220 /* KeyboardViewController.swift in Sources */,
+				B2C20001B2C10221 /* KeyboardRootView.swift in Sources */,
+				B2C20001B2C10222 /* IOSIdentity.swift in Sources */,
+				B2C20001B2C10223 /* DictatePermissionGate.swift in Sources */,
+				B2C20001B2C10224 /* OnDeviceSpeechEngine.swift in Sources */,
+				B2C20001B2C10225 /* SpeechSession.swift in Sources */,
+				B2C20001B2C10226 /* CatChrome.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B2C20001B2C10602 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B2C20001B2C10031 /* MabelKeyboard */;
+			targetProxy = B2C20001B2C10601 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		B2C20001B2C10401 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B2C20001B2C10402 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B2C20001B2C10403 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MabelIOS/MabelIOS.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DF9FB764AR; /* pragma: allowlist secret */
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MabelIOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Mabel;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright (c) 2026 Chibitek Labs. All rights reserved.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mabel uses the microphone only while you are dictating, to turn speech into text on this iPhone. Audio is not uploaded and is not recorded in the background.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mabel uses on-device Apple Speech so your words become text in the app you are typing into. Recognition does not use a Mabel cloud service.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mabel.ios;
+				PRODUCT_NAME = Mabel;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B2C20001B2C10404 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MabelIOS/MabelIOS.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DF9FB764AR; /* pragma: allowlist secret */
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MabelIOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Mabel;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright (c) 2026 Chibitek Labs. All rights reserved.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mabel uses the microphone only while you are dictating, to turn speech into text on this iPhone. Audio is not uploaded and is not recorded in the background.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mabel uses on-device Apple Speech so your words become text in the app you are typing into. Recognition does not use a Mabel cloud service.";
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mabel.ios;
+				PRODUCT_NAME = Mabel;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		B2C20001B2C10405 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MabelKeyboard/MabelKeyboard.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DF9FB764AR; /* pragma: allowlist secret */
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MabelKeyboard/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Mabel;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright (c) 2026 Chibitek Labs. All rights reserved.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mabel uses the microphone only while you are dictating, to turn speech into text on this iPhone. Audio is not uploaded and is not recorded in the background.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mabel uses on-device Apple Speech so your words become text in the app you are typing into. Recognition does not use a Mabel cloud service.";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mabel.ios.keyboard;
+				PRODUCT_NAME = MabelKeyboard;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B2C20001B2C10406 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = MabelKeyboard/MabelKeyboard.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DF9FB764AR; /* pragma: allowlist secret */
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = MabelKeyboard/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Mabel;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "Copyright (c) 2026 Chibitek Labs. All rights reserved.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mabel uses the microphone only while you are dictating, to turn speech into text on this iPhone. Audio is not uploaded and is not recorded in the background.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mabel uses on-device Apple Speech so your words become text in the app you are typing into. Recognition does not use a Mabel cloud service.";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mabel.ios.keyboard;
+				PRODUCT_NAME = MabelKeyboard;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		B2C20001B2C10501 /* Build configuration list for PBXNativeTarget "MabelIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B2C20001B2C10403 /* Debug */,
+				B2C20001B2C10404 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B2C20001B2C10502 /* Build configuration list for PBXProject "MabelIOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B2C20001B2C10401 /* Debug */,
+				B2C20001B2C10402 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B2C20001B2C10503 /* Build configuration list for PBXNativeTarget "MabelKeyboard" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B2C20001B2C10405 /* Debug */,
+				B2C20001B2C10406 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = B2C20001B2C10001 /* Project object */;
+}

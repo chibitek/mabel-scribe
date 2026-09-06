@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Native iOS host (com.mabel.ios). New ASC listing.
+  Do not point this at Mac Tauri com.mabel.app / ASC 6809059582
+  or at Mabel Spatial com.mabel.vision.
+-->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>Mabel</string>
+	<key>CFBundleName</key>
+	<string>Mabel</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright (c) 2026 Chibitek Labs. All rights reserved.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mabel uses the microphone only while you are dictating, to turn speech into text on this iPhone. Audio is not uploaded and is not recorded in the background.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Mabel uses on-device Apple Speech so your words become text in the app you are typing into. Recognition does not use a Mabel cloud service.</string>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+</dict>
+</plist>

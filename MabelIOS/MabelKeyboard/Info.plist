@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Custom keyboard (com.mabel.ios.keyboard).
+  RequestsOpenAccess is required for microphone after the user enables
+  Full Access. Dictation still fail-closes without mic + speech grants.
+-->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>Mabel</string>
+	<key>CFBundleName</key>
+	<string>Mabel</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mabel uses the microphone only while you are dictating, to turn speech into text on this iPhone. Audio is not uploaded and is not recorded in the background.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Mabel uses on-device Apple Speech so your words become text in the app you are typing into. Recognition does not use a Mabel cloud service.</string>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionAttributes</key>
+		<dict>
+			<key>IsASCIICapable</key>
+			<true/>
+			<key>PrefersRightToLeft</key>
+			<false/>
+			<key>PrimaryLanguage</key>
+			<string>en-US</string>
+			<key>RequestsOpenAccess</key>
+			<true/>
+		</dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.keyboard-service</string>
+		<key>NSExtensionPrincipalClass</key>
+		<string>$(PRODUCT_MODULE_NAME).KeyboardViewController</string>
+	</dict>
+</dict>
+</plist>

@@ -12,7 +12,9 @@ Open source under the [MIT license](LICENSE). Fork it, build it, ship your own v
 
 **Public source of truth is this repo (`erickgrau/Mabel`).** `chibitek/mabel-scribe` is a public GitHub fork / mirror — not a second SoT. Develop and open PRs here. After each SoT `main` merge, refresh the mirror with GitHub → Sync fork (see [docs/oss-source-of-truth.md](docs/oss-source-of-truth.md)). Pro features (Polish, teams, snippets, and the rest of the StoreKit gate) ship in this tree and unlock at runtime. Signing keys, notarization passwords, updater private keys, and API tokens stay out of git.
 
-A native **visionOS** sibling — **Mabel Spatial** (`com.mabel.vision`, v0.1.0) — lives in [`MabelSpatial/`](MabelSpatial/README.md). It is SwiftUI + RealityKit + on-device Apple Speech, not a Tauri port and not Mac TestFlight on a headset. Mac 1.4.0 paths below are unchanged.
+A native **visionOS** sibling — **Mabel Spatial** (`com.mabel.vision`, v0.1.0) — lives in [`MabelSpatial/`](MabelSpatial/README.md). It is SwiftUI + RealityKit + on-device Apple Speech, not a Tauri port and not Mac TestFlight on a headset.
+
+A native **iOS** sibling — **Mabel** (`com.mabel.ios`, v0.1.0) — lives in [`MabelIOS/`](MabelIOS/README.md). Custom keyboard overlay dictation in any app. New ASC listing later. Not Mochii, not Mac TestFlight on a phone, not Spatial. Mac 1.4.0 paths below are unchanged.
 
 ---
 
@@ -326,6 +328,11 @@ scripts/prove-storekit-mac.sh  CIO Mac prove: 1.4.0 + dylib + Run Mabel-StoreKit
 MabelSpatial/              Native visionOS app (SwiftUI + RealityKit)
                            Apple Speech on-device. Separate ASC later.
                            See MabelSpatial/README.md. Not in npm/tauri paths.
+
+MabelIOS/                  Native iOS host + keyboard extension
+                           (com.mabel.ios / com.mabel.ios.keyboard).
+                           Apple Speech on-device. New ASC listing later.
+                           See MabelIOS/README.md. Not in npm/tauri paths.
 ```
 
 ## Audio path

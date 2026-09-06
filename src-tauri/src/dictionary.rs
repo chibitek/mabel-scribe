@@ -8,15 +8,23 @@
 //! - Scratchpad / Insights stay local-only by default; do not claim HIPAA/BAA
 //! - Distinct from Polish modes and Clipboard History
 //!
-//! BREAKS IF: cloud/team share ships / auto-promote / Nexus/SIEM write / HIPAA/BAA copy
+//! BREAKS IF: cloud/team share ships without separate ACL Make It So
+//! BREAKS IF: private Dictionary auto-promotes to company memory
+//! HELD: cloud sync + team share until MCS with Stiki/folder-style ACL;
+//! fail closed if ACL missing.
 
 use crate::storekit;
 
 /// Named Enforcer BOUND. Tests fail if this is violated.
-pub const ENFORCER_BOUND: &str = "Pro-gated; local-first; no cloud sync; no team share; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA; Scratchpad/Insights local-only default";
+pub const ENFORCER_BOUND: &str = "Pro-gated; local-first; no cloud sync; no team share; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA; Scratchpad/Insights local-only default; fail closed if ACL missing";
+
+/// Held. A later MCS must flip this only with Stiki/folder-style ACL.
+pub const STIKI_FOLDER_ACL_SHIPPED: bool = false;
 
 const SHARE_BLOCKED: &str =
     "Cloud and team dictionary share is not available. Dictionary stays on this Mac.";
+const ACL_MISSING: &str =
+    "Cloud and team dictionary share is held until a Stiki/folder-style ACL Make It So. ACL missing — fail closed.";
 
 pub fn normalize_term(raw: &str) -> Option<String> {
     let term = raw.trim();
@@ -133,8 +141,21 @@ pub fn remove_term(stored: &mut Vec<String>, term: &str) -> Result<Vec<String>, 
     apply_remove(stored, term)
 }
 
+pub fn stiki_folder_acl_present() -> bool {
+    STIKI_FOLDER_ACL_SHIPPED
+}
+
+/// HELD path. Fail closed when the Stiki/folder-style ACL is missing.
+pub fn require_share_acl() -> Result<(), String> {
+    if !stiki_folder_acl_present() {
+        return Err(ACL_MISSING.into());
+    }
+    Err(SHARE_BLOCKED.into())
+}
+
 /// Soft later: cloud / team share. Do not ship until a separate ACL Make It So.
 pub fn share_cloud_or_team() -> Result<(), String> {
+    require_share_acl()?;
     Err(SHARE_BLOCKED.into())
 }
 
@@ -209,12 +230,48 @@ mod tests {
 
     #[test]
     fn share_cloud_or_team_fails_closed() {
+        assert!(
+            !stiki_folder_acl_present(),
+            "BREAKS IF: Stiki/folder ACL claimed present without MCS"
+        );
+        let acl = require_share_acl().unwrap_err();
+        assert!(acl.contains("ACL missing"), "BREAKS IF: share without ACL");
         let err = share_cloud_or_team().unwrap_err();
-        assert!(err.contains("not available"));
-        assert!(err.contains("this Mac"));
+        assert!(err.contains("ACL missing") || err.contains("not available"));
         assert!(!err.contains("http"));
         let promote = promote_to_company_memory().unwrap_err();
         assert!(promote.contains("company memory"));
+    }
+
+    #[test]
+    fn breaks_if_share_ships_without_acl_make_it_so() {
+        assert!(!STIKI_FOLDER_ACL_SHIPPED, "BREAKS IF: ACL shipped without MCS");
+        assert!(share_cloud_or_team().is_err(), "BREAKS IF: share succeeded");
+        let ts = include_str!("../../src/main.ts");
+        assert!(
+            !ts.contains("dictionary_share"),
+            "BREAKS IF: share UI shipped"
+        );
+        let html = include_str!("../../index.html");
+        let dict_view = html.split("data-view=\"dictionary\"").last().unwrap();
+        let dict_view = dict_view.split("<section").next().unwrap();
+        assert!(
+            !dict_view.contains("Share with team") && !dict_view.contains("Sync to cloud"),
+            "BREAKS IF: cloud/team share shipped without ACL Make It So"
+        );
+    }
+
+    #[test]
+    fn breaks_if_private_dictionary_auto_promotes() {
+        assert!(
+            promote_to_company_memory().is_err(),
+            "BREAKS IF: private Dictionary auto-promotes to company memory"
+        );
+        let ts = include_str!("../../src/main.ts");
+        assert!(
+            !ts.contains("dictionary_promote"),
+            "BREAKS IF: promote UI shipped"
+        );
     }
 
     #[test]
@@ -227,6 +284,7 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("no auto-promote"));
         assert!(ENFORCER_BOUND.contains("no HIPAA/BAA"));
         assert!(ENFORCER_BOUND.contains("Scratchpad/Insights local-only default"));
+        assert!(ENFORCER_BOUND.contains("fail closed if ACL missing"));
 
         let html = include_str!("../../index.html");
         let nav = html
@@ -299,6 +357,7 @@ mod tests {
         assert!(commands.contains("dictionary_add"));
         assert!(commands.contains("share_cloud_or_team"));
         assert!(commands.contains("promote_to_company_memory"));
+        assert!(commands.contains("require_share_acl") || include_str!("dictionary.rs").contains("require_share_acl"));
         let nexus_write = format!("{}{}", "nexus", "_write");
         assert!(
             !commands.contains(&nexus_write),

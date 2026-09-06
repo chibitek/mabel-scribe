@@ -654,6 +654,7 @@ mod tests {
         assert!(dict.contains("no auto-promote"));
         assert!(dict.contains("no HIPAA/BAA"));
         assert!(dict.contains("Scratchpad/Insights local-only default"));
+        assert!(dict.contains("fail closed if ACL missing"));
     }
 
     #[cfg(unix)]

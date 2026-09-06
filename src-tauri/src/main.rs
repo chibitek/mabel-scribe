@@ -173,7 +173,7 @@ fn dictionary_remove(state: State<AppState>, term: String) -> Result<Vec<String>
 
 #[tauri::command]
 fn dictionary_share() -> Result<(), String> {
-    // Soft later. Fail closed until Enforcer BOUND — do not ship cloud/team share.
+    // HELD: fail closed if Stiki/folder-style ACL is missing.
     mabel_lib::dictionary::share_cloud_or_team()
 }
 

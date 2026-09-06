@@ -15,6 +15,12 @@
   CIO must keep device.audio-input on the signed TF binary — dropping it
   makes TCC deny the mic with no prompt and a silent capture.
   Bundle id stays com.mabel.app. Price: free. Category: Productivity.
+
+  In-App Purchase is an App ID + provisioning-profile capability for
+  com.mabel.app / ASC 6809059582, not a sandbox entitlement key.
+  Do not add com.apple.developer.in-app-payments (Apple Pay merchants).
+  CIO/CoS must enable In-App Purchase on the App ID before MAS/TF StoreKit
+  works. Developer ID DMG keeps entitlements.plist unchanged.
 -->
 <plist version="1.0">
 <dict>

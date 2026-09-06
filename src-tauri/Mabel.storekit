@@ -1,0 +1,111 @@
+{
+  "identifier" : "MabelProStoreKit",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "6809059582",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_lastBackgroundRenewalReminderTimeInterval" : 0,
+    "_lastBonusRenewalReminderTimeInterval" : 0,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "MABELPRO",
+      "localizations" : [
+        {
+          "description" : "Teams plus every Pro feature. Personal use stays free.",
+          "displayName" : "Mabel Pro",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "Mabel Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "5.00",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "MABELPROMONTHLY",
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "MABELPROMONTHLYINTRO",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1M"
+          },
+          "localizations" : [
+            {
+              "description" : "Unlock teams and every Pro feature. 30-day free trial, then the App Store monthly price.",
+              "displayName" : "Mabel Pro Monthly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.mabel.app.pro.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Mabel Pro Monthly",
+          "subscriptionGroupID" : "MABELPRO",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "48.00",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "MABELPROYEARLY",
+          "introductoryOffer" : {
+            "displayPrice" : "0",
+            "internalID" : "MABELPROYEARLYINTRO",
+            "numberOfPeriods" : 1,
+            "paymentMode" : "free",
+            "subscriptionPeriod" : "P1M"
+          },
+          "localizations" : [
+            {
+              "description" : "Unlock teams and every Pro feature. 30-day free trial, then the App Store yearly price.",
+              "displayName" : "Mabel Pro Yearly",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.mabel.app.pro.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Mabel Pro Yearly",
+          "subscriptionGroupID" : "MABELPRO",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

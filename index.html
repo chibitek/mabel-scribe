@@ -22,7 +22,7 @@
             </svg>
           </span>
           <span class="brand-name" id="brand-name">Mabel</span>
-          <span class="brand-pill">Free</span>
+          <span class="brand-pill" id="brand-pill">Free</span>
         </div>
 
         <nav class="sidebar-nav">
@@ -56,6 +56,11 @@
           <a class="nav-item locked" data-view="scratchpad">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M5 6h6M5 9h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
             Scratchpad
+            <span class="lock-pill">Pro</span>
+          </a>
+          <a class="nav-item locked" data-view="teams">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5.5" cy="6" r="2" stroke="currentColor" stroke-width="1.4"/><circle cx="10.5" cy="6" r="2" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 12.5c.4-2 2-3 3-3s2.6 1 3 3M8.5 12.5c.4-2 2-3 3-3s2.6 1 3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            Teams
             <span class="lock-pill">Pro</span>
           </a>
         </nav>
@@ -161,7 +166,7 @@
                 Mabel Pro
               </div>
               <h2 class="pro-title">Smarter dictation, still on-device.</h2>
-              <p class="pro-body">On-device LLM cleanup, app-aware formatting, custom vocabulary, snippets, and iCloud settings sync. Your audio still never leaves the Mac.</p>
+              <p class="pro-body">Teams, snippets, style, transforms, and scratchpad. Personal use stays free. Pro is an App Store subscription with a 30-day free trial — prices come from StoreKit, not a marketing site.</p>
             </div>
             <button type="button" class="btn-primary" id="cta-pro">Activate Pro</button>
           </div>
@@ -192,17 +197,96 @@
             </div>
           </div>
         </section>
-        <section class="view view-locked" data-view="snippets">
-          <header class="view-header"><h1 class="view-title">Snippets</h1><p class="view-sub">Voice-triggered text expansion.</p></header>
-          <div class="card locked-card"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro to expand short phrases into full templates by voice.</p><button type="button" class="btn-primary">Activate Pro</button></div>
+        <section class="view" data-view="snippets">
+          <header class="view-header"><h1 class="view-title">Snippets</h1><p class="view-sub">Voice-triggered text expansion. Stored on this Mac.</p></header>
+          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro to expand short phrases into full templates by voice.</p><button type="button" class="btn-primary pro-activate">Activate Pro</button></div>
+          <div class="pro-unlock hidden">
+            <div class="card pane-card">
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Add a snippet</div>
+                  <div class="row-hint">Trigger is the short phrase. Expansion is what Mabel pastes. Local only.</div>
+                </div>
+              </div>
+              <div class="dict-input-row">
+                <input type="text" id="snippet-trigger" placeholder="Trigger, e.g. sig" autocomplete="off" />
+                <input type="text" id="snippet-expansion" placeholder="Expansion" autocomplete="off" />
+                <button type="button" id="snippet-add-btn" class="btn-secondary">Add</button>
+              </div>
+              <div id="snippet-list" class="pro-list"></div>
+              <div id="snippet-empty" class="dict-empty">No snippets yet.</div>
+            </div>
+          </div>
         </section>
-        <section class="view view-locked" data-view="style">
-          <header class="view-header"><h1 class="view-title">Style</h1><p class="view-sub">Tone and formatting preferences applied automatically.</p></header>
-          <div class="card locked-card"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro to set tone, casing, and punctuation rules per app.</p><button type="button" class="btn-primary">Activate Pro</button></div>
+        <section class="view" data-view="style">
+          <header class="view-header"><h1 class="view-title">Style</h1><p class="view-sub">Tone and formatting preferences. Stored on this Mac.</p></header>
+          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro to set tone, casing, and punctuation rules.</p><button type="button" class="btn-primary pro-activate">Activate Pro</button></div>
+          <div class="pro-unlock hidden">
+            <div class="card pane-card">
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Tone</div>
+                  <div class="row-hint">How cleaned dictation should read.</div>
+                </div>
+                <select id="style-tone" aria-label="Tone">
+                  <option value="default">Default</option>
+                  <option value="formal">Formal</option>
+                  <option value="casual">Casual</option>
+                </select>
+              </div>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Casing</div>
+                  <div class="row-hint">Capitalization after a dictation.</div>
+                </div>
+                <select id="style-casing" aria-label="Casing">
+                  <option value="as-said">As said</option>
+                  <option value="sentence">Sentence case</option>
+                  <option value="title">Title case</option>
+                </select>
+              </div>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Punctuation</div>
+                  <div class="row-hint">How aggressively to punctuate.</div>
+                </div>
+                <select id="style-punctuation" aria-label="Punctuation">
+                  <option value="auto">Auto</option>
+                  <option value="minimal">Minimal</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </section>
-        <section class="view view-locked" data-view="transforms">
-          <header class="view-header"><h1 class="view-title">Transforms</h1><p class="view-sub">Reshape text on the fly with on-device LLM cleanup.</p></header>
-          <div class="card locked-card"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro for grammar, punctuation, and filler-word cleanup that runs locally.</p><button type="button" class="btn-primary">Activate Pro</button></div>
+        <section class="view" data-view="transforms">
+          <header class="view-header"><h1 class="view-title">Transforms</h1><p class="view-sub">On-device cleanup preferences. Audio still never leaves this Mac.</p></header>
+          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro for grammar, punctuation, and filler-word cleanup that runs locally.</p><button type="button" class="btn-primary pro-activate">Activate Pro</button></div>
+          <div class="pro-unlock hidden">
+            <div class="card pane-card">
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Remove filler words</div>
+                  <div class="row-hint">Strip um, uh, and similar fillers when cleanup runs.</div>
+                </div>
+                <button type="button" class="switch" id="xf-filler" role="switch" aria-checked="true" aria-label="Remove filler words"><span class="switch-thumb"></span></button>
+              </div>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Grammar</div>
+                  <div class="row-hint">Light grammar normalization on-device.</div>
+                </div>
+                <button type="button" class="switch" id="xf-grammar" role="switch" aria-checked="true" aria-label="Grammar"><span class="switch-thumb"></span></button>
+              </div>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Punctuation</div>
+                  <div class="row-hint">Add sentence punctuation after dictation.</div>
+                </div>
+                <button type="button" class="switch" id="xf-punct" role="switch" aria-checked="true" aria-label="Punctuation"><span class="switch-thumb"></span></button>
+              </div>
+              <p class="row-hint">Engine cleanup still lives in Settings → Engine. These flags are stored locally for Pro.</p>
+            </div>
+          </div>
         </section>
         <section class="view" data-view="insights">
           <header class="view-header">
@@ -335,14 +419,61 @@
           </div>
 
           <div class="card help-card">
-            <h2 class="help-h">Pro features (coming soon)</h2>
-            <p>Custom dictionary, snippets, style rules, on-device LLM cleanup, app-aware formatting, and iCloud settings sync. All still on-device. <a href="#" id="help-pro-link">Learn more at chibiteklabs.com</a>.</p>
+            <h2 class="help-h">Mabel Pro</h2>
+            <p>Free is personal-only. Pro unlocks teams (org, seats, invites) plus snippets, style, transforms, and scratchpad. Subscribe from Settings → Plans and Billing. The App Store shows the live price and the 30-day free trial. Restore Purchases and Manage Subscriptions are in that same pane. Mabel never opens a marketing site to upgrade.</p>
           </div>
         </section>
 
-        <section class="view view-locked" data-view="scratchpad">
-          <header class="view-header"><h1 class="view-title">Scratchpad</h1><p class="view-sub">A quiet place to dump and edit transcripts.</p></header>
-          <div class="card locked-card"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro to keep a local-only scratchpad of your dictations.</p><button type="button" class="btn-primary">Activate Pro</button></div>
+        <section class="view" data-view="scratchpad">
+          <header class="view-header"><h1 class="view-title">Scratchpad</h1><p class="view-sub">A quiet place to dump and edit transcripts. Local only.</p></header>
+          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro to keep a local-only scratchpad of your dictations.</p><button type="button" class="btn-primary pro-activate">Activate Pro</button></div>
+          <div class="pro-unlock hidden">
+            <div class="card pane-card">
+              <textarea id="scratchpad-text" class="scratchpad" placeholder="Scratch notes stay on this Mac." rows="14"></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" data-view="teams">
+          <header class="view-header"><h1 class="view-title">Teams</h1><p class="view-sub">Local org, seats, and invites on this Mac. Free stays personal-only.</p></header>
+          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro to create an organization, assign seats, and issue local invite codes.</p><button type="button" class="btn-primary pro-activate">Activate Pro</button></div>
+          <div class="pro-unlock hidden">
+            <div class="card pane-card">
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Organization</div>
+                  <div class="row-hint">Name stored on this Mac. No cloud sync in this version.</div>
+                </div>
+              </div>
+              <div class="dict-input-row">
+                <input type="text" id="team-org" placeholder="Organization name" autocomplete="off" />
+                <button type="button" id="team-org-save" class="btn-secondary">Save</button>
+              </div>
+            </div>
+            <div class="card pane-card">
+              <div class="row-label">Seats</div>
+              <div class="row-hint">Apple bills the subscription through the App Store. This list is the on-device roster.</div>
+              <div class="dict-input-row">
+                <input type="text" id="seat-name" placeholder="Name" autocomplete="off" />
+                <input type="text" id="seat-email" placeholder="email@org.com" autocomplete="off" />
+                <select id="seat-role" aria-label="Seat role">
+                  <option value="member">Member</option>
+                  <option value="owner">Owner</option>
+                </select>
+                <button type="button" id="seat-add" class="btn-secondary">Add seat</button>
+              </div>
+              <div id="seat-list" class="pro-list"></div>
+            </div>
+            <div class="card pane-card">
+              <div class="row-label">Invites</div>
+              <div class="row-hint">Local invite codes. Share them yourself — Mabel does not send email.</div>
+              <div class="dict-input-row">
+                <input type="text" id="invite-email" placeholder="email@org.com" autocomplete="off" />
+                <button type="button" id="invite-add" class="btn-secondary">Create invite</button>
+              </div>
+              <div id="invite-list" class="pro-list"></div>
+            </div>
+          </div>
         </section>
       </main>
     </div>
@@ -418,15 +549,13 @@
           </a>
 
           <div class="modal-section-label account-label">ACCOUNT</div>
-          <a class="modal-nav-item locked" data-pane="account">
+          <a class="modal-nav-item" data-pane="account">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="6" r="2.5" stroke="currentColor" stroke-width="1.4"/><path d="M3 13c0-2.5 2.2-4 5-4s5 1.5 5 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
             Account
-            <span class="lock-pill">Pro</span>
           </a>
-          <a class="modal-nav-item locked" data-pane="plans">
+          <a class="modal-nav-item" data-pane="plans">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="4" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M2 7h12" stroke="currentColor" stroke-width="1.4"/></svg>
             Plans and Billing
-            <span class="lock-pill">Pro</span>
           </a>
 
           <div class="modal-footer">
@@ -694,13 +823,41 @@
             </div>
           </div>
 
-          <div class="modal-pane locked-pane" data-pane="account">
+          <div class="modal-pane" data-pane="account">
             <h2 class="pane-title">Account</h2>
-            <div class="card locked-card"><div class="locked-eyebrow">Pro feature</div><p>Sign in once Pro is active to sync settings across Macs via iCloud.</p><button type="button" class="btn-primary">Activate Pro</button></div>
+            <div class="card pane-card">
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Plan</div>
+                  <div class="row-hint" id="account-plan-hint">Personal (Free). Teams and locked features need a StoreKit subscription.</div>
+                </div>
+                <span class="brand-pill" id="account-plan-pill">Free</span>
+              </div>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Apple ID</div>
+                  <div class="row-hint">Purchases use the Mac App Store Apple ID. Mabel does not collect an account or send telemetry.</div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="modal-pane locked-pane" data-pane="plans">
+          <div class="modal-pane" data-pane="plans">
             <h2 class="pane-title">Plans and Billing</h2>
-            <div class="card locked-card"><div class="locked-eyebrow">Pro feature</div><p>Pro is $10/month, $99/year, or $129 lifetime.</p><button type="button" class="btn-primary">Activate Pro</button></div>
+            <div class="card pane-card">
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Current plan</div>
+                  <div class="row-hint" id="plan-status">Checking App Store entitlement…</div>
+                </div>
+              </div>
+              <div id="plan-products" class="plan-products"></div>
+              <p class="row-hint" id="plan-error"></p>
+              <div class="plan-actions">
+                <button type="button" id="plan-restore" class="btn-secondary">Restore Purchases</button>
+                <button type="button" id="plan-manage" class="btn-secondary">Manage Subscriptions</button>
+              </div>
+              <p class="row-hint">Prices and the introductory trial come from StoreKit. Mabel does not open a website to upgrade.</p>
+            </div>
           </div>
         </section>
       </div>

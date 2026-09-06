@@ -31,6 +31,11 @@ src-tauri/native-asr/*
 !src-tauri/native-asr/.gitkeep
 native/MabelASR/.build/
 
+# StoreKit 2 dylib (built on macOS by scripts/build-mabel-storekit.sh)
+src-tauri/native-storekit/*
+!src-tauri/native-storekit/.gitkeep
+native/MabelStoreKit/.build/
+
 # App-specific
 src-tauri/binaries/
 src-tauri/llama-runtime/*

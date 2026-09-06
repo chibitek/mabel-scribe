@@ -4,6 +4,8 @@
   Developer ID / notarized DMG entitlements. Used by tauri.conf.json and
   scripts/release-macos.sh. Do not point the DMG path at entitlements.mas.plist.
   MAS draft (sandbox, no disable-library-validation) lives next to this file.
+  In-App Purchase is MAS/TestFlight only (App ID capability). Do not add
+  IAP or sandbox keys here — notarized Developer ID DMG stays as-is.
 -->
 <plist version="1.0">
 <dict>

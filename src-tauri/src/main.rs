@@ -15,6 +15,9 @@ use mabel_lib::settings::Settings;
 use mabel_lib::stats::{StatsStore, StatsSummary};
 use mabel_lib::system_ui;
 use mabel_lib::local_engine;
+use mabel_lib::pro_features;
+use mabel_lib::storekit;
+use mabel_lib::teams;
 use mabel_lib::transcribe_local;
 use mabel_lib::transcribe_native;
 
@@ -73,6 +76,93 @@ fn get_whats_new() -> Option<WhatsNewEntry> {
         }
     }
     None
+}
+
+#[tauri::command]
+fn teams_get(state: State<AppState>) -> Result<teams::TeamState, String> {
+    teams::get(&state.app_dir)
+}
+
+#[tauri::command]
+fn teams_set_org(state: State<AppState>, org_name: String) -> Result<teams::TeamState, String> {
+    teams::set_org(&state.app_dir, org_name)
+}
+
+#[tauri::command]
+fn teams_add_seat(
+    state: State<AppState>,
+    display_name: String,
+    email: String,
+    role: String,
+) -> Result<teams::TeamState, String> {
+    teams::add_seat(&state.app_dir, display_name, email, role)
+}
+
+#[tauri::command]
+fn teams_remove_seat(state: State<AppState>, seat_id: String) -> Result<teams::TeamState, String> {
+    teams::remove_seat(&state.app_dir, seat_id)
+}
+
+#[tauri::command]
+fn teams_create_invite(state: State<AppState>, email: String) -> Result<teams::TeamState, String> {
+    teams::create_invite(&state.app_dir, email)
+}
+
+#[tauri::command]
+fn teams_revoke_invite(state: State<AppState>, invite_id: String) -> Result<teams::TeamState, String> {
+    teams::revoke_invite(&state.app_dir, invite_id)
+}
+
+#[tauri::command]
+fn snippets_get(state: State<AppState>) -> Result<Vec<pro_features::Snippet>, String> {
+    pro_features::snippets_get(&state.app_dir)
+}
+
+#[tauri::command]
+fn snippets_add(
+    state: State<AppState>,
+    trigger: String,
+    expansion: String,
+) -> Result<Vec<pro_features::Snippet>, String> {
+    pro_features::snippets_add(&state.app_dir, trigger, expansion)
+}
+
+#[tauri::command]
+fn snippets_remove(state: State<AppState>, snippet_id: String) -> Result<Vec<pro_features::Snippet>, String> {
+    pro_features::snippets_remove(&state.app_dir, snippet_id)
+}
+
+#[tauri::command]
+fn style_get(state: State<AppState>) -> Result<pro_features::StylePrefs, String> {
+    pro_features::style_get(&state.app_dir)
+}
+
+#[tauri::command]
+fn style_save(state: State<AppState>, prefs: pro_features::StylePrefs) -> Result<pro_features::StylePrefs, String> {
+    pro_features::style_save(&state.app_dir, prefs)
+}
+
+#[tauri::command]
+fn transforms_get(state: State<AppState>) -> Result<pro_features::TransformPrefs, String> {
+    pro_features::transforms_get(&state.app_dir)
+}
+
+#[tauri::command]
+fn transforms_save(
+    state: State<AppState>,
+    prefs: pro_features::TransformPrefs,
+) -> Result<pro_features::TransformPrefs, String> {
+    pro_features::transforms_save(&state.app_dir, prefs)
+}
+
+#[tauri::command]
+fn scratchpad_get(state: State<AppState>) -> Result<String, String> {
+    pro_features::scratchpad_get(&state.app_dir)
+}
+
+#[tauri::command]
+fn scratchpad_save(state: State<AppState>, text: String) -> Result<(), String> {
+    pro_features::scratchpad_save(&state.app_dir, text)
 }
 
 #[tauri::command]
@@ -587,8 +677,29 @@ fn main() {
             reconcile_groq_keychain,
             get_whats_new,
             mark_version_seen,
+            storekit::storekit_entitlement,
+            storekit::storekit_products,
+            storekit::storekit_purchase,
+            storekit::storekit_restore,
+            storekit::storekit_manage_subscriptions,
+            teams_get,
+            teams_set_org,
+            teams_add_seat,
+            teams_remove_seat,
+            teams_create_invite,
+            teams_revoke_invite,
+            snippets_get,
+            snippets_add,
+            snippets_remove,
+            style_get,
+            style_save,
+            transforms_get,
+            transforms_save,
+            scratchpad_get,
+            scratchpad_save,
         ])
         .setup(move |app| {
+            storekit::attach(app.handle().clone());
             // Create the overlay window (small mic icon, top-right, always on top)
             // Default position: top center of the primary screen.
             let monitor = app.primary_monitor().ok().flatten();

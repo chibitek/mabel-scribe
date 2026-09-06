@@ -74,6 +74,14 @@ kbd { font-family: var(--sans); }
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+.brand-pill.pro {
+  background: var(--gold-soft);
+  color: var(--gold);
+}
+.brand-pill.trial {
+  background: var(--salmon-dim);
+  color: #8A4B4B;
+}
 
 .sidebar-nav {
   display: flex;
@@ -800,5 +808,58 @@ select:focus, input:focus { outline: 2px solid var(--salmon); outline-offset: -1
 .about-copy { font-size: 11.5px; color: var(--text-faint); }
 
 .locked-pane .locked-card { text-align: left; }
+
+.plan-products {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0;
+}
+.plan-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.plan-card.current { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-soft); }
+.plan-card-name { font-weight: 600; font-size: 14px; }
+.plan-card-price {
+  font-family: var(--serif);
+  font-size: 26px;
+  line-height: 1.1;
+}
+.plan-card-intro { font-size: 12.5px; color: var(--text-mute); }
+.plan-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 8px 0 12px;
+}
+.pro-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.pro-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+}
+.pro-row-meta { color: var(--text-mute); font-size: 12.5px; }
+.scratchpad {
+  width: 100%;
+  min-height: 280px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font: inherit;
+  resize: vertical;
+  background: #fff;
+  color: var(--text);
+}
 
 .hidden { display: none !important; }

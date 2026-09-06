@@ -1,7 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, Update } from "@tauri-apps/plugin-updater";
 
@@ -153,16 +152,18 @@ document.querySelectorAll<HTMLElement>(".modal-nav-item").forEach((item) => {
   });
 });
 
-// Activate Pro buttons → open marketing site
-const PRO_URL = "https://www.chibiteklabs.com";
-const proHandler = (e?: Event) => {
+function openPlans(e?: Event) {
   e?.preventDefault();
-  openExternal(PRO_URL).catch((err) => console.error("open chibiteklabs.com failed:", err));
-};
-$("open-pro").addEventListener("click", proHandler);
-$("cta-pro").addEventListener("click", proHandler);
-document.querySelectorAll(".locked-card .btn-primary").forEach((b) => b.addEventListener("click", proHandler));
-document.getElementById("help-pro-link")?.addEventListener("click", proHandler);
+  modal.classList.remove("hidden");
+  document.querySelectorAll(".modal-nav-item").forEach((n) => n.classList.remove("active"));
+  document.querySelectorAll(".modal-pane").forEach((p) => p.classList.remove("active"));
+  document.querySelector('.modal-nav-item[data-pane="plans"]')?.classList.add("active");
+  document.querySelector('.modal-pane[data-pane="plans"]')?.classList.add("active");
+  refreshStorefront().catch((err) => console.error("refreshStorefront:", err));
+}
+$("open-pro").addEventListener("click", openPlans);
+$("cta-pro").addEventListener("click", openPlans);
+document.querySelectorAll(".pro-activate").forEach((b) => b.addEventListener("click", openPlans));
 
 // Help button in sidebar footer → switch main view to help
 $("open-help").addEventListener("click", () => {
@@ -936,9 +937,399 @@ listen("stats-updated", () => {
   loadStats();
 });
 
+interface IntroOffer {
+  paymentMode: string;
+  offerType: string;
+  displayPrice: string;
+  period: string;
+  periodCount: number;
+  display: string;
+}
+
+interface StoreProduct {
+  id: string;
+  displayName: string;
+  description: string;
+  displayPrice: string;
+  price: string;
+  kind: string;
+  subscriptionPeriod: string;
+  introOffer?: IntroOffer | null;
+}
+
+interface Entitlement {
+  entitled: boolean;
+  status: string;
+  productId?: string | null;
+  isTrial: boolean;
+  willAutoRenew: boolean;
+  expirationDate?: string | null;
+  environment?: string | null;
+}
+
+interface TeamState {
+  orgName: string;
+  seats: { id: string; displayName: string; email: string; role: string }[];
+  invites: { id: string; email: string; token: string; createdAt: string; status: string }[];
+}
+
+interface Snippet {
+  id: string;
+  trigger: string;
+  expansion: string;
+}
+
+interface StylePrefs {
+  tone: string;
+  casing: string;
+  punctuation: string;
+}
+
+interface TransformPrefs {
+  fillerWords: boolean;
+  grammar: boolean;
+  punctuation: boolean;
+}
+
+let currentEntitlement: Entitlement = {
+  entitled: false,
+  status: "none",
+  isTrial: false,
+  willAutoRenew: false,
+};
+
+function planLabel(ent: Entitlement): string {
+  if (!ent.entitled) return "Free";
+  if (ent.isTrial || ent.status === "trial") return "Trial";
+  return "Pro";
+}
+
+function applyEntitlement(ent: Entitlement) {
+  currentEntitlement = ent;
+  const entitled = !!ent.entitled;
+  const pill = $("brand-pill");
+  const label = planLabel(ent);
+  pill.textContent = label;
+  pill.classList.toggle("pro", label === "Pro");
+  pill.classList.toggle("trial", label === "Trial");
+
+  const cta = $("cta-pro");
+  const openPro = $("open-pro");
+  cta.textContent = entitled ? "Manage Pro" : "Activate Pro";
+  const openProText = Array.from(openPro.childNodes).find((n) => n.nodeType === Node.TEXT_NODE);
+  if (openProText) openProText.textContent = entitled ? " Manage Pro" : " Activate Pro";
+
+  document.querySelectorAll<HTMLElement>(".nav-item.locked, .nav-item[data-pro]").forEach((item) => {
+    const view = item.dataset.view;
+    if (!view || !["snippets", "style", "transforms", "scratchpad", "teams"].includes(view)) return;
+    item.classList.toggle("locked", !entitled);
+    item.toggleAttribute("data-pro", true);
+    const lock = item.querySelector(".lock-pill");
+    if (lock) (lock as HTMLElement).style.display = entitled ? "none" : "";
+  });
+
+  document.querySelectorAll(".pro-lock").forEach((el) => el.classList.toggle("hidden", entitled));
+  document.querySelectorAll(".pro-unlock").forEach((el) => el.classList.toggle("hidden", !entitled));
+
+  const accountHint = document.getElementById("account-plan-hint");
+  const accountPill = document.getElementById("account-plan-pill");
+  if (accountPill) {
+    accountPill.textContent = label;
+    accountPill.classList.toggle("pro", label === "Pro");
+    accountPill.classList.toggle("trial", label === "Trial");
+  }
+  if (accountHint) {
+    if (!entitled) {
+      accountHint.textContent = "Personal (Free). Teams and locked features need a verified App Store subscription.";
+    } else if (ent.isTrial) {
+      accountHint.textContent = `30-day trial is active${ent.expirationDate ? ` until ${ent.expirationDate}` : ""}.`;
+    } else {
+      const product = ent.productId === "com.mabel.app.pro.yearly" ? "Yearly" : "Monthly";
+      accountHint.textContent = `${product} Pro is active${ent.willAutoRenew ? " and renews automatically" : ""}.`;
+    }
+  }
+
+  const status = document.getElementById("plan-status");
+  if (status) {
+    if (!entitled) status.textContent = "Personal (Free). Subscribe below — prices come from the App Store.";
+    else if (ent.isTrial) status.textContent = `Trial active${ent.expirationDate ? ` · ends ${ent.expirationDate}` : ""}.`;
+    else status.textContent = `Pro · ${ent.productId ?? "subscription"}${ent.willAutoRenew ? " · auto-renew on" : ""}`;
+  }
+
+  if (entitled) {
+    loadProSurfaces().catch((e) => console.error("loadProSurfaces:", e));
+  }
+}
+
+async function refreshEntitlement() {
+  try {
+    const ent = await invoke<Entitlement>("storekit_entitlement");
+    applyEntitlement(ent);
+  } catch (e) {
+    console.error("storekit_entitlement:", e);
+    applyEntitlement({
+      entitled: false,
+      status: "none",
+      isTrial: false,
+      willAutoRenew: false,
+    });
+  }
+}
+
+function renderProducts(products: StoreProduct[], ent: Entitlement) {
+  const root = document.getElementById("plan-products");
+  if (!root) return;
+  root.innerHTML = "";
+  if (!products.length) {
+    root.innerHTML = `<p class="row-hint">App Store prices are unavailable here. Use a Mac App Store or TestFlight build after CIO creates the subscription products. Restore Purchases if you already subscribed.</p>`;
+    return;
+  }
+  for (const product of products) {
+    const card = document.createElement("div");
+    card.className = "plan-card";
+    if (ent.entitled && ent.productId === product.id) card.classList.add("current");
+    const intro = product.introOffer?.display
+      ? `<div class="plan-card-intro">${product.introOffer.display}</div>`
+      : "";
+    const period = product.subscriptionPeriod ? ` / ${product.subscriptionPeriod}` : "";
+    card.innerHTML = `
+      <div class="plan-card-name">${product.displayName || product.id}</div>
+      <div class="plan-card-price">${product.displayPrice || "—"}${period}</div>
+      ${intro}
+      <p class="row-hint">${product.description || ""}</p>
+      <button type="button" class="btn-primary" data-product="${product.id}">${
+        ent.entitled && ent.productId === product.id ? "Current plan" : "Subscribe"
+      }</button>
+    `;
+    const btn = card.querySelector("button") as HTMLButtonElement;
+    btn.disabled = !!(ent.entitled && ent.productId === product.id);
+    btn.addEventListener("click", () => buyProduct(product.id, btn));
+    root.appendChild(card);
+  }
+}
+
+async function refreshStorefront() {
+  const errorEl = document.getElementById("plan-error");
+  if (errorEl) errorEl.textContent = "";
+  await refreshEntitlement();
+  try {
+    const products = await invoke<StoreProduct[]>("storekit_products");
+    renderProducts(products, currentEntitlement);
+  } catch (e) {
+    renderProducts([], currentEntitlement);
+    if (errorEl) errorEl.textContent = String(e);
+  }
+}
+
+async function buyProduct(productId: string, btn: HTMLButtonElement) {
+  const errorEl = document.getElementById("plan-error");
+  btn.disabled = true;
+  try {
+    const ent = await invoke<Entitlement>("storekit_purchase", { productId });
+    applyEntitlement(ent);
+    await refreshStorefront();
+  } catch (e) {
+    if (errorEl) errorEl.textContent = String(e);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById("plan-restore")?.addEventListener("click", async () => {
+  const errorEl = document.getElementById("plan-error");
+  try {
+    const ent = await invoke<Entitlement>("storekit_restore");
+    applyEntitlement(ent);
+    await refreshStorefront();
+  } catch (e) {
+    if (errorEl) errorEl.textContent = String(e);
+  }
+});
+
+document.getElementById("plan-manage")?.addEventListener("click", async () => {
+  const errorEl = document.getElementById("plan-error");
+  try {
+    await invoke("storekit_manage_subscriptions");
+  } catch (e) {
+    if (errorEl) errorEl.textContent = String(e);
+  }
+});
+
+listen<Entitlement>("pro-entitlement-changed", (event) => {
+  applyEntitlement(event.payload);
+});
+
+function row(html: string, onRemove: () => void) {
+  const el = document.createElement("div");
+  el.className = "pro-row";
+  el.innerHTML = html + `<button type="button" class="btn-secondary">Remove</button>`;
+  el.querySelector("button")?.addEventListener("click", onRemove);
+  return el;
+}
+
+async function loadProSurfaces() {
+  if (!currentEntitlement.entitled) return;
+
+  const snippets = await invoke<Snippet[]>("snippets_get");
+  const snippetList = document.getElementById("snippet-list");
+  const snippetEmpty = document.getElementById("snippet-empty");
+  if (snippetList) {
+    snippetList.innerHTML = "";
+    snippets.forEach((s) => {
+      snippetList.appendChild(
+        row(
+          `<div><div>${s.trigger}</div><div class="pro-row-meta">${s.expansion}</div></div>`,
+          async () => {
+            await invoke("snippets_remove", { snippetId: s.id });
+            await loadProSurfaces();
+          }
+        )
+      );
+    });
+  }
+  snippetEmpty?.classList.toggle("hidden", snippets.length > 0);
+
+  const style = await invoke<StylePrefs>("style_get");
+  const tone = $<HTMLSelectElement>("style-tone");
+  const casing = $<HTMLSelectElement>("style-casing");
+  const punct = $<HTMLSelectElement>("style-punctuation");
+  tone.value = style.tone;
+  casing.value = style.casing;
+  punct.value = style.punctuation;
+
+  const xf = await invoke<TransformPrefs>("transforms_get");
+  setSwitch($<HTMLButtonElement>("xf-filler"), xf.fillerWords);
+  setSwitch($<HTMLButtonElement>("xf-grammar"), xf.grammar);
+  setSwitch($<HTMLButtonElement>("xf-punct"), xf.punctuation);
+
+  const pad = $<HTMLTextAreaElement>("scratchpad-text");
+  pad.value = await invoke<string>("scratchpad_get");
+
+  const team = await invoke<TeamState>("teams_get");
+  renderTeams(team);
+}
+
+function renderTeams(team: TeamState) {
+  const org = $<HTMLInputElement>("team-org");
+  org.value = team.orgName;
+  const seats = document.getElementById("seat-list");
+  const invites = document.getElementById("invite-list");
+  if (seats) {
+    seats.innerHTML = "";
+    team.seats.forEach((s) => {
+      seats.appendChild(
+        row(
+          `<div><div>${s.displayName} · ${s.role}</div><div class="pro-row-meta">${s.email}</div></div>`,
+          async () => {
+            renderTeams(await invoke<TeamState>("teams_remove_seat", { seatId: s.id }));
+          }
+        )
+      );
+    });
+  }
+  if (invites) {
+    invites.innerHTML = "";
+    team.invites.forEach((i) => {
+      invites.appendChild(
+        row(
+          `<div><div>${i.email} · ${i.status}</div><div class="pro-row-meta">${i.token}</div></div>`,
+          async () => {
+            renderTeams(await invoke<TeamState>("teams_revoke_invite", { inviteId: i.id }));
+          }
+        )
+      );
+    });
+  }
+}
+
+document.getElementById("snippet-add-btn")?.addEventListener("click", async () => {
+  try {
+    const trigger = $<HTMLInputElement>("snippet-trigger").value;
+    const expansion = $<HTMLInputElement>("snippet-expansion").value;
+    await invoke("snippets_add", { trigger, expansion });
+    $<HTMLInputElement>("snippet-trigger").value = "";
+    $<HTMLInputElement>("snippet-expansion").value = "";
+    await loadProSurfaces();
+  } catch (e) {
+    console.error("snippets_add:", e);
+  }
+});
+
+async function saveStyle() {
+  await invoke("style_save", {
+    prefs: {
+      tone: $<HTMLSelectElement>("style-tone").value,
+      casing: $<HTMLSelectElement>("style-casing").value,
+      punctuation: $<HTMLSelectElement>("style-punctuation").value,
+    },
+  });
+}
+$("style-tone").addEventListener("change", () => saveStyle().catch(console.error));
+$("style-casing").addEventListener("change", () => saveStyle().catch(console.error));
+$("style-punctuation").addEventListener("change", () => saveStyle().catch(console.error));
+
+async function saveTransforms() {
+  await invoke("transforms_save", {
+    prefs: {
+      fillerWords: $("xf-filler").getAttribute("aria-checked") === "true",
+      grammar: $("xf-grammar").getAttribute("aria-checked") === "true",
+      punctuation: $("xf-punct").getAttribute("aria-checked") === "true",
+    },
+  });
+}
+["xf-filler", "xf-grammar", "xf-punct"].forEach((id) => {
+  $(id).addEventListener("click", () => {
+    const btn = $<HTMLButtonElement>(id);
+    setSwitch(btn, btn.getAttribute("aria-checked") !== "true");
+    saveTransforms().catch(console.error);
+  });
+});
+
+let scratchpadTimer: number | undefined;
+$("scratchpad-text").addEventListener("input", () => {
+  window.clearTimeout(scratchpadTimer);
+  scratchpadTimer = window.setTimeout(() => {
+    invoke("scratchpad_save", { text: $<HTMLTextAreaElement>("scratchpad-text").value }).catch(console.error);
+  }, 400);
+});
+
+$("team-org-save").addEventListener("click", async () => {
+  try {
+    renderTeams(await invoke<TeamState>("teams_set_org", { orgName: $<HTMLInputElement>("team-org").value }));
+  } catch (e) {
+    console.error("teams_set_org:", e);
+  }
+});
+$("seat-add").addEventListener("click", async () => {
+  try {
+    const team = await invoke<TeamState>("teams_add_seat", {
+      displayName: $<HTMLInputElement>("seat-name").value,
+      email: $<HTMLInputElement>("seat-email").value,
+      role: $<HTMLSelectElement>("seat-role").value,
+    });
+    $<HTMLInputElement>("seat-name").value = "";
+    $<HTMLInputElement>("seat-email").value = "";
+    renderTeams(team);
+  } catch (e) {
+    console.error("teams_add_seat:", e);
+  }
+});
+$("invite-add").addEventListener("click", async () => {
+  try {
+    const team = await invoke<TeamState>("teams_create_invite", {
+      email: $<HTMLInputElement>("invite-email").value,
+    });
+    $<HTMLInputElement>("invite-email").value = "";
+    renderTeams(team);
+  } catch (e) {
+    console.error("teams_create_invite:", e);
+  }
+});
+
 loadSettings();
 loadVersion();
 loadStats();
+refreshEntitlement();
 maybeRunFirstTimeSetup();
 setTimeout(() => {
   checkForUpdates(true);

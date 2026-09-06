@@ -2,6 +2,13 @@
 
 The in-app first-launch popup reads from this file. Every Mabel release MUST add an entry here. Newest version on top.
 
+## v1.4.0 (2026-09-06)
+
+### New
+- Mabel Pro is an App Store subscription: monthly and yearly, each with a 30-day free trial. Prices come from the App Store.
+- Activate Pro, Restore Purchases, and Manage Subscriptions live in Settings → Plans and Billing. There is no website upgrade.
+- Pro unlocks teams (organization, seats, local invites) plus snippets, style, transforms, and scratchpad. Free stays personal-only.
+
 ## v1.3.0 (2026-09-05)
 
 ### New

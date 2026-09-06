@@ -901,9 +901,14 @@ mod tests {
         assert!(polish_select.contains("Polite"));
         let style_view = html.split("data-view=\"style\"").last().unwrap();
         let style_view = style_view.split("<section").next().unwrap();
-        assert!(!style_view.contains("Professional"));
-        assert!(!style_view.contains("Polite"));
-        assert!(!style_view.contains("polish-mode"));
+        assert!(
+            !style_view.contains("data-style-mode=\"professional\"")
+                && !style_view.contains("data-style-mode=\"polite\"")
+                && !style_view.contains("id=\"polish-mode-select\""),
+            "BREAKS IF: Style offers Polish Professional/Polite modes"
+        );
+        assert!(style_view.contains("Professional") && style_view.contains("Polite"));
+        assert!(!style_view.contains("polish-mode-select"));
     }
 
     #[test]

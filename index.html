@@ -712,18 +712,24 @@
               </div>
               <div class="row">
                 <div class="row-text">
-                  <div class="row-label">Cleanup</div>
-                  <div class="row-hint">Rules: fast, no model needed. AI cleanup runs Gemma 4 E4B on-device via the bundled llama-server runtime.</div>
+                  <div class="row-label">Polish</div>
+                  <div class="row-hint">Off by default. Pro only. Mabel tidies what you said with local Gemma &mdash; she never makes things up. Same control lives in the menu bar under Polish.</div>
                 </div>
-                <select id="cleanup-mode-select" aria-label="Cleanup mode">
-                  <option value="rules">Rules only</option>
-                  <option value="llm">AI cleanup (local)</option>
+                <select id="polish-mode-select" aria-label="Polish mode">
+                  <option value="off">Off</option>
+                  <option value="casual">Casual</option>
+                  <option value="professional">Professional</option>
+                  <option value="polite">Polite</option>
                 </select>
               </div>
+              <select id="cleanup-mode-select" class="hidden" aria-hidden="true" tabindex="-1">
+                <option value="rules">Rules only</option>
+                <option value="llm">AI cleanup (local)</option>
+              </select>
               <div class="row hidden" id="llm-settings">
                 <div class="row-text">
-                  <div class="row-label">AI cleanup model</div>
-                  <div class="row-hint">Gemma 4 E4B runs fully on-device. ~5 GB one-time download.</div>
+                  <div class="row-label">Polish model</div>
+                  <div class="row-hint">Gemma 4 E4B runs fully on-device via the bundled llama-server. ~5 GB one-time download. Cleanup only &mdash; never invents.</div>
                 </div>
                 <div class="model-row">
                   <select id="llm-model-select" aria-label="LLM model">

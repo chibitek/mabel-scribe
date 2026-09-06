@@ -185,14 +185,19 @@ async fn transcribe_and_paste(
             // LLM cleanup only on the final chunk in streaming mode. Per-chunk
             // LLM passes would add 300-500ms to every paste and break the
             // "live transcription" feel.
-            let cleaned = if is_final && settings.cleanup_mode == "llm" {
-                match crate::llm::cleanup_with_llm(&rule_cleaned).await {
-                    Ok(s) if !s.is_empty() => s,
-                    Ok(_) => rule_cleaned,
-                    Err(e) => {
-                        eprintln!("[Mabel] LLM cleanup failed, using rules: {}", e);
-                        rule_cleaned
+            let cleaned = if is_final {
+                let mode = crate::polish::effective_mode(&settings.polish_mode);
+                if crate::polish::is_live(&mode) {
+                    match crate::llm::cleanup_with_llm_mode(&rule_cleaned, &mode).await {
+                        Ok(s) if !s.is_empty() => s,
+                        Ok(_) => rule_cleaned,
+                        Err(e) => {
+                            eprintln!("[Mabel] Polish failed, using rules (never invent): {}", e);
+                            rule_cleaned
+                        }
                     }
+                } else {
+                    rule_cleaned
                 }
             } else {
                 rule_cleaned

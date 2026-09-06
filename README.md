@@ -305,6 +305,7 @@ src-tauri/
     transcribe_local.rs    whisper.cpp sidecar invocation (DMG fallback)
     transcribe_groq.rs     Groq HTTP client
     cleanup.rs             Whisper output post-processing
+    polish.rs              Pro-only Polish modes + never-invent Gemma prompts
     paste.rs               Clipboard + osascript paste, Return keystroke
     overlay_macos.rs       NSPanel conversion for the overlay window
     system_ui.rs           Dock visibility, sounds, Accessibility request

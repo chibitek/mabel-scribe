@@ -143,8 +143,11 @@ impl Recorder {
         crate::debug_log::append(
             app_dir,
             &format!(
-                "settings snapshot: engine={} streaming={} cleanup_mode={}",
-                settings.engine, settings.streaming, settings.cleanup_mode
+                "settings snapshot: engine={} streaming={} cleanup_mode={} polish_mode={}",
+                settings.engine,
+                settings.streaming,
+                settings.cleanup_mode,
+                settings.polish_mode
             ),
         );
         println!("[Mabel] stop_and_transcribe entered");
@@ -283,55 +286,14 @@ impl Recorder {
             );
 
             let rule_cleaned = cleanup_text(&raw_text);
-            let cleaned = if settings.cleanup_mode == "llm" && !rule_cleaned.is_empty() {
-                println!(
-                    "[Mabel] LLM cleanup requested (chars={})",
-                    rule_cleaned.chars().count()
-                );
-                let t0 = std::time::Instant::now();
-                let llm_result = match crate::llm::model_filename(&settings.llm_model) {
-                    Ok(name) => {
-                        let model_path = app_dir.join(name);
-                        crate::llm::ensure_and_cleanup(
-                            app,
-                            &self.llm_server,
-                            &settings.llm_model,
-                            &model_path,
-                            &rule_cleaned,
-                        )
-                        .await
-                    }
-                    Err(e) => Err(e),
-                };
-                match llm_result {
-                    Ok(s) if !s.is_empty() => {
-                        println!(
-                            "[Mabel] LLM cleanup succeeded ({:?}, chars={})",
-                            t0.elapsed(),
-                            s.chars().count()
-                        );
-                        s
-                    }
-                    Ok(empty) => {
-                        println!(
-                            "[Mabel] LLM returned empty ({:?}, chars={}); falling back to rules",
-                            t0.elapsed(),
-                            empty.chars().count()
-                        );
-                        rule_cleaned
-                    }
-                    Err(e) => {
-                        eprintln!(
-                            "[Mabel] LLM cleanup failed ({:?}), using rules: {}",
-                            t0.elapsed(),
-                            e
-                        );
-                        rule_cleaned
-                    }
-                }
-            } else {
-                rule_cleaned
-            };
+            let cleaned = crate::llm::polish_or_rules(
+                app,
+                &self.llm_server,
+                settings,
+                app_dir,
+                rule_cleaned,
+            )
+            .await;
 
             let (to_paste, press_enter) =
                 extract_press_enter_command(&cleaned, settings.press_enter_command);

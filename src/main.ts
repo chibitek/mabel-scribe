@@ -21,6 +21,7 @@ interface Settings {
   pressEnterCommand: boolean;
   cleanupMode: string;
   llmModel: string;
+  polishMode: string;
   companionEnabled: boolean;
   companionSize: string;
   companionFrequency: string;
@@ -102,6 +103,7 @@ const downloadBtn = $<HTMLButtonElement>("download-btn");
 const downloadProgress = $("download-progress");
 const progressFill = $("progress-fill");
 const cleanupModeSelect = $<HTMLSelectElement>("cleanup-mode-select");
+const polishModeSelect = $<HTMLSelectElement>("polish-mode-select");
 const llmSettings = $("llm-settings");
 const llmModelSelect = $<HTMLSelectElement>("llm-model-select");
 const llmDownloadBtn = $<HTMLButtonElement>("llm-download-btn");
@@ -270,13 +272,17 @@ document.querySelectorAll<HTMLElement>(".modal-nav-item").forEach((item) => {
   });
 });
 
-function openPlans(e?: Event) {
-  e?.preventDefault();
+function openSettingsPane(pane: string) {
   modal.classList.remove("hidden");
   document.querySelectorAll(".modal-nav-item").forEach((n) => n.classList.remove("active"));
   document.querySelectorAll(".modal-pane").forEach((p) => p.classList.remove("active"));
-  document.querySelector('.modal-nav-item[data-pane="plans"]')?.classList.add("active");
-  document.querySelector('.modal-pane[data-pane="plans"]')?.classList.add("active");
+  document.querySelector(`.modal-nav-item[data-pane="${pane}"]`)?.classList.add("active");
+  document.querySelector(`.modal-pane[data-pane="${pane}"]`)?.classList.add("active");
+}
+
+function openPlans(e?: Event) {
+  e?.preventDefault();
+  openSettingsPane("plans");
   refreshStorefront().catch((err) => console.error("refreshStorefront:", err));
 }
 $("open-pro").addEventListener("click", openPlans);
@@ -344,12 +350,8 @@ async function loadSettings() {
   }
   renderDictionary();
   llmRuntimeAvailable = await invoke<boolean>("llm_runtime_available");
-  cleanupModeSelect.value = currentSettings.cleanupMode || "rules";
-  if (!llmRuntimeAvailable && cleanupModeSelect.value === "llm") {
-    cleanupModeSelect.value = "rules";
-    currentSettings.cleanupMode = "rules";
-    await saveSettings();
-  }
+  currentSettings.polishMode = currentSettings.polishMode || "off";
+  applyPolishUi();
   llmModelSelect.value = currentSettings.llmModel || "standard";
   applyCleanupModeUi();
   await checkLlmModelStatus();
@@ -582,12 +584,30 @@ async function checkLlmModelStatus() {
 }
 
 function applyCleanupModeUi() {
+  const live = isLivePolish(displayedPolishMode());
+  cleanupModeSelect.value = live ? "llm" : "rules";
   const llmOption = cleanupModeSelect.querySelector('option[value="llm"]') as HTMLOptionElement | null;
   if (llmOption) {
     llmOption.disabled = !llmRuntimeAvailable;
     llmOption.textContent = llmRuntimeAvailable ? "AI cleanup (local)" : "AI cleanup (runtime unavailable)";
   }
-  llmSettings.classList.toggle("hidden", cleanupModeSelect.value !== "llm" || !llmRuntimeAvailable);
+  llmSettings.classList.toggle("hidden", !live || !llmRuntimeAvailable);
+}
+
+function isLivePolish(mode: string): boolean {
+  return mode === "casual" || mode === "professional" || mode === "polite";
+}
+
+function displayedPolishMode(): string {
+  const stored = currentSettings.polishMode || "off";
+  if (isLivePolish(stored) && !currentEntitlement.entitled) return "off";
+  return stored;
+}
+
+function applyPolishUi() {
+  if (!currentSettings || !polishModeSelect) return;
+  polishModeSelect.value = displayedPolishMode();
+  applyCleanupModeUi();
 }
 
 async function saveSettings() {
@@ -600,6 +620,7 @@ async function saveSettings() {
   currentSettings.whisperLanguage = languageSelect.value;
   currentSettings.cleanupMode = cleanupModeSelect.value;
   currentSettings.llmModel = llmModelSelect.value;
+  currentSettings.polishMode = displayedPolishMode();
   currentSettings.companionSize = companionSizeSelect.value;
   currentSettings.companionFrequency = companionFrequencySelect.value;
   currentSettings.companionVisit = companionVisitSelect.value;
@@ -733,8 +754,40 @@ cleanupModeSelect.addEventListener("change", async () => {
   applyCleanupModeUi();
   await saveSettings();
   if (cleanupModeSelect.value === "llm" && llmRuntimeAvailable) {
-    // Best-effort warm start. Errors are logged; the actual cleanup path falls
-    // back to rules if the server isn't ready when dictation lands.
+    invoke("ensure_llm_started").catch((e) => console.error("LLM warm start:", e));
+  }
+});
+
+polishModeSelect.addEventListener("change", async () => {
+  const next = polishModeSelect.value;
+  if (isLivePolish(next) && !currentEntitlement.entitled) {
+    polishModeSelect.value = "off";
+    currentSettings.polishMode = "off";
+    applyPolishUi();
+    openPlans();
+    return;
+  }
+  if (isLivePolish(next) && !llmRuntimeAvailable) {
+    polishModeSelect.value = "off";
+    currentSettings.polishMode = "off";
+    applyPolishUi();
+    return;
+  }
+  currentSettings.polishMode = next;
+  applyPolishUi();
+  try {
+    await invoke("polish_set", { mode: next });
+    currentSettings.polishMode = next;
+    currentSettings.cleanupMode = isLivePolish(next) ? "llm" : currentSettings.cleanupMode;
+  } catch (e) {
+    console.error("polish_set:", e);
+    currentSettings.polishMode = "off";
+    polishModeSelect.value = "off";
+    applyPolishUi();
+    if (isLivePolish(next)) openPlans();
+    return;
+  }
+  if (isLivePolish(next) && llmRuntimeAvailable) {
     invoke("ensure_llm_started").catch((e) => console.error("LLM warm start:", e));
   }
 });
@@ -1235,6 +1288,8 @@ function applyEntitlement(ent: Entitlement) {
   if (entitled) {
     loadProSurfaces().catch((e) => console.error("loadProSurfaces:", e));
   }
+  applyPolishUi();
+  invoke("refresh_status_item").catch((e) => console.error("refresh_status_item:", e));
 }
 
 async function refreshEntitlement() {
@@ -1333,6 +1388,16 @@ document.getElementById("plan-manage")?.addEventListener("click", async () => {
 
 listen<Entitlement>("pro-entitlement-changed", (event) => {
   applyEntitlement(event.payload);
+});
+listen<string>("polish-changed", (event) => {
+  if (currentSettings) currentSettings.polishMode = event.payload || "off";
+  applyPolishUi();
+});
+listen("open-plans", () => {
+  openPlans();
+});
+listen<string>("open-settings-pane", (event) => {
+  openSettingsPane(event.payload || "engine");
 });
 
 function row(html: string, onRemove: () => void) {

@@ -203,6 +203,11 @@ async fn transcribe_and_paste(
             } else {
                 rule_cleaned
             };
+            let cleaned = if is_final {
+                crate::dictionary::apply_replacements(&cleaned, &settings.dictionary)
+            } else {
+                cleaned
+            };
             // Only the final chunk can carry a "press enter" command — otherwise
             // we'd fire Return mid-sentence.
             let (to_paste, press_enter) = if is_final {

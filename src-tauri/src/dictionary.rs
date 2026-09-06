@@ -18,6 +18,9 @@ use crate::storekit;
 /// Named Enforcer BOUND. Tests fail if this is violated.
 pub const ENFORCER_BOUND: &str = "Pro-gated; local-first; no cloud sync; no team share; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA; Scratchpad/Insights local-only default; fail closed if ACL missing";
 
+/// Product LOCK Dictionary v1. Tests fail if the surface drifts.
+pub const PRODUCT_LOCK: &str = "Name: Dictionary; Pro only; Free locked + Activate Pro → Plans; personal terms/jargon/replacements during dictation; Settings → Engine + menu-bar Dictionary…; default empty; add/edit/delete on device; local-first; not Nexus; not cloud sync v1; distinct from Polish and Clipboard History; non-goals: shared team dictionary, Wispr import, Notetaker, HIPAA";
+
 /// Held. A later MCS must flip this only with Stiki/folder-style ACL.
 pub const STIKI_FOLDER_ACL_SHIPPED: bool = false;
 
@@ -162,6 +165,52 @@ pub fn share_cloud_or_team() -> Result<(), String> {
 /// BREAKS IF: private Dictionary auto-promotes to company memory.
 pub fn promote_to_company_memory() -> Result<(), String> {
     Err("Private dictionary terms cannot become company memory.".into())
+}
+
+/// Apply stored spellings to tokens already in the transcript.
+/// Free / empty list → unchanged. Does not invent terms that were not spoken.
+pub fn apply_replacements(text: &str, stored: &[String]) -> String {
+    apply_replacements_with(text, &effective_terms(stored))
+}
+
+fn apply_replacements_with(text: &str, terms: &[String]) -> String {
+    if text.is_empty() || terms.is_empty() {
+        return text.to_string();
+    }
+    let mut out = text.to_string();
+    for term in terms {
+        out = replace_term_ignore_case(&out, term);
+    }
+    out
+}
+
+fn is_word_char(c: char) -> bool {
+    c.is_alphanumeric() || c == '\''
+}
+
+fn replace_term_ignore_case(text: &str, term: &str) -> String {
+    if term.is_empty() {
+        return text.to_string();
+    }
+    let chars: Vec<char> = text.chars().collect();
+    let n = term.chars().count();
+    let mut i = 0usize;
+    let mut out = String::new();
+    while i < chars.len() {
+        if i + n <= chars.len() {
+            let slice: String = chars[i..i + n].iter().collect();
+            let prev_ok = i == 0 || !is_word_char(chars[i - 1]);
+            let next_ok = i + n == chars.len() || !is_word_char(chars[i + n]);
+            if slice.eq_ignore_ascii_case(term) && prev_ok && next_ok {
+                out.push_str(term);
+                i += n;
+                continue;
+            }
+        }
+        out.push(chars[i]);
+        i += 1;
+    }
+    out
 }
 
 /// Spelling hint for the local Gemma cleanup pass. Empty when Free or empty list.
@@ -456,6 +505,56 @@ mod tests {
         let pro = include_str!("pro_features.rs");
         assert!(pro.contains("scratchpad.txt"));
         assert!(!pro.contains("HIPAA"));
+    }
+
+    #[test]
+    fn replacements_apply_during_dictation_without_inventing() {
+        let terms = vec!["Chibitek".into(), "GGUF".into()];
+        assert_eq!(
+            apply_replacements_with("I work at chibitek on gguf models.", &terms),
+            "I work at Chibitek on GGUF models."
+        );
+        assert_eq!(
+            apply_replacements_with("Nothing to change here.", &terms),
+            "Nothing to change here."
+        );
+        assert_eq!(
+            apply_replacements("chibitek", &["Chibitek".into()]),
+            "chibitek",
+            "Free / no entitlement must not apply replacements"
+        );
+    }
+
+    #[test]
+    fn product_lock_v1_non_goals_and_surface() {
+        assert!(PRODUCT_LOCK.contains("Name: Dictionary"));
+        assert!(PRODUCT_LOCK.contains("Pro only"));
+        assert!(PRODUCT_LOCK.contains("Settings → Engine"));
+        assert!(PRODUCT_LOCK.contains("distinct from Polish and Clipboard History"));
+        assert!(PRODUCT_LOCK.contains("Wispr import"));
+        assert!(PRODUCT_LOCK.contains("Notetaker"));
+        assert!(PRODUCT_LOCK.contains("HIPAA"));
+
+        let html = include_str!("../../index.html");
+        let ts = include_str!("../../src/main.ts");
+        let rec = include_str!("recorder.rs");
+        assert!(html.contains(">Dictionary<") || html.contains("view-title\">Dictionary"));
+        assert!(html.contains("id=\"polish-activate\""));
+        assert!(html.contains("id=\"dictionary-activate\""));
+        assert!(html.contains("id=\"dictionary-open\""));
+        assert!(ts.contains("openPlans()"));
+        assert!(rec.contains("apply_replacements"));
+        assert!(include_str!("streaming.rs").contains("apply_replacements"));
+
+        for hay in [html, ts] {
+            assert!(!hay.contains("Wispr"), "BREAKS IF: Wispr import");
+            assert!(!hay.contains("wispr"), "BREAKS IF: Wispr import");
+            assert!(!hay.contains("Notetaker"), "BREAKS IF: Notetaker hooks");
+            assert!(!hay.contains("notetaker"), "BREAKS IF: Notetaker hooks");
+            assert!(!hay.contains("HIPAA"), "BREAKS IF: HIPAA claim copy");
+        }
+        let settings = crate::settings::Settings::default();
+        assert!(settings.dictionary.is_empty(), "BREAKS IF: default not empty");
     }
 
     #[test]

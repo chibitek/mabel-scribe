@@ -294,6 +294,7 @@ impl Recorder {
                 rule_cleaned,
             )
             .await;
+            let cleaned = crate::dictionary::apply_replacements(&cleaned, &settings.dictionary);
 
             let (to_paste, press_enter) =
                 extract_press_enter_command(&cleaned, settings.press_enter_command);

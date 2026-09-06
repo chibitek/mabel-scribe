@@ -1,4 +1,4 @@
-//! Menu-bar extra: clipboard history + Polish + Settings.
+//! Menu-bar extra: clipboard history + Polish + Dictionary + Settings.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -79,11 +79,14 @@ fn build_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, String> 
         ],
     )
     .map_err(|e| e.to_string())?;
+    let dictionary = MenuItem::with_id(app, "dictionary", "Dictionary…", true, None::<&str>)
+        .map_err(|e| e.to_string())?;
     let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)
         .map_err(|e| e.to_string())?;
     let quit = MenuItem::with_id(app, "quit", "Quit Mabel", true, None::<&str>)
         .map_err(|e| e.to_string())?;
-    Menu::with_items(app, &[&history, &polish_menu, &settings, &quit]).map_err(|e| e.to_string())
+    Menu::with_items(app, &[&history, &polish_menu, &dictionary, &settings, &quit])
+        .map_err(|e| e.to_string())
 }
 
 pub fn refresh_tray(app: &AppHandle) {
@@ -147,6 +150,10 @@ pub fn install_tray(app: &AppHandle) -> Result<(), String> {
             "polish-casual" => apply_polish_from_tray(app, polish::MODE_CASUAL),
             "polish-professional" => apply_polish_from_tray(app, polish::MODE_PROFESSIONAL),
             "polish-polite" => apply_polish_from_tray(app, polish::MODE_POLITE),
+            "dictionary" => {
+                show_main_window(app);
+                let _ = app.emit("open-dictionary", ());
+            }
             "settings" => show_main_window(app),
             "quit" => app.exit(0),
             _ => {}

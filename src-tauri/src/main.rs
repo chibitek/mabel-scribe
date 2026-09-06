@@ -178,6 +178,12 @@ fn dictionary_share() -> Result<(), String> {
 }
 
 #[tauri::command]
+fn dictionary_promote() -> Result<(), String> {
+    // BREAKS IF: private terms auto-promote to company memory.
+    mabel_lib::dictionary::promote_to_company_memory()
+}
+
+#[tauri::command]
 fn snippets_get(state: State<AppState>) -> Result<Vec<pro_features::Snippet>, String> {
     pro_features::snippets_get(&state.app_dir)
 }
@@ -1036,6 +1042,7 @@ fn main() {
             dictionary_update,
             dictionary_remove,
             dictionary_share,
+            dictionary_promote,
             snippets_get,
             snippets_add,
             snippets_remove,

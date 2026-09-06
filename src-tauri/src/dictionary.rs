@@ -1,17 +1,18 @@
-//! Product **Dictionary** — local-first personal terms / jargon.
+//! Product **Dictionary** — Enforcer BOUND (suite b6530197).
 //!
-//! - Pro-gated (Free locked + Plans upsell; no website upgrade)
-//! - Local-first: terms live in this Mac's `config.json` `dictionary` array
-//! - Used on the existing whisper.cpp `--prompt` hook and local Gemma cleanup
-//! - Cloud / team share is **not shipped** — stub fail-closed until Enforcer BOUND
+//! - Local personal terms / jargon / spelling replacements only
+//! - Pro-gated (Free locked + Activate Pro → Plans; no website)
+//! - No cloud sync, no team/company share, no Nexus/SIEM write
+//! - Private terms must not auto-promote to company memory
+//! - No HIPAA/BAA claim copy
+//! - Distinct from Polish modes and Clipboard History
 //!
-//! BREAKS IF: Free mutate / ASR without Pro / Nexus write / web upgrade / share ships
+//! BREAKS IF: cloud/team share ships / auto-promote / Nexus/SIEM write / HIPAA/BAA copy
 
 use crate::storekit;
 
-/// Named product lock. Tests fail if this is violated.
-pub const ENFORCER_BOUND: &str =
-    "Pro-gated; local-first; no cloud sync; no Nexus write; share fail-closed until BOUND";
+/// Named Enforcer BOUND. Tests fail if this is violated.
+pub const ENFORCER_BOUND: &str = "Pro-gated; local-first; no cloud sync; no team share; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA";
 
 const SHARE_BLOCKED: &str =
     "Cloud and team dictionary share is not available. Dictionary stays on this Mac.";
@@ -131,9 +132,14 @@ pub fn remove_term(stored: &mut Vec<String>, term: &str) -> Result<Vec<String>, 
     apply_remove(stored, term)
 }
 
-/// Soft later: cloud / team share. Do not ship until Enforcer BOUND.
+/// Soft later: cloud / team share. Do not ship until a separate ACL Make It So.
 pub fn share_cloud_or_team() -> Result<(), String> {
     Err(SHARE_BLOCKED.into())
+}
+
+/// BREAKS IF: private Dictionary auto-promotes to company memory.
+pub fn promote_to_company_memory() -> Result<(), String> {
+    Err("Private dictionary terms cannot become company memory.".into())
 }
 
 /// Spelling hint for the local Gemma cleanup pass. Empty when Free or empty list.
@@ -206,6 +212,8 @@ mod tests {
         assert!(err.contains("not available"));
         assert!(err.contains("this Mac"));
         assert!(!err.contains("http"));
+        let promote = promote_to_company_memory().unwrap_err();
+        assert!(promote.contains("company memory"));
     }
 
     #[test]
@@ -213,8 +221,10 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("Pro-gated"));
         assert!(ENFORCER_BOUND.contains("local-first"));
         assert!(ENFORCER_BOUND.contains("no cloud sync"));
-        assert!(ENFORCER_BOUND.contains("no Nexus write"));
-        assert!(ENFORCER_BOUND.contains("share fail-closed"));
+        assert!(ENFORCER_BOUND.contains("no team share"));
+        assert!(ENFORCER_BOUND.contains("no Nexus/SIEM write"));
+        assert!(ENFORCER_BOUND.contains("no auto-promote"));
+        assert!(ENFORCER_BOUND.contains("no HIPAA/BAA"));
 
         let html = include_str!("../../index.html");
         let nav = html
@@ -286,6 +296,7 @@ mod tests {
         assert!(commands.contains("dictionary::effective_terms"));
         assert!(commands.contains("dictionary_add"));
         assert!(commands.contains("share_cloud_or_team"));
+        assert!(commands.contains("promote_to_company_memory"));
         let nexus_write = format!("{}{}", "nexus", "_write");
         assert!(
             !commands.contains(&nexus_write),
@@ -317,6 +328,27 @@ mod tests {
         let polish_fn = llm.split("pub async fn polish_or_rules").nth(1).unwrap();
         let polish_fn = polish_fn.split("pub async fn ensure_and_cleanup").next().unwrap();
         assert!(!polish_fn.contains("groq"), "BREAKS IF: cloud cleanup");
+
+        for hay in [html, ts, commands] {
+            assert!(!hay.contains("HIPAA"), "BREAKS IF: HIPAA claim copy");
+            assert!(!hay.contains("HIPAA/BAA"), "BREAKS IF: BAA claim copy");
+            assert!(
+                !hay.contains("Business Associate"),
+                "BREAKS IF: BAA claim copy"
+            );
+        }
+        let siem_write = format!("{}{}", "siem", "_write");
+        assert!(!commands.contains(&siem_write), "BREAKS IF: SIEM write");
+        assert!(
+            include_str!("dictionary.rs").contains("promote_to_company_memory"),
+            "BREAKS IF: auto-promote stub missing"
+        );
+        assert!(html.contains("id=\"dictionary-open\""));
+        assert!(html.contains("id=\"dictionary-activate\""));
+        assert!(ts.contains("openDictionary"));
+        let tray = include_str!("clipboard_ui.rs");
+        assert!(tray.contains("Dictionary"));
+        assert!(tray.contains("open-dictionary"));
     }
 
     #[test]

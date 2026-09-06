@@ -650,8 +650,9 @@ mod tests {
         let dict = include_str!("dictionary.rs");
         assert!(dict.contains("ENFORCER_BOUND"));
         assert!(dict.contains("Pro-gated"));
-        assert!(dict.contains("no Nexus write"));
-        assert!(dict.contains("share fail-closed"));
+        assert!(dict.contains("no Nexus/SIEM write"));
+        assert!(dict.contains("no auto-promote"));
+        assert!(dict.contains("no HIPAA/BAA"));
     }
 
     #[cfg(unix)]

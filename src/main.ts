@@ -287,6 +287,14 @@ function openPlans(e?: Event) {
   openSettingsPane("plans");
   refreshStorefront().catch((err) => console.error("refreshStorefront:", err));
 }
+
+function openDictionary() {
+  modal.classList.add("hidden");
+  document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
+  document.querySelectorAll<HTMLElement>(".view").forEach((s) => s.classList.remove("active"));
+  document.querySelector('.nav-item[data-view="dictionary"]')?.classList.add("active");
+  document.querySelector('.view[data-view="dictionary"]')?.classList.add("active");
+}
 $("open-pro").addEventListener("click", openPlans);
 $("cta-pro").addEventListener("click", openPlans);
 document.querySelectorAll(".pro-activate").forEach((b) => b.addEventListener("click", openPlans));
@@ -792,6 +800,8 @@ async function removeDictionaryEntry(word: string) {
     console.error("dictionary_remove:", e);
   }
 }
+
+$("dictionary-open").addEventListener("click", openDictionary);
 
 dictAddBtn.addEventListener("click", () => {
   void addOrSaveDictionaryEntry();
@@ -1588,6 +1598,9 @@ listen<string>("polish-changed", (event) => {
 });
 listen("open-plans", () => {
   openPlans();
+});
+listen("open-dictionary", () => {
+  openDictionary();
 });
 listen<string>("open-settings-pane", (event) => {
   openSettingsPane(event.payload || "engine");

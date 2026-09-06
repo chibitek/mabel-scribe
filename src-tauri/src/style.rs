@@ -1,10 +1,12 @@
 //! Product **Style** — Enforcer BOUND (suite b6530197) + Sign-on RE-LOCK.
 //!
-//! GREEN: StoreKit Pro + Stiki dual gate; local-first Formal|Casual|Very casual
-//! register during cleanup; default OFF/unset until the user picks; no freeform
+//! GREEN: StoreKit Pro + Stiki dual gate; local-only Formal|Casual|Very casual
+//! register during cleanup; default OFF/unset until the user picks; distinct
+//! Polish (Off|Casual|Professional|Polite Gemma tone); no freeform
 //! casing/punctuation/formatting prefs; no cloud sync; no team/company share
 //! without ACL Make It So; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA;
-//! Free dictate no Stiki; distinct from Polish/Dictionary/Snippets stores.
+//! Free dictate no Stiki; sign-out locks Style; same Dictionary/Snippets
+//! privacy posture.
 //!
 //! BREAKS IF: Style without dual gate
 //! BREAKS IF: cloud/team share without ACL
@@ -13,6 +15,7 @@
 //! BREAKS IF: merges with Polish/Dictionary/Snippets stores
 //! BREAKS IF: Free dictate gated
 //! BREAKS IF: freeform casing UI instead of Formal|Casual|Very casual
+//! BREAKS IF: sign-out leaves Style unlocked
 //! HELD: cloud sync + team share until MCS with Stiki/folder-style ACL;
 //! fail-closed if ACL missing.
 
@@ -25,8 +28,8 @@ use crate::storekit;
 /// Named Enforcer suite. Tests fail if this is retargeted without a new MCS.
 pub const ENFORCER_SUITE: &str = "b6530197";
 
-/// Named Enforcer BOUND. Tests fail if this is violated.
-pub const ENFORCER_BOUND: &str = "StoreKit Pro + Stiki dual gate; local-first Formal|Casual|Very casual register; default OFF/unset; no freeform casing prefs; no cloud sync; no team/company share without ACL Make It So; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA; Free dictate no Stiki; distinct from Polish/Dictionary/Snippets stores";
+/// Named Enforcer BOUND. `enforcer_bound_style_v1_suite_*` tests fold this.
+pub const ENFORCER_BOUND: &str = "StoreKit Pro + Stiki dual gate; local-first Formal|Casual|Very casual register; default OFF/unset; local-only; sign-out locks Style; distinct Polish; no freeform casing prefs; no cloud sync; no team/company share without ACL Make It So; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA; Free dictate no Stiki; distinct from Polish/Dictionary/Snippets stores";
 
 /// Product LOCK Style v1 + Sign-on. Tests fail if the surface drifts.
 pub const PRODUCT_LOCK: &str = "Name: Style; Pro catalog #3 after Dictionary → Snippets → Style; Pro surface requires StoreKit Pro AND Stiki session; Free locked + Activate Pro / Sign in with Stiki; Formal|Casual|Very casual register/formality preference applied locally during cleanup/dictation paste; default OFF/unset until user picks; Settings + sidebar/nav + menu bar; add/edit/delete means pick/clear mode; local-first; not Nexus; not cloud sync v1; distinct from Dictionary (spelling), Snippets (trigger→expansion), Polish (Off|Casual|Professional|Polite Gemma tone rewrite), and Clipboard History; non-goals: freeform casing/punctuation/formatting prefs, shared team style, cloud write, HIPAA";
@@ -514,6 +517,9 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("StoreKit Pro + Stiki dual gate"));
         assert!(ENFORCER_BOUND.contains("Formal|Casual|Very casual"));
         assert!(ENFORCER_BOUND.contains("default OFF/unset"));
+        assert!(ENFORCER_BOUND.contains("local-only"));
+        assert!(ENFORCER_BOUND.contains("sign-out locks Style"));
+        assert!(ENFORCER_BOUND.contains("distinct Polish"));
         assert!(ENFORCER_BOUND.contains("no freeform casing prefs"));
         assert!(ENFORCER_BOUND.contains("no cloud sync"));
         assert!(ENFORCER_BOUND.contains("no team/company share without ACL Make It So"));
@@ -525,10 +531,87 @@ mod tests {
     }
 
     #[test]
+    fn enforcer_bound_style_v1_suite_b6530197() {
+        assert_eq!(ENFORCER_SUITE, "b6530197");
+        assert!(ENFORCER_BOUND.contains("StoreKit Pro + Stiki dual gate"));
+        assert!(ENFORCER_BOUND.contains("Formal|Casual|Very casual"));
+        assert!(ENFORCER_BOUND.contains("default OFF/unset"));
+        assert!(ENFORCER_BOUND.contains("local-only"));
+        assert!(ENFORCER_BOUND.contains("sign-out locks Style"));
+        assert!(ENFORCER_BOUND.contains("distinct Polish"));
+        assert!(ENFORCER_BOUND.contains("no cloud sync"));
+        assert!(ENFORCER_BOUND.contains("no team/company share without ACL Make It So"));
+        assert!(ENFORCER_BOUND.contains("no Nexus/SIEM write"));
+        assert!(ENFORCER_BOUND.contains("Free dictate no Stiki"));
+        assert!(ENFORCER_BOUND.contains("distinct from Polish/Dictionary/Snippets stores"));
+
+        assert!(
+            require_surface_with(true, false).is_err(),
+            "BREAKS IF: Style without dual gate"
+        );
+        assert!(
+            require_surface_with(false, true).is_err(),
+            "BREAKS IF: Style without dual gate"
+        );
+        assert_eq!(
+            effective_mode_with(MODE_FORMAL, true, false),
+            MODE_OFF,
+            "BREAKS IF: sign-out leaves Style unlocked"
+        );
+        assert_eq!(
+            apply_register("yeah I am gonna go.", MODE_FORMAL),
+            "yeah I am gonna go.",
+            "BREAKS IF: Style applies after sign-out / without Stiki"
+        );
+        assert!(share_cloud_or_team().is_err(), "BREAKS IF: cloud/team share");
+        assert!(promote_to_company_memory().is_err(), "BREAKS IF: auto-promote");
+
+        let html = include_str!("../../index.html");
+        let ts = include_str!("../../src/main.ts");
+        let polish = include_str!("polish.rs");
+        assert!(html.contains("data-style-mode=\"formal\""));
+        assert!(html.contains("data-style-mode=\"casual\""));
+        assert!(html.contains("data-style-mode=\"very-casual\""));
+        assert!(!html.contains("style-tone") && !html.contains("style-casing"));
+        assert!(polish.contains("MODE_PROFESSIONAL") && polish.contains("MODE_POLITE"));
+        assert!(!include_str!("polish.rs").contains("style.json"));
+        assert!(ts.contains("applyStyleGate"));
+        assert!(ts.contains("styleSurfaceReady"));
+        assert!(ts.contains("stiki_sign_out"));
+        let apply = ts
+            .split("function applyStyleGate")
+            .nth(1)
+            .expect("applyStyleGate");
+        let apply = apply.split("function ").next().unwrap();
+        assert!(
+            apply.contains("styleSurfaceReady") && apply.contains("stikiLive"),
+            "BREAKS IF: sign-out leaves Style unlocked"
+        );
+        let sign_out = ts
+            .split("stiki-signout")
+            .nth(1)
+            .expect("stiki-signout");
+        let sign_out = sign_out.split("document.querySelectorAll").next().unwrap();
+        assert!(
+            sign_out.contains("applyStikiFromConnectors") || sign_out.contains("applyProLocks"),
+            "BREAKS IF: sign-out leaves Style unlocked"
+        );
+        assert!(
+            include_str!("pro_features.rs").contains("style.json")
+                && !include_str!("settings.rs").contains("style.json"),
+            "BREAKS IF: Style folded into Dictionary/settings store"
+        );
+    }
+
+    #[test]
     fn enforcer_bound_breaks_if_free_cloud_nexus_or_web_upgrade() {
         assert_eq!(ENFORCER_SUITE, "b6530197");
         assert!(ENFORCER_BOUND.contains("StoreKit Pro + Stiki dual gate"));
         assert!(ENFORCER_BOUND.contains("Formal|Casual|Very casual"));
+        assert!(ENFORCER_BOUND.contains("default OFF/unset"));
+        assert!(ENFORCER_BOUND.contains("local-only"));
+        assert!(ENFORCER_BOUND.contains("sign-out locks Style"));
+        assert!(ENFORCER_BOUND.contains("distinct Polish"));
         assert!(ENFORCER_BOUND.contains("no freeform casing prefs"));
         assert!(ENFORCER_BOUND.contains("no cloud sync"));
         assert!(ENFORCER_BOUND.contains("no team/company share without ACL Make It So"));

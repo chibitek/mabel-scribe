@@ -38,13 +38,13 @@ use crate::stiki;
 use crate::storekit;
 
 /// Named Enforcer BOUND. `enforcer_bound_*` tests fail if this is violated.
-pub const ENFORCER_BOUND: &str = "explicit user connect Mochii+Nexus MCP only; Sign in with Stiki before MCP; Stiki KYC + Suite ACL fail closed; Scratchpad NOT MCP source/sink v1; no silent ASR/Polish/Scratchpad/history/clipboard auto-push; no default always-on; no cookie auto-reconnect; no HIPAA/BAA; no silent Stiki bootstrap; cross-market Stiki session is identity only; SSO ≠ MCP connected; Stiki required for ALL Pro unlocks; not Connectors-only; StoreKit ≠ Stiki; Dictionary and Insights require Stiki + StoreKit; Free dictation no Stiki; Clipboard Free 25 no Stiki";
+pub const ENFORCER_BOUND: &str = "explicit user connect Mochii+Nexus MCP only; Sign in with Stiki before MCP; Stiki KYC + Suite ACL fail closed; Scratchpad NOT MCP source/sink v1; no silent ASR/Polish/Scratchpad/history/clipboard auto-push; no default always-on; no cookie auto-reconnect; no HIPAA/BAA; no silent Stiki bootstrap; cross-market Stiki session is identity only; SSO ≠ MCP connected; Stiki required for ALL Pro unlocks; not Connectors-only; StoreKit ≠ Stiki; Dictionary and Insights require Stiki + StoreKit; Style requires Stiki + StoreKit; Free dictation no Stiki; Clipboard Free 25 no Stiki";
 
 /// Suite id for the canonical Sign-on BOUND tip.
 pub const SIGN_ON_SUITE: &str = "b6530197";
 
 /// Canonical Enforcer Sign-on BOUND (Suite b6530197). `enforcer_bound_sign_on_suite_*` tests fold this.
-pub const SIGN_ON_BOUND: &str = "GREEN: Settings→Account Sign in with Stiki only (Apple/Google/Microsoft → Stiki unified, Mochii-same KYC); cross-market Mochii/Stiki session OK for Mabel Account identity (no second IdP); Stiki required for ALL Pro unlocks (Polish/Dictionary/Scratchpad Pro/Transforms/Connectors/Teams) — not Connectors-only; StoreKit ≠ Stiki (purchase vs identity; neither substitutes); Stiki before Mochii/Nexus MCP; MCP still needs explicit connect + Stiki ACL fail closed (SSO/session alone ≠ MCP on); Connectors: explicit connect + ACL after SSO (SSO ≠ MCP on); sign-out disconnects MCP immediately; sign-out drops MCP; Pro locks until Stiki again; sign-out locks Pro surfaces immediately; Free dictate without account OK; Free dictation no account; Clipboard Free 25 no Stiki; Pro unlock = StoreKit + Stiki session; Pro surfaces require Stiki session + StoreKit; Pro catalog: Dictionary, Polish, Clipboard Pro unlimited, Snippets, Style, Transforms, Scratchpad, Insights, Connectors/team, Teams; login/session does NOT promote Scratchpad/dictation/history/Polish/clipboard to Nexus; no silent Stiki bootstrap; no always-on cookies auto-reconnect MCP without explicit connect; no HIPAA/BAA claim; BREAKS IF: Pro unlocks without Stiki; Pro surface usable without Stiki; Free dictate requires account; Free dictation gated on Stiki; StoreKit==Stiki collapsed; login promotes local→Nexus; SSO alone enables MCP; second IdP / Mabel-native auth parallel to Stiki; silent Stiki session enables MCP; always-on cookies auto-reconnect MCP without explicit connect; sign-out leaves MCP live; login/session promotes Scratchpad/dictation/history/Polish/clipboard → Nexus; cross-market session silently turns MCP on without explicit connect+ACL";
+pub const SIGN_ON_BOUND: &str = "GREEN: Settings→Account Sign in with Stiki only (Apple/Google/Microsoft → Stiki unified, Mochii-same KYC); cross-market Mochii/Stiki session OK for Mabel Account identity (no second IdP); Stiki required for ALL Pro unlocks (Polish/Dictionary/Snippets/Style/Scratchpad Pro/Transforms/Connectors/Teams) — not Connectors-only; StoreKit ≠ Stiki (purchase vs identity; neither substitutes); Stiki before Mochii/Nexus MCP; MCP still needs explicit connect + Stiki ACL fail closed (SSO/session alone ≠ MCP on); Connectors: explicit connect + ACL after SSO (SSO ≠ MCP on); sign-out disconnects MCP immediately; sign-out drops MCP; Pro locks until Stiki again; sign-out locks Pro surfaces immediately; Free dictate without account OK; Free dictation no account; Clipboard Free 25 no Stiki; Pro unlock = StoreKit + Stiki session; Pro surfaces require Stiki session + StoreKit; Pro catalog: Dictionary, Polish, Clipboard Pro unlimited, Snippets, Style, Transforms, Scratchpad, Insights, Connectors/team, Teams; login/session does NOT promote Scratchpad/dictation/history/Polish/clipboard to Nexus; no silent Stiki bootstrap; no always-on cookies auto-reconnect MCP without explicit connect; no HIPAA/BAA claim; BREAKS IF: Pro unlocks without Stiki; Pro surface usable without Stiki; Free dictate requires account; Free dictation gated on Stiki; StoreKit==Stiki collapsed; login promotes local→Nexus; SSO alone enables MCP; second IdP / Mabel-native auth parallel to Stiki; silent Stiki session enables MCP; always-on cookies auto-reconnect MCP without explicit connect; sign-out leaves MCP live; login/session promotes Scratchpad/dictation/history/Polish/clipboard → Nexus; cross-market session silently turns MCP on without explicit connect+ACL";
 
 /// Enforcer OVERRIDE RE-BOUND (Suite b6530197). Stiki for ALL Pro unlocks.
 pub const ERICK_OVERRIDE: &str = "Stiki required for ALL Pro unlocks; not Connectors-only; StoreKit ≠ Stiki; neither substitutes; Pro unlock = StoreKit + Stiki session; Pro catalog: Dictionary, Polish, Clipboard Pro unlimited, Snippets, Style, Transforms, Scratchpad, Insights, Connectors/team, Teams; Free dictate without account OK; Free dictation no account; Clipboard Free 25 no Stiki; sign-out drops MCP; Pro locks until Stiki again; sign-out locks Pro immediately; SSO ≠ MCP on; no silent promote local→Nexus; no second IdP; no HIPAA/BAA";
@@ -535,6 +535,7 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("not Connectors-only"));
         assert!(ENFORCER_BOUND.contains("StoreKit ≠ Stiki"));
         assert!(ENFORCER_BOUND.contains("Dictionary and Insights require Stiki + StoreKit"));
+        assert!(ENFORCER_BOUND.contains("Style requires Stiki + StoreKit"));
         assert!(ENFORCER_BOUND.contains("Free dictation no Stiki"));
         assert!(ENFORCER_BOUND.contains("Clipboard Free 25 no Stiki"));
 
@@ -659,6 +660,7 @@ mod tests {
         assert!(SIGN_ON_BOUND.contains("SSO/session alone ≠ MCP on"));
         assert!(SIGN_ON_BOUND.contains("sign-out disconnects MCP immediately"));
         assert!(SIGN_ON_BOUND.contains("Stiki required for ALL Pro unlocks"));
+        assert!(SIGN_ON_BOUND.contains("Snippets/Style"));
         assert!(SIGN_ON_BOUND.contains("not Connectors-only"));
         assert!(SIGN_ON_BOUND.contains("StoreKit ≠ Stiki"));
         assert!(SIGN_ON_BOUND.contains("neither substitutes"));
@@ -788,6 +790,16 @@ mod tests {
         assert!(
             html.contains("data-view=\"insights\" data-pro"),
             "BREAKS IF: Pro surface usable without Stiki"
+        );
+        assert!(
+            html.contains("data-view=\"style\"") && html.contains("data-style-gate"),
+            "BREAKS IF: Style usable without Stiki"
+        );
+        assert!(
+            include_str!("style.rs").contains("stiki_session")
+                && include_str!("style.rs").contains("ENFORCER_SUITE")
+                && include_str!("style.rs").contains("b6530197"),
+            "BREAKS IF: Style usable without Stiki"
         );
 
         // BREAKS IF: Pro surface usable without Stiki

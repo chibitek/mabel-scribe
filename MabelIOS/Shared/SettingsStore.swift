@@ -35,17 +35,13 @@ final class SettingsStore {
     /// Ready switch only. Does not start the microphone.
     var masterOn = true
 
-    /// Pro surfaces require Stiki AND StoreKit. Not used by Free dictate.
-    var isProUnlocked: Bool { stikiSignedIn && storeKitEntitled }
+    /// Pro surfaces require StoreKit Pro AND Stiki. Not used by Free Home / dictate.
+    var isProUnlocked: Bool {
+        EnforcerBound.isProUnlocked(stikiSignedIn: stikiSignedIn, storeKitEntitled: storeKitEntitled)
+    }
 
     func isTabUnlocked(_ tab: String) -> Bool {
-        if EnforcerBound.freeHomeTabs.contains(tab) {
-            return true
-        }
-        if EnforcerBound.proHomeTabs.contains(tab) {
-            return isProUnlocked
-        }
-        return false
+        EnforcerBound.isHomeTabUnlocked(tab, stikiSignedIn: stikiSignedIn, storeKitEntitled: storeKitEntitled)
     }
 
     init(defaults: UserDefaults? = nil) {

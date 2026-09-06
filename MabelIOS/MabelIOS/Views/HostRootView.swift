@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Host tab shell. Home is Free. Other tabs are Pro + Stiki (dual gate).
+/// Host tab shell. Home is Free without Stiki / without account.
+/// Pro tabs need StoreKit Pro AND Stiki (both). StoreKit ≠ Stiki.
 /// Cat brand, not Flow.
 struct HostRootView: View {
     @Environment(SettingsStore.self) private var settings

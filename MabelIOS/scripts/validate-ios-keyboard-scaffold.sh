@@ -162,7 +162,12 @@ if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift"
   && grep -q 'BREAKS IF (b6530197): HIPAA/BAA claim; improve-models default ON' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'dictation/cloud sync available v1' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let homeTabs = \["Home", "Dictionary", "Snippets", "Style", "Scratchpad"\]' "$IOS/Shared/EnforcerBound.swift" \
-  && grep -q 'static let freeHomeTabs = \["Home"\]' "$IOS/Shared/EnforcerBound.swift"; then
+  && grep -q 'static let freeHomeTabs = \["Home"\]' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let freeHomeAndDictateRequireAccount = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let proUnlockRequiresStoreKitAndStiki = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let storeKitEqualsStiki = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'GREEN (b6530197 Home IA): Free Home + dictate available without Stiki' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'BREAKS IF (b6530197 Home IA): Free Home or Free dictate gated on' "$IOS/Shared/EnforcerBound.swift"; then
   ok "EnforcerBound locks Mabel brand, ship order, Settings IA, Home IA, Suite b6530197"
 else
   bad "EnforcerBound missing brand/shipOrder/settings/home/cloud locks"
@@ -288,11 +293,32 @@ for required in (
     if required not in blob:
         print(f"  FAIL  Settings IA missing {required}")
         failed = True
-if "stikiSignedIn && storeKitEntitled" not in settings_store:
-    print("  FAIL  Pro dual gate must require Stiki AND purchase")
+if "stikiSignedIn && storeKitEntitled" not in enforcer:
+    print("  FAIL  Pro dual gate must require StoreKit Pro AND Stiki")
     failed = True
 else:
-    print("  PASS  Pro dual gate is Stiki AND purchase")
+    print("  PASS  Pro dual gate is StoreKit Pro AND Stiki")
+if "EnforcerBound.isProUnlocked" not in settings_store \
+        or "EnforcerBound.isHomeTabUnlocked" not in settings_store:
+    print("  FAIL  SettingsStore must use EnforcerBound dual-gate helpers")
+    failed = True
+else:
+    print("  PASS  SettingsStore uses EnforcerBound dual-gate helpers")
+if re.search(r'stikiSignedIn\s*\|\|\s*storeKitEntitled', settings_store + enforcer):
+    print("  FAIL  StoreKit alone or Stiki alone must not unlock Pro")
+    failed = True
+if "static let storeKitEqualsStiki = false" not in enforcer:
+    print("  FAIL  StoreKit ≠ Stiki lock missing")
+    failed = True
+if "static let freeHomeAndDictateRequireAccount = false" not in enforcer:
+    print("  FAIL  Free Home + dictate must stay available without account")
+    failed = True
+if "GREEN (b6530197 Home IA): Free Home + dictate available without Stiki" not in enforcer \
+        or "BREAKS IF (b6530197 Home IA): Free Home or Free dictate gated on" not in enforcer:
+    print("  FAIL  Suite b6530197 Home IA GREEN/BREAKS IF missing")
+    failed = True
+else:
+    print("  PASS  Suite b6530197 Home IA GREEN/BREAKS IF folded")
 if "var improveModels = EnforcerBound.improveModelsDefaultOn" not in settings_store:
     print("  FAIL  Improve models must default from EnforcerBound (OFF)")
     failed = True
@@ -454,7 +480,55 @@ if "func isTabUnlocked" not in settings_store or "isProUnlocked" not in settings
     print("  FAIL  tab unlock must use Pro dual gate")
     failed = True
 else:
-    print("  PASS  tab unlock uses Stiki AND purchase")
+    print("  PASS  tab unlock uses StoreKit Pro AND Stiki")
+# Free Home / Free dictate must not gate on Stiki or account.
+free_paths = {
+    "MabelIOS/Views/HomeTabView.swift": home,
+    "MabelIOS/Views/HostDictatePlayground.swift": open(os.path.join(root, "MabelIOS/Views/HostDictatePlayground.swift")).read(),
+    "Shared/DictatePermissionGate.swift": open(os.path.join(root, "Shared/DictatePermissionGate.swift")).read(),
+    "Shared/SpeechSession.swift": open(os.path.join(root, "Shared/SpeechSession.swift")).read(),
+    "MabelKeyboard/KeyboardViewController.swift": open(os.path.join(root, "MabelKeyboard/KeyboardViewController.swift")).read(),
+    "MabelKeyboard/KeyboardRootView.swift": open(os.path.join(root, "MabelKeyboard/KeyboardRootView.swift")).read(),
+}
+free_gate_hit = False
+for rel, blob in free_paths.items():
+    for i, line in enumerate(blob.splitlines(), 1):
+        stripped = line.strip()
+        if stripped.startswith("//") or stripped.startswith("///"):
+            continue
+        if re.search(r'\b(stikiSignedIn|storeKitEntitled|isProUnlocked|isTabUnlocked)\b', stripped):
+            print(f"  FAIL  Free Home or Free dictate gated on Stiki/account {rel}:{i}: {stripped}")
+            failed = True
+            free_gate_hit = True
+if not free_gate_hit:
+    print("  PASS  Free Home + dictate not gated on Stiki/account")
+# Dual-gate truth table: neither StoreKit nor Stiki alone unlocks Pro tabs.
+def pro_unlocked(stiki, storekit):
+    return bool(stiki and storekit)
+
+def tab_unlocked(tab, stiki, storekit):
+    if tab == "Home":
+        return True
+    if tab in ("Dictionary", "Snippets", "Style", "Scratchpad"):
+        return pro_unlocked(stiki, storekit)
+    return False
+
+home_ia_failed = False
+for tab in ("Home", "Dictionary", "Snippets", "Style", "Scratchpad"):
+    for stiki, storekit, want_pro in (
+        (False, False, False),
+        (True, False, False),
+        (False, True, False),
+        (True, True, True),
+    ):
+        got = tab_unlocked(tab, stiki, storekit)
+        want = True if tab == "Home" else want_pro
+        if got != want:
+            print(f"  FAIL  Home IA gate {tab} stiki={stiki} storekit={storekit} -> {got} want {want}")
+            failed = True
+            home_ia_failed = True
+if not home_ia_failed:
+    print("  PASS  Home IA dual-gate truth table (StoreKit ≠ Stiki)")
 if "masterOn" not in settings_store:
     print("  FAIL  Master On toggle missing from store")
     failed = True

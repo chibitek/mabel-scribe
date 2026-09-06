@@ -16,6 +16,14 @@ import Foundation
 ///
 /// BREAKS IF (b6530197): HIPAA/BAA claim; improve-models default ON;
 /// dictation/cloud sync available v1; or silent cloud.
+///
+/// GREEN (b6530197 Home IA): Free Home + dictate available without Stiki /
+/// without account. Pro tabs / Pro surfaces require StoreKit Pro AND Stiki
+/// session (both). StoreKit ≠ Stiki; neither alone unlocks Pro tabs.
+///
+/// BREAKS IF (b6530197 Home IA): Free Home or Free dictate gated on
+/// Stiki/account; Pro tabs unlock without StoreKit Pro + Stiki; StoreKit
+/// alone or Stiki alone treated as full Pro unlock for those tabs.
 enum EnforcerBound {
     static let displayBrand = "Mabel"
     static let forbiddenBrands = ["Flow", "Wispr"]
@@ -23,10 +31,16 @@ enum EnforcerBound {
     static let thisTip = "Keyboard"
     /// Host Settings IA. Scaffold only. Free dictate does not use these panes.
     static let settingsPanes = ["Account", "General", "Keyboard", "Notifications", "Data & privacy"]
-    /// Host Home IA. Free: Home only. Pro tabs need Stiki AND StoreKit.
+    /// Host Home IA. Free: Home only. Pro tabs need StoreKit Pro AND Stiki.
     static let homeTabs = ["Home", "Dictionary", "Snippets", "Style", "Scratchpad"]
     static let freeHomeTabs = ["Home"]
     static let proHomeTabs = ["Dictionary", "Snippets", "Style", "Scratchpad"]
+    /// GREEN: Free Home + dictate available without Stiki / without account.
+    static let freeHomeAndDictateRequireAccount = false
+    /// GREEN: Pro tabs require StoreKit Pro AND Stiki session (both).
+    static let proUnlockRequiresStoreKitAndStiki = true
+    /// StoreKit ≠ Stiki. Neither alone unlocks Pro tabs.
+    static let storeKitEqualsStiki = false
     /// Suite b6530197 — Local-only privacy mode.
     static let privacySuite = "b6530197"
     /// Surface copy. Use this only — never HIPAA/BAA.
@@ -52,5 +66,21 @@ enum EnforcerBound {
     static func isForbiddenBrand(_ name: String) -> Bool {
         let folded = name.trimmingCharacters(in: .whitespacesAndNewlines)
         return forbiddenBrands.contains { $0.caseInsensitiveCompare(folded) == .orderedSame }
+    }
+
+    /// StoreKit ≠ Stiki. Neither flag alone is a Pro unlock.
+    static func isProUnlocked(stikiSignedIn: Bool, storeKitEntitled: Bool) -> Bool {
+        stikiSignedIn && storeKitEntitled
+    }
+
+    /// Free Home is never gated on Stiki/account. Pro tabs need both.
+    static func isHomeTabUnlocked(_ tab: String, stikiSignedIn: Bool, storeKitEntitled: Bool) -> Bool {
+        if freeHomeTabs.contains(tab) {
+            return true
+        }
+        if proHomeTabs.contains(tab) {
+            return isProUnlocked(stikiSignedIn: stikiSignedIn, storeKitEntitled: storeKitEntitled)
+        }
+        return false
     }
 }

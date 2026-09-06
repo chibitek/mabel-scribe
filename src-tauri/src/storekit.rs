@@ -169,6 +169,25 @@ pub fn manage_subscriptions() -> Result<(), String> {
     }
 }
 
+pub const OFFER_CODES_NEED_NEWER_MACOS: &str = "Offer codes need a newer macOS";
+
+/// Present StoreKit `offerCodeRedemption`. Never mock-grants Pro: success
+/// still goes through `current_entitlement()` (verified tx only).
+pub fn redeem_offer_code() -> Result<Entitlement, String> {
+    match native_redeem_offer_code()? {
+        0 => Ok(current_entitlement()),
+        1 => Err("Offer code redemption cancelled. You are still on Free.".into()),
+        3 => Err(OFFER_CODES_NEED_NEWER_MACOS.into()),
+        _ => Err(native_last_error().unwrap_or_else(|| {
+            "Could not redeem the offer code. You are still on Free.".into()
+        })),
+    }
+}
+
+pub fn offer_codes_supported() -> bool {
+    native_offer_codes_supported()
+}
+
 fn timeout_message(op: &str) -> String {
     format!(
         "{op} timed out after {STOREKIT_IPC_TIMEOUT_SECS}s. Restore Purchases and Manage Subscriptions still work. Mabel did not grant Pro."
@@ -226,6 +245,20 @@ pub fn storekit_manage_subscriptions() -> Result<(), String> {
     manage_subscriptions()
 }
 
+#[tauri::command]
+pub async fn storekit_redeem_offer_code() -> Result<Entitlement, String> {
+    with_storekit_timeout(
+        redeem_offer_code,
+        timeout_message("Offer code redemption"),
+    )
+    .await
+}
+
+#[tauri::command]
+pub fn storekit_offer_codes_supported() -> bool {
+    offer_codes_supported()
+}
+
 #[cfg(all(target_os = "macos", mabel_native_storekit))]
 mod ffi {
     use super::*;
@@ -238,6 +271,8 @@ mod ffi {
         pub fn mabel_storekit_purchase(product_id: *const c_char) -> c_int;
         pub fn mabel_storekit_restore() -> c_int;
         pub fn mabel_storekit_manage() -> c_int;
+        pub fn mabel_storekit_redeem_offer_code() -> c_int;
+        pub fn mabel_storekit_offer_codes_supported() -> c_int;
         pub fn mabel_storekit_free(s: *mut c_char);
         pub fn mabel_storekit_last_error() -> *const c_char;
     }
@@ -293,6 +328,16 @@ fn native_manage() -> Result<c_int, String> {
 }
 
 #[cfg(all(target_os = "macos", mabel_native_storekit))]
+fn native_redeem_offer_code() -> Result<c_int, String> {
+    Ok(unsafe { ffi::mabel_storekit_redeem_offer_code() })
+}
+
+#[cfg(all(target_os = "macos", mabel_native_storekit))]
+fn native_offer_codes_supported() -> bool {
+    unsafe { ffi::mabel_storekit_offer_codes_supported() } == 1
+}
+
+#[cfg(all(target_os = "macos", mabel_native_storekit))]
 fn native_last_error() -> Option<String> {
     let ptr = unsafe { ffi::mabel_storekit_last_error() };
     if ptr.is_null() {
@@ -333,6 +378,16 @@ fn native_restore() -> Result<c_int, String> {
 #[cfg(not(all(target_os = "macos", mabel_native_storekit)))]
 fn native_manage() -> Result<c_int, String> {
     Err(unavailable_message())
+}
+
+#[cfg(not(all(target_os = "macos", mabel_native_storekit)))]
+fn native_redeem_offer_code() -> Result<c_int, String> {
+    Err(unavailable_message())
+}
+
+#[cfg(not(all(target_os = "macos", mabel_native_storekit)))]
+fn native_offer_codes_supported() -> bool {
+    false
 }
 
 #[cfg(not(all(target_os = "macos", mabel_native_storekit)))]
@@ -454,6 +509,21 @@ mod tests {
     }
 
     #[test]
+    fn redeem_offer_code_never_mock_grants_pro() {
+        let before = current_entitlement();
+        assert!(!before.entitled);
+        let err = redeem_offer_code().unwrap_err();
+        assert!(!current_entitlement().entitled);
+        assert!(
+            err.contains("StoreKit")
+                || err.contains("newer macOS")
+                || err.contains("Free")
+                || err.contains("subscription")
+        );
+        assert!(!offer_codes_supported());
+    }
+
+    #[test]
     fn mas_docs_name_the_iap_products() {
         let docs = include_str!("../../docs/app-store-iap.md");
         assert!(docs.contains(PRODUCT_MONTHLY));
@@ -461,6 +531,9 @@ mod tests {
         assert!(docs.contains(ASC_APP_APPLE_ID));
         assert!(docs.contains("30-day"));
         assert!(docs.contains("In-App Purchase"));
+        assert!(docs.contains("Have a code?"));
+        assert!(docs.contains("offerCodeRedemption"));
+        assert!(docs.contains("Offer codes need a newer macOS"));
     }
 
     #[test]
@@ -530,6 +603,13 @@ mod tests {
             "mixed-language + dynamic is a common Xcode 16 swift build failure"
         );
         assert!(manifest.contains("swiftLanguageMode"));
+        assert!(
+            manifest.contains("SwiftUI"),
+            "offerCodeRedemption is a SwiftUI modifier; link the system framework"
+        );
+        let header = include_str!("../../native/MabelStoreKit/Sources/MabelStoreKit/include/mabel_storekit.h");
+        assert!(header.contains("mabel_storekit_redeem_offer_code"));
+        assert!(header.contains("mabel_storekit_offer_codes_supported"));
     }
 
     #[test]
@@ -586,6 +666,19 @@ mod tests {
         assert!(swift.contains("@MainActor"), "Product.purchase must run on MainActor");
         assert!(swift.contains("bridgeTimeoutSeconds"));
         assert!(swift.contains("120"));
+        assert!(
+            swift.contains("offerCodeRedemption"),
+            "Plans redeem must open StoreKit offerCodeRedemption, not a home-rolled code field"
+        );
+        assert!(
+            swift.contains("#available(macOS 15.0"),
+            "offerCodeRedemption is macOS 15+; gate it so macosx14.0 still compiles"
+        );
+        assert!(swift.contains("Offer codes need a newer macOS"));
+        assert!(
+            !swift.contains("presentOfferCodeRedeemSheet"),
+            "presentOfferCodeRedeemSheet overloads are UIWindowScene-shaped like showManageSubscriptions"
+        );
     }
 
     #[test]
@@ -597,7 +690,9 @@ mod tests {
         assert!(rust.contains("async fn storekit_restore"));
         assert!(rust.contains("async fn storekit_products"));
         assert!(rust.contains("async fn storekit_entitlement"));
+        assert!(rust.contains("async fn storekit_redeem_offer_code"));
         assert!(rust.contains("fn storekit_manage_subscriptions"));
+        assert!(rust.contains("fn storekit_offer_codes_supported"));
         assert!(!rust.contains("async fn storekit_manage_subscriptions"));
         assert_eq!(STOREKIT_IPC_TIMEOUT_SECS, 125);
     }
@@ -614,5 +709,13 @@ mod tests {
         assert!(ts.contains("Waiting for App Store"));
         assert!(ts.contains("get_storage_status"));
         assert!(ts.contains("withTimeout"));
+        assert!(html.contains("Have a code?"));
+        assert!(html.contains("plan-redeem"));
+        assert!(html.contains("offer-code-cat"));
+        assert!(!html.contains("offer-code-input"));
+        assert!(!html.contains("id=\"offer-code-input\""));
+        assert!(ts.contains("storekit_redeem_offer_code"));
+        assert!(ts.contains("Offer codes need a newer macOS"));
+        assert!(!ts.contains("chibiteklabs.com/redeem"));
     }
 }

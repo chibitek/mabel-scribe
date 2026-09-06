@@ -3,7 +3,8 @@
 // scripts/build-mabel-storekit.sh (Xcode 16 + Swift 6, Apple Silicon).
 // Deployment target is macOS 14.0 — do not bump to 15. Source must not
 // name macOS 15-only StoreKit symbols (OfferType.winBack,
-// AppStore.showManageSubscriptions).
+// AppStore.showManageSubscriptions). offerCodeRedemption is gated with
+// `#available(macOS 15.0, *)` and never mock-grants Pro.
 //
 // Pure Swift target on purpose: a mixed-language dynamic library
 // (C header path + Swift in one target) is a common `swift build`
@@ -34,6 +35,7 @@ let package = Package(
             linkerSettings: [
                 .linkedFramework("StoreKit"),
                 .linkedFramework("AppKit"),
+                .linkedFramework("SwiftUI"),
             ]
         ),
     ]

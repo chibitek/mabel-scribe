@@ -1,6 +1,7 @@
 import AppKit
 import Foundation
 import StoreKit
+import SwiftUI
 
 /// C ABI for Mabel Pro StoreKit 2.
 ///
@@ -436,6 +437,130 @@ public func mabel_storekit_manage() -> Int32 {
     }
     setError("Could not open App Store subscription management")
     return -1
+}
+
+/// 1 if StoreKit `offerCodeRedemption` can present the system sheet.
+@_cdecl("mabel_storekit_offer_codes_supported")
+public func mabel_storekit_offer_codes_supported() -> Int32 {
+    if #available(macOS 15.0, *) {
+        return 1
+    }
+    return 0
+}
+
+/// Present Apple's offer-code sheet. Does not invent a price or grant Pro.
+/// Cancel / fail / unverified → stay Free (entitlement is still verified tx only).
+@_cdecl("mabel_storekit_redeem_offer_code")
+public func mabel_storekit_redeem_offer_code() -> Int32 {
+    clearError()
+    if #available(macOS 15.0, *) {
+        return redeemOfferCodeOnSupportedOS()
+    }
+    setError("Offer codes need a newer macOS")
+    return 3
+}
+
+@available(macOS 15.0, *)
+private func redeemOfferCodeOnSupportedOS() -> Int32 {
+    do {
+        try runBlocking(onMainActor: true) {
+            try await presentOfferCodeRedemption()
+        }
+        // Fail-closed: only Transaction.currentEntitlements after verify() grants Pro.
+        notifyUpdate()
+        return 0
+    } catch let err as StoreBridgeError {
+        switch err {
+        case .cancelled:
+            setError("Offer code redemption cancelled. You are still on Free.")
+            return 1
+        default:
+            setError(err.errorDescription ?? "Could not redeem the offer code. You are still on Free.")
+            return -1
+        }
+    } catch {
+        let ns = error as NSError
+        if ns.domain == NSCocoaErrorDomain && ns.code == NSUserCancelledError {
+            setError("Offer code redemption cancelled. You are still on Free.")
+            return 1
+        }
+        let text = error.localizedDescription
+        if text.localizedCaseInsensitiveContains("cancel") {
+            setError("Offer code redemption cancelled. You are still on Free.")
+            return 1
+        }
+        setError("Could not redeem the offer code. You are still on Free. \(text)")
+        return -1
+    }
+}
+
+/// Hidden SwiftUI anchor so we can call `offerCodeRedemption` from AppKit/Tauri.
+/// Do not add a custom code field — Apple's system sheet is the only redeem UI.
+@available(macOS 15.0, *)
+private struct OfferCodeRedemptionRoot: View {
+    @State private var isPresented = false
+    let onCompletion: (Result<Void, Error>) -> Void
+
+    var body: some View {
+        Color.clear
+            .frame(width: 1, height: 1)
+            .offerCodeRedemption(isPresented: $isPresented, onCompletion: onCompletion)
+            .onAppear { isPresented = true }
+    }
+}
+
+private final class ResumeOnce: @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<Void, Error>?
+
+    init(_ continuation: CheckedContinuation<Void, Error>) {
+        self.continuation = continuation
+    }
+
+    func resume(returning: Void) {
+        lock.lock()
+        let cont = continuation
+        continuation = nil
+        lock.unlock()
+        cont?.resume(returning: returning)
+    }
+
+    func resume(throwing error: Error) {
+        lock.lock()
+        let cont = continuation
+        continuation = nil
+        lock.unlock()
+        cont?.resume(throwing: error)
+    }
+}
+
+private var offerCodeHosting: NSViewController?
+
+@available(macOS 15.0, *)
+@MainActor
+private func presentOfferCodeRedemption() async throws {
+    guard let parent = NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first(where: { $0.isVisible }) else {
+        throw StoreBridgeError.failed("Could not open the App Store offer code sheet. Try again from Plans.")
+    }
+
+    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+        let gate = ResumeOnce(continuation)
+        let root = OfferCodeRedemptionRoot { result in
+            offerCodeHosting?.view.removeFromSuperview()
+            offerCodeHosting = nil
+            switch result {
+            case .success:
+                gate.resume(returning: ())
+            case .failure(let error):
+                gate.resume(throwing: error)
+            }
+        }
+        let host = NSHostingController(rootView: root)
+        offerCodeHosting = host
+        host.view.frame = NSRect(x: 0, y: 0, width: 1, height: 1)
+        host.view.alphaValue = 0
+        parent.contentView?.addSubview(host.view)
+    }
 }
 
 @_cdecl("mabel_storekit_free")

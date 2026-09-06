@@ -1447,6 +1447,35 @@ document.getElementById("plan-manage")?.addEventListener("click", async () => {
   }
 });
 
+document.getElementById("plan-redeem")?.addEventListener("click", async () => {
+  const errorEl = document.getElementById("plan-error");
+  const statusEl = document.getElementById("plan-status");
+  const redeemBtn = document.getElementById("plan-redeem") as HTMLButtonElement | null;
+  if (errorEl) errorEl.textContent = "";
+  if (redeemBtn) redeemBtn.disabled = true;
+  try {
+    const supported = await invoke<boolean>("storekit_offer_codes_supported");
+    if (!supported) {
+      if (errorEl) errorEl.textContent = "Offer codes need a newer macOS";
+      if (statusEl) statusEl.textContent = "Offer codes need a newer macOS";
+      return;
+    }
+    if (statusEl) statusEl.textContent = "Waiting for App Store…";
+    const ent = await withTimeout(
+      invoke<Entitlement>("storekit_redeem_offer_code"),
+      STOREKIT_UI_TIMEOUT_MS,
+      "Offer code redemption timed out. You are still on Free.",
+    );
+    applyEntitlement(ent);
+    await refreshStorefront();
+  } catch (e) {
+    if (errorEl) errorEl.textContent = String(e);
+    if (statusEl) statusEl.textContent = "Offer code was not applied.";
+  } finally {
+    if (redeemBtn) redeemBtn.disabled = false;
+  }
+});
+
 listen<Entitlement>("pro-entitlement-changed", (event) => {
   applyEntitlement(event.payload);
 });

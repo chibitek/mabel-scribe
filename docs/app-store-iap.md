@@ -60,7 +60,17 @@ MAS flavor still keeps the #10 keys: `com.apple.security.device.audio-input` and
 - Polish: Off / Casual / Professional / Polite (default Off; local Gemma; never invents)
 - Free remains personal-only
 
-There is no web upgrade. Settings → Plans and Billing is StoreKit purchase / restore / manage only. Do not point Activate Pro at chibiteklabs.com or chibiteklabs.ai.
+There is no web upgrade. Settings → Plans and Billing is StoreKit purchase / restore / manage / **Have a code?** only. Do not point Activate Pro at chibiteklabs.com or chibiteklabs.ai.
+
+## Subscription offer codes
+
+CIO / ASC create Apple **Subscription Offer Codes** (and win-back / promotional codes as App Store Connect allows) on app **`6809059582`**. Eng does **not** invent prices, product IDs, or a custom redeem field.
+
+- Plans → **Have a code?** opens StoreKit `offerCodeRedemption` (the system sheet).
+- macOS 15+ only. Deployment target stays **14.0**. On unsupported OS the button stays (Cat UI on Plans) and shows recoverable copy: **Offer codes need a newer macOS**. Never crash. Never mock-grant Pro.
+- Cancel, fail, timeout, or an unverified transaction → stay Free. Entitlement is still verified StoreKit tx only (monthly / yearly + trial).
+- No website redeem. No home-rolled code UI that grants Pro.
+- Do **not** name `OfferType.winBack` or `AppStore.showManageSubscriptions` in `MabelStoreKit.swift` (those broke `swift build` for macosx14.0).
 
 ## CIO Mac prove (purchase + trial)
 
@@ -183,6 +193,7 @@ If the UI says `NO_PRODUCTS` or “App Store prices are unavailable”, the proc
 | **Purchase + trial** | Subscribe Monthly (or Yearly). Button shows **Waiting for App Store…**. StoreKit sheet from the Xcode config. Success or a visible error within ~125s — the window must not hang. Entitlement `status=trial`, `isTrial=true`, Pro unlocks (teams + locked nav). |
 | **Restore / Manage** | Stay clickable during purchase. Restore times out with an error instead of hanging. Manage still opens the App Store subscriptions URL immediately. |
 | **Fail-closed** | Quit, or Debug → StoreKit → refund / expire in Xcode. App is Free. Timeout / cancel / pending never grant Pro. No mock paid path. Missing dylib cannot compile on macOS unless `MABEL_SKIP_NATIVE_STOREKIT=1`, which stays Free. |
+| **Have a code?** | Plans Cat UI opens `offerCodeRedemption` on macOS 15+. Cancel / fail / unverified stay Free. macOS 14 shows **Offer codes need a newer macOS**. |
 
 Sandbox Apple IDs are for TestFlight / ASC sandbox, not this local configuration. The `.storekit` file does not ship paid entitlement.
 

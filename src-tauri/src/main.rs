@@ -964,6 +964,8 @@ fn main() {
             storekit::storekit_purchase,
             storekit::storekit_restore,
             storekit::storekit_manage_subscriptions,
+            storekit::storekit_redeem_offer_code,
+            storekit::storekit_offer_codes_supported,
             teams_get,
             teams_set_org,
             teams_add_seat,

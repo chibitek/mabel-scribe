@@ -159,10 +159,14 @@ mod tests {
 
     #[test]
     fn no_mock_sign_on_writer() {
-        let src = include_str!("stiki_session.rs");
-        assert!(!src.contains("fn sign_on"));
-        assert!(!src.contains("fn mock_session"));
-        assert!(!src.contains("pub fn grant_session"));
-        assert!(src.contains("Do not mock"));
+        let prod = include_str!("stiki_session.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .unwrap();
+        let needle = format!("fn sign{}", "_on");
+        assert!(!prod.contains(&needle));
+        assert!(!prod.contains("fn mock_session"));
+        assert!(!prod.contains("pub fn grant_session"));
+        assert!(prod.contains("Do not mock"));
     }
 }

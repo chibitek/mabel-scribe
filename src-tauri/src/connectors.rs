@@ -806,11 +806,12 @@ mod tests {
         let save = main.split("fn save_settings").nth(1).unwrap();
         let save = save.split("fn polish_set").next().unwrap();
         assert!(
-            save.contains("dictionary") && save.contains("require_pro_unlock"),
+            save.contains("dictionary::surface_ready"),
             "BREAKS IF: Pro surface usable without Stiki"
         );
         assert!(
-            include_str!("transcribe_native.rs").contains("effective_dictionary"),
+            include_str!("dictionary.rs").contains("stiki_session")
+                && include_str!("transcribe_native.rs").contains("effective_terms"),
             "BREAKS IF: Pro surface usable without Stiki"
         );
         assert!(ts.contains("function proUnlocked"));

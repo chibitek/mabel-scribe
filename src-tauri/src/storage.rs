@@ -655,6 +655,11 @@ mod tests {
             "BREAKS IF: Transforms not folded into Sign-on BOUND"
         );
         assert!(connectors.contains("enforcer_bound_transforms_v1_suite_b6530197"));
+        assert!(
+            connectors.contains("Scratchpad requires Stiki + StoreKit"),
+            "BREAKS IF: Scratchpad not folded into Sign-on BOUND"
+        );
+        assert!(connectors.contains("enforcer_bound_scratchpad_v1_suite_b6530197"));
         let stiki = include_str!("stiki.rs");
         assert!(stiki.contains("SESSION_FILE"));
         assert!(stiki.contains("sign_in"));
@@ -718,6 +723,24 @@ mod tests {
         assert!(xf.contains("Free dictate no Stiki"));
         assert!(xf.contains("fail-closed"));
         assert!(xf.contains("enforcer_bound_transforms_v1_suite_b6530197"));
+        let pad = include_str!("scratchpad.rs");
+        assert!(pad.contains("ENFORCER_BOUND"));
+        assert!(pad.contains("b6530197"));
+        assert!(pad.contains("StoreKit Pro + Stiki dual gate"));
+        assert!(pad.contains("local-only scratchpad of dictations/notes"));
+        assert!(pad.contains("Scratchpad NOT MCP source/sink v1"));
+        assert!(pad.contains("no Nexus/Mochii promote"));
+        assert!(pad.contains("share fail closed"));
+        assert!(pad.contains("local-only"));
+        assert!(pad.contains("sign-out locks Scratchpad"));
+        assert!(pad.contains("distinct Style/Transforms/Polish/Dictionary/Snippets/Clipboard"));
+        assert!(pad.contains("no cloud sync"));
+        assert!(pad.contains("no Nexus/SIEM write"));
+        assert!(pad.contains("no auto-promote"));
+        assert!(pad.contains("no HIPAA/BAA"));
+        assert!(pad.contains("Free dictate no Stiki"));
+        assert!(pad.contains("fail-closed"));
+        assert!(pad.contains("enforcer_bound_scratchpad_v1_suite_b6530197"));
     }
 
     #[cfg(unix)]

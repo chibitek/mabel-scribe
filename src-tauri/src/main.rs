@@ -314,13 +314,30 @@ fn transforms_promote() -> Result<(), String> {
 
 #[tauri::command]
 fn scratchpad_get(state: State<AppState>) -> Result<String, String> {
-    pro_features::scratchpad_get(&state.app_dir)
+    mabel_lib::scratchpad::require_text(&state.app_dir)
 }
 
 #[tauri::command]
-fn scratchpad_save(state: State<AppState>, text: String) -> Result<(), String> {
+fn scratchpad_save(state: State<AppState>, text: String) -> Result<String, String> {
     // v1: Scratchpad is local-only. Do not fan this out to Connectors / MCP.
-    pro_features::scratchpad_save(&state.app_dir, text)
+    mabel_lib::scratchpad::save(&state.app_dir, text)
+}
+
+#[tauri::command]
+fn scratchpad_clear(state: State<AppState>) -> Result<String, String> {
+    mabel_lib::scratchpad::clear(&state.app_dir)
+}
+
+#[tauri::command]
+fn scratchpad_share() -> Result<(), String> {
+    // HELD: fail closed if Stiki/folder-style ACL is missing.
+    mabel_lib::scratchpad::share_cloud_or_team()
+}
+
+#[tauri::command]
+fn scratchpad_promote() -> Result<(), String> {
+    // BREAKS IF: private scratchpad auto-promotes to company memory.
+    mabel_lib::scratchpad::promote_to_company_memory()
 }
 
 #[tauri::command]
@@ -1201,6 +1218,9 @@ fn main() {
             transforms_promote,
             scratchpad_get,
             scratchpad_save,
+            scratchpad_clear,
+            scratchpad_share,
+            scratchpad_promote,
             connectors_status,
             connectors_connect,
             connectors_disconnect,

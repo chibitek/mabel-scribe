@@ -304,6 +304,7 @@ src-tauri/
     snippets.rs            Pro + Stiki local-first trigger → expansion (dictation)
     style.rs               Pro + Stiki Formal|Casual|Very casual register (cleanup)
     transforms.rs          Pro + Stiki user-invoked Email|Bullets|Shorter|Clearer (local Gemma)
+    scratchpad.rs          Pro + Stiki local-only dictations/notes pad (not MCP)
     stiki_session.rs       Local Stiki sign-on (Pro surfaces; not cloud ACL)
     settings.rs            Persisted user prefs (config.json)
     audio.rs               cpal recorder, ring buffer, RMS metering

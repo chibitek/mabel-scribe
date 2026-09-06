@@ -42,7 +42,8 @@ The public tree **already contains** the current main feature train. Nothing fro
 | Snippets (local trigger → expansion) | Yes | **Pro + Stiki** |
 | Style (Formal / Casual / Very casual, local register) | Yes | **Pro + Stiki** |
 | Transforms (Email / Bullet points / Make shorter / Make clearer, user-invoked) | Yes | **Pro + Stiki** |
-| Teams, scratchpad | Yes | **Pro** |
+| Scratchpad (local dictations/notes, not MCP) | Yes | **Pro + Stiki** |
+| Teams | Yes | **Pro** |
 | StoreKit 2 monthly / yearly + 30-day trial | Yes | App Store / local `.storekit` prove |
 | Mabel Spatial (visionOS sibling) | Yes | Separate listing later |
 

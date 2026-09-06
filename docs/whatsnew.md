@@ -8,6 +8,8 @@ The in-app first-launch popup reads from this file. Every Mabel release MUST add
 - Mabel Pro is an App Store subscription: monthly and yearly, each with a 30-day free trial. Prices come from the App Store.
 - Activate Pro, Restore Purchases, and Manage Subscriptions live in Settings → Plans and Billing. There is no website upgrade.
 - Pro unlocks teams (organization, seats, local invites) plus snippets, style, transforms, and scratchpad. Free stays personal-only.
+- Transcribe a local WAV, MP3, OGG, or FLAC file to TXT, JSON, SRT, or VTT. Processing stays on this Mac (whisper.cpp sidecar / Developer ID).
+- The whisper.cpp path can download a small Silero VAD model and drop silence before decode, which cuts empty-audio hallucinations.
 
 ## v1.3.0 (2026-09-05)
 

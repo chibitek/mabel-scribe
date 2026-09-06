@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt as AutostartManagerExt, MacosLauncher};
+use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutEvent, ShortcutState};
 
 use mabel_lib::audio;
@@ -37,6 +38,16 @@ struct VersionInfo {
     #[serde(rename = "gitHash")]
     git_hash: &'static str,
     dirty: bool,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FileTranscription {
+    transcript: transcribe_local::LocalTranscription,
+    txt: String,
+    json: String,
+    srt: String,
+    vtt: String,
 }
 
 /// docs/whatsnew.md is bundled into the binary at compile time so the popup
@@ -309,7 +320,132 @@ async fn download_model(
     let url = transcribe_local::model_download_url(&model_size, &lang)?;
     let model_file = transcribe_local::model_filename(&model_size, &lang)?;
     let dest = state.app_dir.join(&model_file);
-    downloader::download_model(app, &url, &dest).await
+    downloader::download_model(app.clone(), &url, &dest).await?;
+    maybe_download_vad_model(app, &state.app_dir).await;
+    Ok(())
+}
+
+/// Silero VAD is optional: never fail a Whisper model download if this
+/// small sidecar asset is missing. MAS builds omit whisper.cpp, so skip it.
+async fn maybe_download_vad_model(app: tauri::AppHandle, app_dir: &PathBuf) {
+    if !local_engine::whisper_cpp_sidecar_compiled() {
+        return;
+    }
+    let dest = app_dir.join(transcribe_local::vad_model_filename());
+    if dest.exists() {
+        return;
+    }
+    if let Err(error) =
+        downloader::download_model(app, transcribe_local::vad_model_url(), &dest).await
+    {
+        eprintln!("[Mabel] optional VAD model download failed: {}", error);
+    }
+}
+
+#[tauri::command]
+async fn ensure_vad_model(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    if !local_engine::whisper_cpp_sidecar_compiled() {
+        return Ok(());
+    }
+    let dest = state.app_dir.join(transcribe_local::vad_model_filename());
+    if dest.exists() {
+        return Ok(());
+    }
+    downloader::download_model(app, transcribe_local::vad_model_url(), &dest).await
+}
+
+#[tauri::command]
+async fn transcribe_audio_file(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<FileTranscription, String> {
+    if !local_engine::whisper_cpp_sidecar_compiled() {
+        return Err(
+            "File transcription uses the whisper.cpp sidecar, which is not in this flavor."
+                .into(),
+        );
+    }
+    let audio_path = PathBuf::from(path);
+    if !audio_path.is_file() {
+        return Err("Select an existing audio file".to_string());
+    }
+    let extension = audio_path
+        .extension()
+        .and_then(|value| value.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    if !matches!(extension.as_str(), "wav" | "mp3" | "ogg" | "flac") {
+        return Err("Mabel supports WAV, MP3, OGG, and FLAC files".to_string());
+    }
+
+    let settings = state.settings.lock().unwrap().clone();
+    let model_file =
+        transcribe_local::model_filename(&settings.whisper_model, &settings.whisper_language)?;
+    let model_path = state.app_dir.join(model_file);
+    let transcript = transcribe_local::transcribe_local_detailed(
+        &app,
+        &model_path,
+        &audio_path,
+        &settings.whisper_language,
+        &settings.dictionary,
+    )
+    .await?;
+    if transcript.text.trim().is_empty() {
+        return Err("No speech was detected in that audio file".to_string());
+    }
+
+    Ok(FileTranscription {
+        txt: transcribe_local::transcript_txt(&transcript),
+        json: transcribe_local::transcript_json(&transcript)?,
+        srt: transcribe_local::transcript_srt(&transcript),
+        vtt: transcribe_local::transcript_vtt(&transcript),
+        transcript,
+    })
+}
+
+#[tauri::command]
+async fn save_transcript_export(
+    app: tauri::AppHandle,
+    default_name: String,
+    format: String,
+    contents: String,
+) -> Result<Option<String>, String> {
+    if !matches!(format.as_str(), "txt" | "json" | "srt" | "vtt") {
+        return Err("Unsupported transcript export format".to_string());
+    }
+    if contents.len() > 100 * 1024 * 1024 {
+        return Err("Transcript export is too large".to_string());
+    }
+    let filename = PathBuf::from(default_name)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| "Invalid transcript export filename".to_string())?
+        .to_string();
+    if !filename
+        .to_ascii_lowercase()
+        .ends_with(&format!(".{}", format))
+    {
+        return Err(format!("Export filename must end in .{}", format));
+    }
+    let Some(selected) = app
+        .dialog()
+        .file()
+        .set_file_name(&filename)
+        .add_filter(format.to_ascii_uppercase(), &[format.as_str()])
+        .blocking_save_file()
+    else {
+        return Ok(None);
+    };
+    let destination = selected.into_path().map_err(|error| error.to_string())?;
+    std::fs::write(&destination, contents).map_err(|error| error.to_string())?;
+    Ok(destination
+        .file_name()
+        .and_then(|value| value.to_str())
+        .map(ToOwned::to_owned))
 }
 
 #[tauri::command]
@@ -363,7 +499,9 @@ async fn download_local_engine(
             let url = transcribe_local::model_download_url(&settings.whisper_model, &lang)?;
             let model_file = transcribe_local::model_filename(&settings.whisper_model, &lang)?;
             let dest = state.app_dir.join(&model_file);
-            downloader::download_model(app, &url, &dest).await
+            downloader::download_model(app.clone(), &url, &dest).await?;
+            maybe_download_vad_model(app, &state.app_dir).await;
+            Ok(())
         }
         other => Err(format!("Unknown local engine: {}", other)),
     }
@@ -641,6 +779,7 @@ fn main() {
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(AppState {
@@ -660,6 +799,9 @@ fn main() {
             list_local_engines,
             check_local_engine_ready,
             download_local_engine,
+            ensure_vad_model,
+            transcribe_audio_file,
+            save_transcript_export,
             toggle_recording,
             update_hotkey,
             get_version,

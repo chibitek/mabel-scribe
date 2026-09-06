@@ -3,6 +3,7 @@ import { listen, emit } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, Update } from "@tauri-apps/plugin-updater";
+import { open as openDialog } from "@tauri-apps/plugin-dialog";
 
 interface Settings {
   microphone: string;
@@ -55,6 +56,32 @@ interface DownloadProgress {
   percent: number;
 }
 
+interface TranscriptSegment {
+  startMs: number;
+  endMs: number;
+  text: string;
+  confidence: number | null;
+}
+
+interface FileTranscription {
+  transcript: {
+    text: string;
+    language: string;
+    confidence: number | null;
+    durationMs: number;
+    segments: TranscriptSegment[];
+  };
+  txt: string;
+  json: string;
+  srt: string;
+  vtt: string;
+}
+
+interface TranscriptionQuality {
+  confidence: number;
+  lowConfidence: boolean;
+}
+
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 
@@ -95,6 +122,14 @@ const updateBody = $("update-body");
 const updateInstallBtn = $<HTMLButtonElement>("update-install");
 const updateLaterBtn = $<HTMLButtonElement>("update-later");
 let pendingUpdate: Update | null = null;
+const fileTranscribeChoose = $<HTMLButtonElement>("file-transcribe-choose");
+const fileTranscribeName = $("file-transcribe-name");
+const fileTranscribeStatus = $("file-transcribe-status");
+const fileTranscribeResult = $("file-transcribe-result");
+const fileTranscribeMeta = $("file-transcribe-meta");
+const fileTranscribeText = $<HTMLTextAreaElement>("file-transcribe-text");
+let selectedAudioPath = "";
+let fileTranscription: FileTranscription | null = null;
 
 const appWindow = getCurrentWindow();
 $("titlebar").addEventListener("mousedown", (e) => {
@@ -110,6 +145,88 @@ document.querySelectorAll<HTMLElement>(".nav-item").forEach((item) => {
     document.querySelectorAll<HTMLElement>(".view").forEach((s) => s.classList.remove("active"));
     item.classList.add("active");
     document.querySelector(`.view[data-view="${view}"]`)?.classList.add("active");
+  });
+});
+
+function displayFilename(path: string): string {
+  return path.split(/[\\/]/).pop() || path;
+}
+
+function formatDuration(milliseconds: number): string {
+  const totalSeconds = Math.round(milliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+}
+
+fileTranscribeChoose.addEventListener("click", async () => {
+  const selected = await openDialog({
+    multiple: false,
+    directory: false,
+    filters: [{ name: "Audio", extensions: ["wav", "mp3", "ogg", "flac"] }],
+  });
+  if (!selected || Array.isArray(selected)) return;
+
+  selectedAudioPath = selected;
+  fileTranscribeName.textContent = displayFilename(selected);
+  fileTranscribeChoose.disabled = true;
+  fileTranscribeChoose.textContent = "Transcribing...";
+  fileTranscribeStatus.textContent = "Removing silence and transcribing locally. Longer recordings may take a few minutes.";
+  fileTranscribeStatus.className = "file-transcribe-status busy";
+  fileTranscribeResult.classList.add("hidden");
+
+  try {
+    fileTranscription = await invoke<FileTranscription>("transcribe_audio_file", { path: selected });
+    fileTranscribeText.value = fileTranscription.transcript.text;
+    const confidence = fileTranscription.transcript.confidence;
+    const confidencePercent = confidence == null ? null : Math.round(confidence * 100);
+    const confidenceClass = confidencePercent != null && confidencePercent < 55 ? "low-confidence" : "";
+    const confidenceLabel = confidencePercent == null
+      ? "Confidence unavailable"
+      : `${confidencePercent}% confidence`;
+    const metadata = [
+      fileTranscription.transcript.language.toUpperCase(),
+      formatDuration(fileTranscription.transcript.durationMs),
+      `${fileTranscription.transcript.segments.length} segment${fileTranscription.transcript.segments.length === 1 ? "" : "s"}`,
+      confidenceLabel,
+    ];
+    fileTranscribeMeta.replaceChildren(...metadata.map((label, index) => {
+      const item = document.createElement("span");
+      item.textContent = label;
+      if (index === metadata.length - 1 && confidenceClass) item.classList.add(confidenceClass);
+      return item;
+    }));
+    fileTranscribeStatus.textContent = "Transcription complete. Nothing has been saved yet.";
+    fileTranscribeStatus.className = "file-transcribe-status";
+    fileTranscribeResult.classList.remove("hidden");
+  } catch (error) {
+    fileTranscription = null;
+    fileTranscribeStatus.textContent = `Transcription failed: ${String(error)}`;
+    fileTranscribeStatus.className = "file-transcribe-status error";
+  } finally {
+    fileTranscribeChoose.disabled = false;
+    fileTranscribeChoose.textContent = "Choose another";
+  }
+});
+
+document.querySelectorAll<HTMLButtonElement>(".transcript-export").forEach((button) => {
+  button.addEventListener("click", async () => {
+    if (!fileTranscription) return;
+    const format = button.dataset.format as "txt" | "json" | "srt" | "vtt";
+    const sourceName = displayFilename(selectedAudioPath).replace(/\.[^.]+$/, "");
+    try {
+      const savedName = await invoke<string | null>("save_transcript_export", {
+        defaultName: `${sourceName}.${format}`,
+        format,
+        contents: fileTranscription[format],
+      });
+      if (!savedName) return;
+      fileTranscribeStatus.textContent = `${format.toUpperCase()} saved to ${savedName}.`;
+      fileTranscribeStatus.className = "file-transcribe-status";
+    } catch (error) {
+      fileTranscribeStatus.textContent = `Export failed: ${String(error)}`;
+      fileTranscribeStatus.className = "file-transcribe-status error";
+    }
   });
 });
 
@@ -217,6 +334,13 @@ async function loadSettings() {
   modelSelect.value = currentSettings.whisperModel;
   languageSelect.value = currentSettings.whisperLanguage || "multi";
   await checkModelStatus();
+  const whisperCppOnDisk = await invoke<boolean>("check_model_downloaded", {
+    modelSize: modelSelect.value,
+    language: languageSelect?.value || currentSettings.whisperLanguage || "multi",
+  });
+  if (whisperCppOnDisk) {
+    invoke("ensure_vad_model").catch((e) => console.error("VAD model download:", e));
+  }
   renderDictionary();
   llmRuntimeAvailable = await invoke<boolean>("llm_runtime_available");
   cleanupModeSelect.value = currentSettings.cleanupMode || "rules";
@@ -436,7 +560,7 @@ function applyLocalEngineUi() {
   whisperCppSettings.classList.toggle("hidden", engine !== "whisper-cpp");
 }
 
-async function checkModelStatus() {
+async function checkModelStatus(): Promise<boolean> {
   const engine = localEngineSelect?.value || currentSettings.localEngine || "parakeet";
   const downloaded = await invoke<boolean>("check_local_engine_ready", {
     engine,
@@ -444,6 +568,7 @@ async function checkModelStatus() {
   });
   downloadBtn.textContent = downloaded ? "Downloaded" : "Download";
   downloadBtn.disabled = downloaded;
+  return downloaded;
 }
 
 async function checkLlmModelStatus() {
@@ -821,6 +946,11 @@ hotkeyText.addEventListener("click", () => {
 });
 
 let lastRecordingState = "Ready";
+let lastTranscriptionWasLowConfidence = false;
+listen<TranscriptionQuality>("transcription-quality", (event) => {
+  lastTranscriptionWasLowConfidence = event.payload.lowConfidence;
+});
+
 listen<string>("recording-state", (event) => {
   const state = event.payload;
   statusDot.className = "status-dot";
@@ -831,7 +961,17 @@ listen<string>("recording-state", (event) => {
     statusDot.classList.add("transcribing");
     statusText.textContent = "Transcribing";
   } else {
-    statusText.textContent = "Ready";
+    statusText.textContent = lastTranscriptionWasLowConfidence
+      ? "Ready · Check the last transcription"
+      : "Ready";
+    if (lastTranscriptionWasLowConfidence) {
+      window.setTimeout(() => {
+        if (statusText.textContent === "Ready · Check the last transcription") {
+          statusText.textContent = "Ready";
+        }
+      }, 6000);
+      lastTranscriptionWasLowConfidence = false;
+    }
     // Transcribing → Ready means a paste just succeeded, so all required
     // permissions are granted. Stash the flag and hide the setup card.
     if (lastRecordingState === "Transcribing" && localStorage.getItem(SETUP_DONE_KEY) !== "1") {

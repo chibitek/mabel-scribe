@@ -5,8 +5,6 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-use crate::stiki;
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Snippet {
     pub id: String,
@@ -188,15 +186,15 @@ pub fn transforms_write_local(
     Ok(clean)
 }
 
-pub fn scratchpad_get(app_dir: &PathBuf) -> Result<String, String> {
-    stiki::require_pro_unlock(app_dir)?;
-    Ok(fs::read_to_string(app_dir.join("scratchpad.txt")).unwrap_or_default())
+/// Ungated local read. Product Scratchpad applies the dual gate before show / mutate.
+pub fn scratchpad_read(app_dir: &PathBuf) -> String {
+    fs::read_to_string(app_dir.join("scratchpad.txt")).unwrap_or_default()
 }
 
-pub fn scratchpad_save(app_dir: &PathBuf, text: String) -> Result<(), String> {
-    stiki::require_pro_unlock(app_dir)?;
+pub fn scratchpad_write_local(app_dir: &PathBuf, text: String) -> Result<String, String> {
     fs::create_dir_all(app_dir).map_err(|e| e.to_string())?;
-    fs::write(app_dir.join("scratchpad.txt"), text).map_err(|e| e.to_string())
+    fs::write(app_dir.join("scratchpad.txt"), &text).map_err(|e| e.to_string())?;
+    Ok(text)
 }
 
 #[cfg(test)]
@@ -225,8 +223,19 @@ mod tests {
         assert!(crate::style::set_mode(&dir, "formal".into()).is_err());
         assert!(crate::transforms::require_prefs(&dir).is_err());
         assert!(crate::transforms::apply_local(&dir, "email".into(), "hi".into()).is_err());
-        assert!(scratchpad_get(&dir).is_err());
-        assert!(scratchpad_save(&dir, "hello".into()).is_err());
+        assert!(crate::scratchpad::require_text(&dir).is_err());
+        assert!(crate::scratchpad::save(&dir, "hello".into()).is_err());
+    }
+
+    #[test]
+    fn local_scratchpad_store_persists_notes() {
+        let dir = tmp();
+        let written = scratchpad_write_local(&dir, "ship friday".into()).unwrap();
+        assert_eq!(written, "ship friday");
+        assert_eq!(scratchpad_read(&dir), "ship friday");
+        let cleared = scratchpad_write_local(&dir, String::new()).unwrap();
+        assert!(cleared.is_empty());
+        assert!(scratchpad_read(&dir).is_empty());
     }
 
     #[test]

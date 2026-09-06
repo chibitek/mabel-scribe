@@ -38,7 +38,7 @@ use crate::stiki;
 use crate::storekit;
 
 /// Named Enforcer BOUND. `enforcer_bound_*` tests fail if this is violated.
-pub const ENFORCER_BOUND: &str = "explicit user connect Mochii+Nexus MCP only; Sign in with Stiki before MCP; Stiki KYC + Suite ACL fail closed; Scratchpad NOT MCP source/sink v1; no silent ASR/Polish/Scratchpad/history/clipboard auto-push; no default always-on; no cookie auto-reconnect; no HIPAA/BAA; no silent Stiki bootstrap; cross-market Stiki session is identity only; SSO ≠ MCP connected; Stiki required for ALL Pro unlocks; not Connectors-only; StoreKit ≠ Stiki; Dictionary and Insights require Stiki + StoreKit; Style requires Stiki + StoreKit; Transforms requires Stiki + StoreKit; Free dictation no Stiki; Clipboard Free 25 no Stiki";
+pub const ENFORCER_BOUND: &str = "explicit user connect Mochii+Nexus MCP only; Sign in with Stiki before MCP; Stiki KYC + Suite ACL fail closed; Scratchpad NOT MCP source/sink v1; Scratchpad v1 CONFIRMED local-only; no cloud/team/Nexus/Mochii auto-push; no silent ASR/Polish/Scratchpad/history/clipboard auto-push; no default always-on; no cookie auto-reconnect; no HIPAA/BAA; no silent Stiki bootstrap; cross-market Stiki session is identity only; SSO ≠ MCP connected; Stiki required for ALL Pro unlocks; not Connectors-only; StoreKit ≠ Stiki; Dictionary and Insights require Stiki + StoreKit; Style requires Stiki + StoreKit; Transforms requires Stiki + StoreKit; Scratchpad requires Stiki + StoreKit; Free dictation no Stiki; Clipboard Free 25 no Stiki";
 
 /// Suite id for the canonical Sign-on BOUND tip.
 pub const SIGN_ON_SUITE: &str = "b6530197";
@@ -495,13 +495,17 @@ mod tests {
         let polish_fn = polish_fn.split("pub async fn ensure_and_cleanup").next().unwrap();
         assert!(!polish_fn.contains("connectors"), "BREAKS IF: silent push");
         let pad = include_str!("pro_features.rs");
-        let get = pad.split("pub fn scratchpad_get").nth(1).unwrap();
-        let get = get.split("pub fn scratchpad_save").next().unwrap();
+        let get = pad.split("pub fn scratchpad_read").nth(1).unwrap();
+        let get = get.split("pub fn scratchpad_write_local").next().unwrap();
         assert!(!get.contains("connectors"), "BREAKS IF: Scratchpad auto-MCP'd");
-        let save = pad.split("pub fn scratchpad_save").nth(1).unwrap();
+        let save = pad.split("pub fn scratchpad_write_local").nth(1).unwrap();
         let save = save.split("#[cfg(test)]").next().unwrap();
         assert!(!save.contains("connectors"), "BREAKS IF: Scratchpad auto-MCP'd");
         assert!(!save.contains("captures_write"));
+        let product = include_str!("scratchpad.rs");
+        let product_save = product.split("pub fn save").nth(1).unwrap();
+        let product_save = product_save.split("pub fn clear").next().unwrap();
+        assert!(!product_save.contains("connectors"), "BREAKS IF: Scratchpad auto-MCP'd");
         let clip = include_str!("clipboard_history.rs");
         assert!(!clip.contains("connectors::"), "BREAKS IF: silent push");
         let main = include_str!("main.rs");
@@ -524,6 +528,8 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("Sign in with Stiki before MCP"));
         assert!(ENFORCER_BOUND.contains("Stiki KYC + Suite ACL fail closed"));
         assert!(ENFORCER_BOUND.contains("Scratchpad NOT MCP source/sink v1"));
+        assert!(ENFORCER_BOUND.contains("Scratchpad v1 CONFIRMED local-only"));
+        assert!(ENFORCER_BOUND.contains("no cloud/team/Nexus/Mochii auto-push"));
         assert!(ENFORCER_BOUND.contains("no silent ASR/Polish/Scratchpad/history/clipboard auto-push"));
         assert!(ENFORCER_BOUND.contains("no default always-on"));
         assert!(ENFORCER_BOUND.contains("no cookie auto-reconnect"));
@@ -537,6 +543,7 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("Dictionary and Insights require Stiki + StoreKit"));
         assert!(ENFORCER_BOUND.contains("Style requires Stiki + StoreKit"));
         assert!(ENFORCER_BOUND.contains("Transforms requires Stiki + StoreKit"));
+        assert!(ENFORCER_BOUND.contains("Scratchpad requires Stiki + StoreKit"));
         assert!(ENFORCER_BOUND.contains("Free dictation no Stiki"));
         assert!(ENFORCER_BOUND.contains("Clipboard Free 25 no Stiki"));
 
@@ -617,9 +624,9 @@ mod tests {
             "BREAKS IF: Pro surface usable without Stiki"
         );
         assert!(clip.contains("FREE_CAP"));
-        let pad = include_str!("pro_features.rs");
+        let pad = include_str!("scratchpad.rs");
         assert!(
-            pad.contains("require_pro_unlock"),
+            pad.contains("require_surface") && pad.contains("stiki_session"),
             "BREAKS IF: Pro surface usable without Stiki"
         );
         let settings = include_str!("settings.rs");
@@ -663,6 +670,9 @@ mod tests {
         assert!(SIGN_ON_BOUND.contains("Stiki required for ALL Pro unlocks"));
         assert!(SIGN_ON_BOUND.contains("Snippets/Style"));
         assert!(SIGN_ON_BOUND.contains("Style/Scratchpad Pro/Transforms"));
+        assert!(include_str!("scratchpad.rs").contains("CONFIRMED Suite b6530197"));
+        assert!(include_str!("scratchpad.rs").contains("enforcer_bound_scratchpad_v1_suite_b6530197"));
+        assert!(include_str!("scratchpad.rs").contains("no cloud/team/Nexus/Mochii auto-push"));
         assert!(SIGN_ON_BOUND.contains("not Connectors-only"));
         assert!(SIGN_ON_BOUND.contains("StoreKit ≠ Stiki"));
         assert!(SIGN_ON_BOUND.contains("neither substitutes"));
@@ -814,6 +824,17 @@ mod tests {
                 && include_str!("transforms.rs").contains("enforcer_bound_transforms_v1_suite_b6530197"),
             "BREAKS IF: Transforms usable without Stiki"
         );
+        assert!(
+            html.contains("data-view=\"scratchpad\"") && html.contains("data-scratch-gate"),
+            "BREAKS IF: Scratchpad usable without Stiki"
+        );
+        assert!(
+            include_str!("scratchpad.rs").contains("stiki_session")
+                && include_str!("scratchpad.rs").contains("ENFORCER_SUITE")
+                && include_str!("scratchpad.rs").contains("b6530197")
+                && include_str!("scratchpad.rs").contains("enforcer_bound_scratchpad_v1_suite_b6530197"),
+            "BREAKS IF: Scratchpad usable without Stiki"
+        );
 
         // BREAKS IF: Pro surface usable without Stiki
         assert!(
@@ -821,7 +842,7 @@ mod tests {
             "BREAKS IF: Pro surface usable without Stiki"
         );
         assert!(
-            include_str!("pro_features.rs").contains("require_pro_unlock"),
+            include_str!("scratchpad.rs").contains("require_surface"),
             "BREAKS IF: Pro surface usable without Stiki"
         );
         assert!(

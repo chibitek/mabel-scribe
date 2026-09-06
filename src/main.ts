@@ -324,6 +324,14 @@ function openTransforms() {
   document.querySelector('.view[data-view="transforms"]')?.classList.add("active");
 }
 
+function openScratchpad() {
+  modal.classList.add("hidden");
+  document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
+  document.querySelectorAll<HTMLElement>(".view").forEach((s) => s.classList.remove("active"));
+  document.querySelector('.nav-item[data-view="scratchpad"]')?.classList.add("active");
+  document.querySelector('.view[data-view="scratchpad"]')?.classList.add("active");
+}
+
 function openAccount(e?: Event) {
   e?.preventDefault();
   openSettingsPane("account");
@@ -886,6 +894,14 @@ $("transforms-stiki").addEventListener("click", () => {
   void signInWithStiki();
 });
 $("xf-pane-stiki").addEventListener("click", () => {
+  void signInWithStiki();
+});
+$("scratchpad-open").addEventListener("click", openScratchpad);
+$("scratchpad-activate").addEventListener("click", openPlans);
+$("scratchpad-stiki").addEventListener("click", () => {
+  void signInWithStiki();
+});
+$("scratch-pane-stiki").addEventListener("click", () => {
   void signInWithStiki();
 });
 
@@ -1465,6 +1481,10 @@ function transformsSurfaceReady() {
   return proSurfacesUnlocked();
 }
 
+function scratchpadSurfaceReady() {
+  return proSurfacesUnlocked();
+}
+
 function proUnlocked(): boolean {
   return proSurfacesUnlocked();
 }
@@ -1588,6 +1608,33 @@ function applyTransformsGate() {
   }
 }
 
+function applyScratchpadGate() {
+  const ready = scratchpadSurfaceReady();
+  const entitled = !!currentEntitlement.entitled;
+  const signedIn = stikiLive();
+
+  document.querySelectorAll<HTMLElement>("[data-scratch-gate='lock']").forEach((el) => {
+    el.classList.toggle("hidden", ready);
+  });
+  document.querySelectorAll<HTMLElement>("[data-scratch-gate='unlock']").forEach((el) => {
+    el.classList.toggle("hidden", !ready);
+  });
+
+  $("scratchpad-open").classList.toggle("hidden", !ready);
+  $("scratchpad-activate").classList.toggle("hidden", entitled);
+  $("scratchpad-stiki").classList.toggle("hidden", signedIn);
+  $("scratch-pane-activate").classList.toggle("hidden", entitled);
+  $("scratch-pane-stiki").classList.toggle("hidden", signedIn);
+
+  const padNav = document.querySelector<HTMLElement>('.nav-item[data-view="scratchpad"]');
+  if (padNav) {
+    padNav.classList.toggle("locked", !ready);
+    padNav.toggleAttribute("data-pro", true);
+    const lock = padNav.querySelector<HTMLElement>(".lock-pill");
+    if (lock) lock.style.display = ready ? "none" : "";
+  }
+}
+
 function askProUnlock(err?: string) {
   if (err && String(err).includes("Sign in with Stiki")) {
     openAccount();
@@ -1608,17 +1655,18 @@ function applyProLocks() {
     if (lock) (lock as HTMLElement).style.display = unlocked ? "none" : "";
   });
   document.querySelectorAll(".pro-lock").forEach((el) => {
-    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate || (el as HTMLElement).dataset.xfGate) return;
+    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate || (el as HTMLElement).dataset.xfGate || (el as HTMLElement).dataset.scratchGate) return;
     el.classList.toggle("hidden", unlocked);
   });
   document.querySelectorAll(".pro-unlock").forEach((el) => {
-    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate || (el as HTMLElement).dataset.xfGate) return;
+    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate || (el as HTMLElement).dataset.xfGate || (el as HTMLElement).dataset.scratchGate) return;
     el.classList.toggle("hidden", !unlocked);
   });
   applyDictionaryGate();
   applySnippetsGate();
   applyStyleGate();
   applyTransformsGate();
+  applyScratchpadGate();
   if (unlocked) loadStats();
   else resetStatsDisplay();
 }
@@ -1900,6 +1948,9 @@ listen("open-style", () => {
 listen("open-transforms", () => {
   openTransforms();
 });
+listen("open-scratchpad", () => {
+  openScratchpad();
+});
 listen("open-account", () => {
   openAccount();
 });
@@ -2119,15 +2170,59 @@ async function clearTransforms() {
   }
 }
 
+function showScratchpadError(message: string) {
+  const errorEl = document.getElementById("scratchpad-error");
+  if (!errorEl) return;
+  errorEl.textContent = message;
+  errorEl.hidden = !message;
+}
+
+async function loadScratchpadSurface() {
+  if (!scratchpadSurfaceReady()) return;
+  const text = await invoke<string>("scratchpad_get");
+  $<HTMLTextAreaElement>("scratchpad-text").value = text;
+  showScratchpadError("");
+}
+
+async function saveScratchpad() {
+  if (!scratchpadSurfaceReady()) {
+    if (!currentEntitlement.entitled) openPlans();
+    return;
+  }
+  showScratchpadError("");
+  try {
+    const next = await invoke<string>("scratchpad_save", {
+      text: $<HTMLTextAreaElement>("scratchpad-text").value,
+    });
+    $<HTMLTextAreaElement>("scratchpad-text").value = next;
+  } catch (e) {
+    showScratchpadError(String(e));
+    console.error("scratchpad_save:", e);
+  }
+}
+
+async function clearScratchpad() {
+  if (!scratchpadSurfaceReady()) {
+    if (!currentEntitlement.entitled) openPlans();
+    return;
+  }
+  showScratchpadError("");
+  try {
+    const next = await invoke<string>("scratchpad_clear");
+    $<HTMLTextAreaElement>("scratchpad-text").value = next;
+  } catch (e) {
+    showScratchpadError(String(e));
+    console.error("scratchpad_clear:", e);
+  }
+}
+
 async function loadProSurfaces() {
   if (!proSurfacesUnlocked()) return;
   await loadDictionarySurface();
   await loadSnippetsSurface();
   await loadStyleSurface();
   await loadTransformsSurface();
-
-  const pad = $<HTMLTextAreaElement>("scratchpad-text");
-  pad.value = await invoke<string>("scratchpad_get");
+  await loadScratchpadSurface();
 
   try {
     const team = await invoke<TeamState>("teams_get");
@@ -2372,11 +2467,15 @@ $("xf-clear-btn").addEventListener("click", () => {
   void clearTransforms();
 });
 
+$("scratchpad-clear-btn").addEventListener("click", () => {
+  void clearScratchpad();
+});
+
 let scratchpadTimer: number | undefined;
 $("scratchpad-text").addEventListener("input", () => {
   window.clearTimeout(scratchpadTimer);
   scratchpadTimer = window.setTimeout(() => {
-    invoke("scratchpad_save", { text: $<HTMLTextAreaElement>("scratchpad-text").value }).catch(console.error);
+    void saveScratchpad();
   }, 400);
 });
 

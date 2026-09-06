@@ -34,7 +34,7 @@ Ship order (do not skip or reorder): **Keyboard → Polish → Dictionary → Sc
 - Host **Settings** scaffold: Account (Stiki + Pro, dual gate), General, Keyboard, Notifications, Data & privacy. Free dictate does not use Account.
 - Later ships (Polish, Dictionary, Scratchpad, Languages) plus Connectors / Notetaker stay out of this tip.
 
-**BREAKS IF:** Flow brand; keyboard spy / ambient always-on listen; Free dictate requires Stiki; keyboard audio without permission.
+**BREAKS IF:** Flow brand; keyboard spy / ambient always-on listen; Free dictate requires Stiki; keyboard audio without permission; cloud ON v1; improve-models default ON / silent upload; BAA/HIPAA claim; silent cloud.
 
 ## What v0.1.0 does
 

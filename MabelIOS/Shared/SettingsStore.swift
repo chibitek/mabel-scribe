@@ -26,8 +26,9 @@ final class SettingsStore {
     var pushNotifications = false
     var liveActivities = false
 
-    var improveModels = false
-    var cloudStorage = false
+    var improveModels = EnforcerBound.improveModelsDefaultOn
+    /// v1 unavailable. Always false — cloud ON is a hard break.
+    private(set) var cloudStorage = EnforcerBound.cloudStorageAvailableV1
     var autoDelete = false
 
     /// Pro surfaces require Stiki AND StoreKit. Not used by Free dictate.
@@ -48,8 +49,15 @@ final class SettingsStore {
         keyboardSounds = self.defaults.bool(forKey: Key.keyboardSounds)
         pushNotifications = self.defaults.bool(forKey: Key.push)
         liveActivities = self.defaults.bool(forKey: Key.liveActivities)
-        // Cloud storage stays off / unavailable in v1.
-        cloudStorage = false
+        // Ignore any stored true. Cloud ON v1 / silent cloud is a hard break.
+        cloudStorage = EnforcerBound.cloudStorageAvailableV1
+    }
+
+    /// Cloud storage cannot be enabled in v1. Local-first toggles only.
+    func requestCloudStorage(_ wanted: Bool) {
+        _ = wanted
+        cloudStorage = EnforcerBound.cloudStorageAvailableV1
+        defaults.set(EnforcerBound.cloudStorageAvailableV1, forKey: Key.cloudStorage)
     }
 
     func persist() {
@@ -66,8 +74,8 @@ final class SettingsStore {
         defaults.set(keyboardSounds, forKey: Key.keyboardSounds)
         defaults.set(pushNotifications, forKey: Key.push)
         defaults.set(liveActivities, forKey: Key.liveActivities)
-        defaults.set(false, forKey: Key.cloudStorage)
-        cloudStorage = false
+        defaults.set(EnforcerBound.cloudStorageAvailableV1, forKey: Key.cloudStorage)
+        cloudStorage = EnforcerBound.cloudStorageAvailableV1
     }
 
     private enum Key {

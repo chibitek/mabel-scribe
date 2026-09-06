@@ -146,10 +146,13 @@ if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift"
   && grep -q 'static let forbiddenBrands = \["Flow", "Wispr"\]' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let shipOrder = \["Keyboard", "Polish", "Dictionary", "Scratchpad", "Languages"\]' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let thisTip = "Keyboard"' "$IOS/Shared/EnforcerBound.swift" \
-  && grep -q 'static let settingsPanes = \["Account", "General", "Keyboard", "Notifications", "Data & privacy"\]' "$IOS/Shared/EnforcerBound.swift"; then
-  ok "EnforcerBound locks Mabel brand, forbids Flow/Wispr, ship order, Settings IA"
+  && grep -q 'static let settingsPanes = \["Account", "General", "Keyboard", "Notifications", "Data & privacy"\]' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let cloudStorageAvailableV1 = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let improveModelsDefaultOn = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let silentCloudAllowed = false' "$IOS/Shared/EnforcerBound.swift"; then
+  ok "EnforcerBound locks Mabel brand, ship order, Settings IA, Data & privacy (b6530197)"
 else
-  bad "EnforcerBound missing displayBrand/forbiddenBrands/shipOrder/thisTip/settingsPanes"
+  bad "EnforcerBound missing brand/shipOrder/settings/cloud/improve-models locks"
 fi
 
 if grep -q 'INFOPLIST_KEY_CFBundleDisplayName = Mabel' "$PBX" \
@@ -277,32 +280,72 @@ if "stikiSignedIn && storeKitEntitled" not in settings_store:
     failed = True
 else:
     print("  PASS  Pro dual gate is Stiki AND purchase")
-if "var improveModels = false" not in settings_store:
-    print("  FAIL  Improve models must default OFF")
+if "var improveModels = EnforcerBound.improveModelsDefaultOn" not in settings_store:
+    print("  FAIL  Improve models must default from EnforcerBound (OFF)")
     failed = True
 else:
     print("  PASS  Improve models defaults OFF")
-if "cloudStorage = false" not in settings_store:
+if re.search(r'improveModels\s*=\s*true', settings_store):
+    print("  FAIL  improve-models default ON / silent upload")
+    failed = True
+if "cloudStorage = EnforcerBound.cloudStorageAvailableV1" not in settings_store \
+        or "requestCloudStorage" not in settings_store:
     print("  FAIL  Cloud storage must stay off / unavailable v1")
     failed = True
 else:
     print("  PASS  Cloud storage off / unavailable v1")
+if re.search(r'cloudStorage\s*=\s*true', settings_store + settings_panes):
+    print("  FAIL  cloud ON v1")
+    failed = True
+if "disabled(EnforcerBound.cloudStorageAvailableV1 == false)" not in settings_panes:
+    print("  FAIL  Cloud storage toggle must stay disabled in v1")
+    failed = True
+else:
+    print("  PASS  Cloud storage toggle disabled in v1")
+# Silent cloud: no upload / iCloud / CloudKit in the iOS tree
+silent = re.compile(r'URLSession|uploadTask|CKContainer|CKRecord|NSUbiquitous|iCloud|CloudKit|silent upload', re.I)
+silent_ok = re.compile(r'not in icloud|unavailable|no silent', re.I)
+silent_hit = False
+for dirpath, _, files in os.walk(root):
+    if "xcodeproj" in dirpath:
+        continue
+    for name in files:
+        if not name.endswith(".swift"):
+            continue
+        path = os.path.join(dirpath, name)
+        for i, line in enumerate(open(path), 1):
+            stripped = line.strip()
+            if stripped.startswith("//") or stripped.startswith("///"):
+                continue
+            if silent.search(stripped) and not silent_ok.search(stripped):
+                print(f"  FAIL  silent cloud {path}:{i}: {stripped}")
+                failed = True
+                silent_hit = True
+if not silent_hit:
+    print("  PASS  no silent cloud / upload path")
 if re.search(r'^import StoreKit', settings_panes + settings_store + settings_root, re.M):
     print("  FAIL  Settings must not import StoreKit this tip")
     failed = True
 else:
     print("  PASS  Settings does not import StoreKit")
-ui_blob = settings_panes + open(os.path.join(root, "Shared/IOSIdentity.swift")).read()
-for i, line in enumerate(ui_blob.splitlines(), 1):
-    stripped = line.strip()
-    if stripped.startswith("//") or stripped.startswith("///"):
+claim_hit = False
+for dirpath, _, files in os.walk(root):
+    if "xcodeproj" in dirpath:
         continue
-    if re.search(r'\b(HIPAA|BAA)\b', stripped):
-        print(f"  FAIL  HIPAA/BAA UI copy is forbidden: {stripped}")
-        failed = True
-        break
-else:
-    print("  PASS  no HIPAA/BAA UI copy (local-only privacy mode)")
+    for name in files:
+        if not name.endswith(".swift"):
+            continue
+        path = os.path.join(dirpath, name)
+        for line in open(path):
+            stripped = line.strip()
+            if stripped.startswith("//") or stripped.startswith("///") or stripped.startswith("*"):
+                continue
+            if re.search(r'\b(HIPAA|BAA|Wispr BAA)\b', stripped) and "BREAKS IF" not in stripped:
+                print(f"  FAIL  HIPAA/BAA/Wispr BAA claim {path}: {stripped}")
+                failed = True
+                claim_hit = True
+if not claim_hit:
+    print("  PASS  no HIPAA/BAA/Wispr BAA UI claim (local-only privacy mode)")
 
 # Free dictate must not require Stiki
 gate = open(os.path.join(root, "Shared/DictatePermissionGate.swift")).read()

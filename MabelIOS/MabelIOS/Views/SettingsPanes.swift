@@ -136,10 +136,10 @@ struct PrivacySettingsPane: View {
             Section {
                 Toggle("Improve models", isOn: bind(store, \.improveModels))
                 Toggle("Cloud storage", isOn: Binding(
-                    get: { false },
-                    set: { _ in store.cloudStorage = false; store.persist() }
+                    get: { EnforcerBound.cloudStorageAvailableV1 },
+                    set: { store.requestCloudStorage($0) }
                 ))
-                .disabled(true)
+                .disabled(EnforcerBound.cloudStorageAvailableV1 == false)
                 Toggle("Auto-delete transcripts", isOn: bind(store, \.autoDelete))
             } footer: {
                 Text("Improve models is off unless you turn it on. Cloud storage is unavailable in v1. Scratchpad stays local-first.")

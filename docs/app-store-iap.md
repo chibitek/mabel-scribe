@@ -66,9 +66,18 @@ There is no web upgrade. Settings → Plans and Billing is StoreKit purchase / r
 
 ## Subscription offer codes
 
-CIO / ASC create Apple **Subscription Offer Codes** (and win-back / promotional codes as App Store Connect allows) on app **`6809059582`**. Eng does **not** invent prices, product IDs, or a custom redeem field.
+CIO / ASC create Apple **Subscription Offer Codes** (and win-back / promotional codes as App Store Connect allows) on app **`6809059582`**. Eng does **not** invent prices, product IDs, customer-facing codes, or a custom redeem field.
 
-- Plans → **Have a code?** opens StoreKit `offerCodeRedemption` (the system sheet).
+### CIO ASC status (do not invent)
+
+| Product | ASC offer ID | Offer | Eligibility |
+|---|---|---|---|
+| `com.mabel.app.pro.monthly` | `01ff2bea-692e-4aa8-a03c-eff20209605f` | FREE_TRIAL 1×ONE_MONTH | NEW + EXISTING |
+| `com.mabel.app.pro.yearly` | `b9c12df1-5153-459a-b50d-9e320b14885d` | FREE_TRIAL 1×ONE_MONTH | NEW + EXISTING |
+
+These are App Store Connect subscription **offer IDs**, not customer codes. Custom / one-time-use codes return **ASC 409** until the Mac app is **Approved** and the IAPs are **Approved**. Listing today is **PREPARE_FOR_SUBMISSION** / **READY_TO_SUBMIT**.
+
+- Eng path stays Plans → **Have a code?** → StoreKit `offerCodeRedemption` (the system sheet). Do not pass these UUIDs into a home-rolled field.
 - macOS 15+ only. Deployment target stays **14.0**. On unsupported OS the button stays (Cat UI on Plans) and shows recoverable copy: **Offer codes need a newer macOS**. Never crash. Never mock-grant Pro.
 - Cancel, fail, timeout, or an unverified transaction → stay Free. Entitlement is still verified StoreKit tx only (monthly / yearly + trial).
 - **Sign-on RE-LOCK:** the redeem sheet is **not** gated on Stiki. Pro surface unlock needs **both** a verified StoreKit subscription **and** a live Stiki session. StoreKit alone is not enough after redeem (or any other purchase).

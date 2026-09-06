@@ -576,6 +576,13 @@ mod tests {
         assert!(docs.contains("Offer codes need a newer macOS"));
         assert!(docs.contains("Stiki"));
         assert!(docs.contains("StoreKit alone"));
+        assert!(docs.contains("01ff2bea-692e-4aa8-a03c-eff20209605f"));
+        assert!(docs.contains("b9c12df1-5153-459a-b50d-9e320b14885d"));
+        assert!(docs.contains("ASC 409"));
+        assert!(docs.contains("PREPARE_FOR_SUBMISSION"));
+        let mas_docs = include_str!("../../docs/mas-and-testflight.md");
+        assert!(mas_docs.contains("01ff2bea-692e-4aa8-a03c-eff20209605f"));
+        assert!(mas_docs.contains("b9c12df1-5153-459a-b50d-9e320b14885d"));
     }
 
     #[test]

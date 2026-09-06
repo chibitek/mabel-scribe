@@ -43,6 +43,11 @@ MabelSpatial/MabelSpatial.xcodeproj/xcuserdata/
 MabelSpatial/MabelSpatial.xcodeproj/project.xcworkspace/xcuserdata/
 MabelSpatial/DerivedData/
 
+# Native iOS sibling (Mabel keyboard) — local Xcode noise only
+MabelIOS/MabelIOS.xcodeproj/xcuserdata/
+MabelIOS/MabelIOS.xcodeproj/project.xcworkspace/xcuserdata/
+MabelIOS/DerivedData/
+
 # App-specific
 src-tauri/binaries/
 src-tauri/llama-runtime/*

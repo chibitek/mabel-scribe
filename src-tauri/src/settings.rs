@@ -43,6 +43,8 @@ pub struct Settings {
     pub llm_model: String,
     /// Product Polish: "off" | "casual" | "professional" | "polite".
     /// Default off. Live modes are Pro-only and drive the local Gemma path.
+    /// Local only — not Nexus / company memory. Coach cannot rewrite
+    /// dictation via this setting. Do not merge with a future Nexus polish toggle.
     #[serde(rename = "polishMode", default = "crate::polish::default_mode")]
     pub polish_mode: String,
     /// Desktop companion (animated cat) toggle. Default off so we don't surprise

@@ -260,10 +260,12 @@ impl LlmServer {
     }
 }
 
-/// Run Gemma Polish after the rules pass, or return the rules text.
+/// Run local Gemma Polish after the rules pass, or return the rules text.
 ///
-/// Live Polish requires Pro (`polish::effective_mode`). Any Gemma failure
-/// falls back to `rule_cleaned` so we never paste invented/contaminated text.
+/// This step is on-device only (llama-server on 127.0.0.1). It never calls
+/// Groq / Nexus / Coach. Live Polish requires Pro (`polish::effective_mode`).
+/// Any Gemma failure falls back to `rule_cleaned` so we never invent
+/// facts or paste meaning-expanded text.
 pub async fn polish_or_rules(
     app: &AppHandle,
     server: &LlmServer,
@@ -676,7 +678,9 @@ mod tests {
     #[test]
     fn polish_prompts_are_the_gemma_cleanup_path() {
         let casual = crate::polish::system_prompt("casual");
-        assert!(casual.contains("Never invent content"));
-        assert!(crate::polish::user_prompt_prefix().contains("Never invent content"));
+        assert!(casual.contains("Never invent facts"));
+        assert!(casual.contains("Never expand meaning"));
+        assert!(crate::polish::user_prompt_prefix().contains("Never invent facts"));
+        assert!(format!("http://127.0.0.1:{SERVER_PORT}").contains("127.0.0.1"));
     }
 }

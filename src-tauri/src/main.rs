@@ -287,17 +287,10 @@ fn reconcile_groq_keychain(state: State<AppState>) -> bool {
 fn save_settings(app: tauri::AppHandle, state: State<AppState>, settings: Settings) -> Result<(), String> {
     let mut settings = settings;
     settings.polish_mode = mabel_lib::polish::normalize_mode(&settings.polish_mode);
+    // No silent Pro path: live Polish without entitlement is an error, not a clamp.
     if mabel_lib::polish::is_live(&settings.polish_mode) {
-        match mabel_lib::polish::require_mode_allowed(&settings.polish_mode) {
-            Ok(mode) => {
-                settings.polish_mode = mode;
-                settings.cleanup_mode = "llm".into();
-            }
-            Err(_) => {
-                // Free cannot enable. Clamp rather than failing unrelated saves.
-                settings.polish_mode = mabel_lib::polish::MODE_OFF.to_string();
-            }
-        }
+        settings.polish_mode = mabel_lib::polish::require_mode_allowed(&settings.polish_mode)?;
+        settings.cleanup_mode = "llm".into();
     }
     let (prev_clip, prev_polish) = {
         let held = state.settings.lock().unwrap();

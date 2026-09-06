@@ -713,7 +713,17 @@
               <div class="row">
                 <div class="row-text">
                   <div class="row-label">Polish</div>
-                  <div class="row-hint">Off by default. Pro only. Mabel tidies what you said with local Gemma &mdash; she never makes things up. Same control lives in the menu bar under Polish.</div>
+                  <div class="row-hint">Off by default. Pro only. After dictation, local Gemma autocorrects and lightly rewords what you said. Never invents facts or expands meaning. Stays on this Mac &mdash; not Nexus, not company memory. Coach cannot rewrite your dictation. Same control: menu bar → Polish.</div>
+                </div>
+                <button type="button" id="polish-toggle" class="switch pro-unlock hidden" role="switch" aria-checked="false" aria-label="Polish">
+                  <span class="switch-thumb"></span>
+                </button>
+                <button type="button" class="btn-secondary pro-lock pro-activate" id="polish-activate">Activate Pro</button>
+              </div>
+              <div class="row hidden" id="polish-mode-row">
+                <div class="row-text">
+                  <div class="row-label">Polish mode</div>
+                  <div class="row-hint">Off, Casual, Professional, or Polite. Autocorrect and light reword only.</div>
                 </div>
                 <select id="polish-mode-select" aria-label="Polish mode">
                   <option value="off">Off</option>

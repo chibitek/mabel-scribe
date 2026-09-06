@@ -1,13 +1,17 @@
-//! Product **Polish**: Pro-only local Gemma cleanup with a register preset.
+//! Product **Polish** — Enforcer / Product LOCK.
 //!
-//! Modes: Off | Casual | Professional | Polite. Default Off.
-//! Free cannot enable a live mode (`require_pro`). Runtime also fail-closes
-//! to Off without a live StoreKit entitlement, even if config.json says
-//! otherwise.
-//!
-//! Polish wraps the existing llama-runtime / Gemma path. It never invents
-//! content — cleanup / light register only. Contaminated model output falls
-//! back to the rules pass (do not paste fabricated text).
+//! - Surface: Polish. Pro only. Free is locked / upsell (Settings → Plans).
+//!   No silent Pro path: live modes fail `require_pro` at persist and
+//!   fail-close to Off at runtime without a live StoreKit entitlement.
+//! - Toggle on/off. Default OFF.
+//! - Modes: Off | Casual | Professional | Polite.
+//! - Runs after ASR on the existing local Gemma / llama-runtime path.
+//! - Autocorrect + light reword only. Never invent facts. Never expand
+//!   meaning. Never send this step off-device (loopback llama-server only).
+//! - Local only. Not Nexus. Not company memory. Coach cannot rewrite
+//!   user dictation via this path. Distinct from any future Nexus polish
+//!   toggle — do not merge those settings.
+//! - Keep cat UI / companion energy. No website upgrade.
 
 use crate::storekit;
 
@@ -20,13 +24,13 @@ pub const MODES: &[&str] = &[MODE_OFF, MODE_CASUAL, MODE_PROFESSIONAL, MODE_POLI
 
 /// Shared anti-invention contract for every live mode. Mode copy only adds
 /// register guidance; it must not relax these rules.
-const NEVER_INVENT: &str = "You are Mabel's dictation polish assistant. The user spoke into a microphone and a local ASR engine transcribed their speech. Your only job is to clean up the raw transcript.\n\nNever invent content. Do not add facts, names, numbers, clauses, greetings, sign-offs, answers, or commentary the speaker did not say. If a cleanup or register shift would require new words the speaker did not use, keep the original wording. Fail closed: cleanup and light polish only.\n\nRules:\n- Remove filler words: \"um\", \"uh\", \"like\", \"you know\", \"I mean\", \"so\" when used as filler.\n- Add proper punctuation and capitalization.\n- Fix obvious self-corrections: when the speaker restarts a sentence, keep only the final version.\n- Preserve the speaker's words, meaning, and intent. Do not paraphrase, summarize, or embellish.\n- Do not answer questions in the transcript. The user is dictating, not asking you.\n- Output only the cleaned transcript. No preamble, no explanation, no quotes around it.";
+const NEVER_INVENT: &str = "You are Mabel's on-device dictation polish assistant. The user spoke into a microphone and a local ASR engine transcribed their speech. This step is autocorrect and light reword only.\n\nNever invent facts. Never expand meaning. Never add names, numbers, clauses, greetings, sign-offs, answers, or commentary the speaker did not say. If a cleanup or register shift would require new information, keep the original wording. Fail closed: do not send this step off-device; output only the cleaned transcript.\n\nRules:\n- Remove filler words: \"um\", \"uh\", \"like\", \"you know\", \"I mean\", \"so\" when used as filler.\n- Add proper punctuation and capitalization.\n- Fix obvious self-corrections: when the speaker restarts a sentence, keep only the final version.\n- Preserve the speaker's words, meaning, and intent. Do not paraphrase, summarize, or embellish.\n- Do not answer questions in the transcript. The user is dictating, not asking you.\n- Output only the cleaned transcript. No preamble, no explanation, no quotes around it.";
 
-const USER_PROMPT_PREFIX: &str = "Polish this transcript directly. Never invent content. Do not think, reason, or explain. Output only the cleaned text. Transcript: ";
+const USER_PROMPT_PREFIX: &str = "Autocorrect and lightly reword this transcript. Never invent facts. Never expand meaning. Do not think, reason, or explain. Output only the cleaned text. Transcript: ";
 
-const CASUAL_REGISTER: &str = "Register: Casual. Keep the speaker's informal voice. Contractions and casual wording stay. Clean fillers, punctuation, and obvious self-corrections only.";
+const CASUAL_REGISTER: &str = "Register: Casual. Keep the speaker's informal voice. Contractions and casual wording stay. Autocorrect and light cleanup only.";
 
-const PROFESSIONAL_REGISTER: &str = "Register: Professional. Prefer a workplace-neutral wording of the SAME utterance (gonna → going to, yeah → yes) when that does not change meaning. Do not add formality, hedging, or extra clauses the speaker did not say.";
+const PROFESSIONAL_REGISTER: &str = "Register: Professional. Prefer a workplace-neutral wording of the SAME utterance (gonna → going to, yeah → yes) when that does not change or expand meaning. Do not add formality, hedging, or extra clauses the speaker did not say.";
 
 const POLITE_REGISTER: &str = "Register: Polite. Prefer a courteous wording of the SAME request or statement when a close synonym already covers it. Do not add please, thanks, apologies, or extra courtesy the speaker did not say.";
 
@@ -51,6 +55,7 @@ pub fn is_live(mode: &str) -> bool {
 }
 
 /// Persist-time gate. Off is always allowed. Live modes need Pro.
+/// No silent Pro path: callers must surface the error (upsell), not clamp.
 pub fn require_mode_allowed(mode: &str) -> Result<String, String> {
     let mode = normalize_mode(mode);
     if is_live(&mode) {
@@ -143,13 +148,13 @@ mod tests {
     }
 
     #[test]
-    fn prompts_never_invent_and_name_each_register() {
+    fn prompts_never_invent_facts_or_expand_meaning() {
         for mode in [MODE_CASUAL, MODE_PROFESSIONAL, MODE_POLITE] {
             let prompt = system_prompt(mode);
-            assert!(
-                prompt.contains("Never invent content"),
-                "{mode} prompt missing never-invent"
-            );
+            assert!(prompt.contains("Never invent facts"), "{mode}");
+            assert!(prompt.contains("Never expand meaning"), "{mode}");
+            assert!(prompt.contains("autocorrect and light reword only"));
+            assert!(prompt.contains("do not send this step off-device"));
             assert!(prompt.contains("Fail closed"));
             assert!(!prompt.contains("http://"));
             assert!(!prompt.contains("https://"));
@@ -157,7 +162,8 @@ mod tests {
         assert!(system_prompt(MODE_CASUAL).contains("Casual"));
         assert!(system_prompt(MODE_PROFESSIONAL).contains("Professional"));
         assert!(system_prompt(MODE_POLITE).contains("Polite"));
-        assert!(user_prompt_prefix().contains("Never invent content"));
+        assert!(user_prompt_prefix().contains("Never invent facts"));
+        assert!(user_prompt_prefix().contains("Never expand meaning"));
     }
 
     #[test]
@@ -172,12 +178,15 @@ mod tests {
     #[test]
     fn settings_and_status_item_name_polish_without_web_upgrade() {
         let html = include_str!("../../index.html");
+        assert!(html.contains("id=\"polish-toggle\""));
         assert!(html.contains("id=\"polish-mode-select\""));
+        assert!(html.contains("id=\"polish-activate\""));
         assert!(html.contains("value=\"off\""));
         assert!(html.contains("value=\"casual\""));
         assert!(html.contains("value=\"professional\""));
         assert!(html.contains("value=\"polite\""));
-        assert!(html.contains("never makes things up"));
+        assert!(html.contains("Coach cannot rewrite"));
+        assert!(html.contains("not Nexus"));
         let ui = include_str!("clipboard_ui.rs");
         assert!(ui.contains("Polish"));
         assert!(ui.contains("polish-casual"));
@@ -186,6 +195,7 @@ mod tests {
         let ts = include_str!("../../src/main.ts");
         assert!(ts.contains("polish_set"));
         assert!(ts.contains("openPlans()"));
+        assert!(ts.contains("polish-toggle"));
         assert!(!ts.contains("https://chibiteklabs"));
         let main = include_str!("main.rs");
         assert!(main.contains("require_mode_allowed"));
@@ -194,14 +204,38 @@ mod tests {
     }
 
     #[test]
-    fn recorder_uses_pro_gated_gemma_polish() {
+    fn recorder_uses_pro_gated_local_gemma_polish() {
         let rec = include_str!("recorder.rs");
         assert!(rec.contains("polish_or_rules"));
         let llm = include_str!("llm.rs");
         assert!(llm.contains("polish::system_prompt"));
+        assert!(llm.contains("127.0.0.1"));
         assert!(llm.contains("never invent"));
+        let polish_fn = llm.split("pub async fn polish_or_rules").nth(1).unwrap();
+        let polish_fn = polish_fn.split("pub async fn ensure_and_cleanup").next().unwrap();
+        assert!(!polish_fn.contains("groq"));
+        assert!(!polish_fn.contains("transcribe_groq"));
+        assert!(!polish_fn.contains("api.groq.com"));
         let stream = include_str!("streaming.rs");
         assert!(stream.contains("effective_mode"));
         assert!(stream.contains("cleanup_with_llm_mode"));
+    }
+
+    #[test]
+    fn isolated_from_nexus_coach_and_off_device() {
+        let src = include_str!("polish.rs");
+        assert!(src.contains("Not Nexus"));
+        assert!(src.contains("Coach cannot rewrite"));
+        assert!(src.contains("company memory"));
+        assert!(src.contains("Never send this step off-device"));
+        let forbidden = format!("{}Polish", "nexus");
+        let settings = include_str!("settings.rs");
+        assert!(settings.contains("polishMode"));
+        assert!(settings.contains("not Nexus"));
+        assert!(!settings.contains(&forbidden));
+        let main = include_str!("main.rs");
+        assert!(!main.contains(&forbidden));
+        assert!(!main.contains("coach_rewrite"));
+        assert!(!main.contains("MabelSpatial"));
     }
 }

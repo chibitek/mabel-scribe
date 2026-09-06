@@ -103,6 +103,8 @@ const downloadBtn = $<HTMLButtonElement>("download-btn");
 const downloadProgress = $("download-progress");
 const progressFill = $("progress-fill");
 const cleanupModeSelect = $<HTMLSelectElement>("cleanup-mode-select");
+const polishToggle = $<HTMLButtonElement>("polish-toggle");
+const polishModeRow = $("polish-mode-row");
 const polishModeSelect = $<HTMLSelectElement>("polish-mode-select");
 const llmSettings = $("llm-settings");
 const llmModelSelect = $<HTMLSelectElement>("llm-model-select");
@@ -606,7 +608,12 @@ function displayedPolishMode(): string {
 
 function applyPolishUi() {
   if (!currentSettings || !polishModeSelect) return;
-  polishModeSelect.value = displayedPolishMode();
+  const entitled = !!currentEntitlement.entitled;
+  const mode = displayedPolishMode();
+  const live = isLivePolish(mode) && entitled;
+  polishModeSelect.value = entitled ? mode : "off";
+  if (polishToggle) setSwitch(polishToggle, live);
+  if (polishModeRow) polishModeRow.classList.toggle("hidden", !entitled);
   applyCleanupModeUi();
 }
 
@@ -758,17 +765,14 @@ cleanupModeSelect.addEventListener("change", async () => {
   }
 });
 
-polishModeSelect.addEventListener("change", async () => {
-  const next = polishModeSelect.value;
+async function persistPolishMode(next: string) {
   if (isLivePolish(next) && !currentEntitlement.entitled) {
-    polishModeSelect.value = "off";
     currentSettings.polishMode = "off";
     applyPolishUi();
     openPlans();
     return;
   }
   if (isLivePolish(next) && !llmRuntimeAvailable) {
-    polishModeSelect.value = "off";
     currentSettings.polishMode = "off";
     applyPolishUi();
     return;
@@ -782,14 +786,30 @@ polishModeSelect.addEventListener("change", async () => {
   } catch (e) {
     console.error("polish_set:", e);
     currentSettings.polishMode = "off";
-    polishModeSelect.value = "off";
     applyPolishUi();
     if (isLivePolish(next)) openPlans();
     return;
   }
   if (isLivePolish(next) && llmRuntimeAvailable) {
-    invoke("ensure_llm_started").catch((e) => console.error("LLM warm start:", e));
+    invoke("ensure_llm_started").catch((err) => console.error("LLM warm start:", err));
   }
+}
+
+polishToggle.addEventListener("click", () => {
+  if (!currentEntitlement.entitled) {
+    setSwitch(polishToggle, false);
+    openPlans();
+    return;
+  }
+  const turningOn = polishToggle.getAttribute("aria-checked") !== "true";
+  const next = turningOn
+    ? (isLivePolish(currentSettings.polishMode) ? currentSettings.polishMode : "casual")
+    : "off";
+  void persistPolishMode(next);
+});
+
+polishModeSelect.addEventListener("change", () => {
+  void persistPolishMode(polishModeSelect.value);
 });
 
 llmModelSelect.addEventListener("change", async () => {

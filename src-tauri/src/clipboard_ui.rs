@@ -25,6 +25,7 @@ fn build_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, String> 
     use tauri::menu::{CheckMenuItem, Menu, MenuItem, Submenu};
 
     let mode = current_polish_mode(app);
+    let entitled = mabel_lib::storekit::current_entitlement().entitled;
     let history = MenuItem::with_id(app, "clipboard-history", "Clipboard History…", true, None::<&str>)
         .map_err(|e| e.to_string())?;
     let polish_off = CheckMenuItem::with_id(
@@ -36,12 +37,14 @@ fn build_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, String> 
         None::<&str>,
     )
     .map_err(|e| e.to_string())?;
+    // Live modes stay visible so Free sees the surface, but they are locked
+    // until Pro. Click still upsells via require_pro → Plans.
     let polish_casual = CheckMenuItem::with_id(
         app,
         "polish-casual",
         "Casual",
-        true,
-        mode == polish::MODE_CASUAL,
+        entitled,
+        entitled && mode == polish::MODE_CASUAL,
         None::<&str>,
     )
     .map_err(|e| e.to_string())?;
@@ -49,8 +52,8 @@ fn build_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, String> 
         app,
         "polish-professional",
         "Professional",
-        true,
-        mode == polish::MODE_PROFESSIONAL,
+        entitled,
+        entitled && mode == polish::MODE_PROFESSIONAL,
         None::<&str>,
     )
     .map_err(|e| e.to_string())?;
@@ -58,8 +61,8 @@ fn build_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, String> 
         app,
         "polish-polite",
         "Polite",
-        true,
-        mode == polish::MODE_POLITE,
+        entitled,
+        entitled && mode == polish::MODE_POLITE,
         None::<&str>,
     )
     .map_err(|e| e.to_string())?;

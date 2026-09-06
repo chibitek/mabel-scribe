@@ -29,7 +29,7 @@
          FilePath = "../../src-tauri/target/release/bundle/macos/Mabel.app">
       </PathRunnable>
       <StoreKitConfigurationFileReference
-         identifier = "../../src-tauri/Mabel.storekit">
+         identifier = "container:Mabel.storekit">
       </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction

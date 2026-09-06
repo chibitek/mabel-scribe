@@ -11,6 +11,7 @@
 		A10000000000000000000002 /* ProductLoadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* ProductLoadTests.swift */; };
 		A10000000000000000000003 /* Mabel.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* Mabel.storekit */; };
 		A10000000000000000000004 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* StoreKit.framework */; };
+		A10000000000000000000005 /* StoreKitTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A10000000000000000000018 /* StoreKitTest.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,6 +29,7 @@
 		A10000000000000000000012 /* ProductLoadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProductLoadTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000013 /* Mabel.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; name = Mabel.storekit; path = ../../src-tauri/Mabel.storekit; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000014 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
+		A10000000000000000000018 /* StoreKitTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKitTest.framework; path = System/Library/Frameworks/StoreKitTest.framework; sourceTree = SDKROOT; };
 		A10000000000000000000015 /* ProveHost.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ProveHost.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000016 /* ProveTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ProveTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000017 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -46,6 +48,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10000000000000000000004 /* StoreKit.framework in Frameworks */,
+				A10000000000000000000005 /* StoreKitTest.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,6 +87,7 @@
 			isa = PBXGroup;
 			children = (
 				A10000000000000000000014 /* StoreKit.framework */,
+				A10000000000000000000018 /* StoreKitTest.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";

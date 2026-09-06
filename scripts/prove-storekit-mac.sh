@@ -103,18 +103,19 @@ print(f"prove-storekit: scheme PathRunnable -> {app}", file=sys.stderr)
 PY
 
 PROJECT="$ROOT/tools/MabelStoreKitProve/MabelStoreKitProve.xcodeproj"
-echo "prove-storekit: 4/4 catalog smoke + open Xcode" >&2
-echo "prove-storekit: xcodebuild test (MabelStoreKitProve scheme, StoreKit Configuration on)" >&2
+echo "prove-storekit: 4/4 catalog smoke via SKTestSession (no scheme StoreKit Configuration)" >&2
+echo "prove-storekit: xcodebuild test loads src-tauri/Mabel.storekit with SKTestSession(contentsOf:)" >&2
+CATALOG_OK=0
 if xcodebuild test \
   -project "$PROJECT" \
   -scheme MabelStoreKitProve \
   -destination 'platform=macOS' \
   -only-testing:ProveTests/ProductLoadTests/testMonthlyAndYearlyLoadWithIntroTrial
 then
+  CATALOG_OK=1
   echo "prove-storekit: catalog smoke GREEN (monthly + yearly + 30-day intro)" >&2
 else
-  echo "prove-storekit: catalog smoke RED — open the .storekit in Xcode and confirm it migrates without timezone errors." >&2
-  echo "prove-storekit: continuing to open the Run scheme so you can still launch Mabel.app under the config." >&2
+  echo "prove-storekit: catalog smoke RED — SKTestSession did not load products." >&2
 fi
 
 open -a Xcode "$PROJECT"
@@ -131,6 +132,13 @@ echo "5. Checklist: purchase monthly (trial), restore (empty or that trial)," >&
 echo "   fail-closed (quit / no subscription → Free)." >&2
 echo "6. Do NOT double-click /Applications/Mabel.app or Mabel 2.app." >&2
 echo "7. Do NOT construct SKTestSession inside Mabel.app (hangs when the" >&2
-echo "   scheme already has a StoreKit Configuration)." >&2
+echo "   Mabel-StoreKit scheme already has a StoreKit Configuration)." >&2
+echo "" >&2
+echo "Catalog automation is xcodebuild test + SKTestSession. Scheme FileReference" >&2
+echo "is ignored by xcodebuild test (that was the 446378a6 NO_PRODUCTS)." >&2
+echo "Purchase+trial UI still requires ⌘R on Mabel-StoreKit." >&2
 echo "" >&2
 echo "Docs: docs/app-store-iap.md" >&2
+if [[ "$CATALOG_OK" != 1 ]]; then
+  exit 1
+fi

@@ -505,9 +505,21 @@ mod tests {
         assert!(script.contains("Mabel-StoreKit"));
         assert!(script.contains("1.4.0"));
         assert!(script.contains("libMabelStoreKit.dylib"));
+        assert!(script.contains("SKTestSession"));
         assert!(docs.contains("MACOSX_DEPLOYMENT_TARGET=14.0"));
         assert!(docs.contains("Do **not** raise the package or the app to macOS 15"));
         assert!(docs.contains("npm run vendor-asr"));
+        assert!(docs.contains("SKTestSession(contentsOf:"));
+        let tests = include_str!("../../tools/MabelStoreKitProve/ProveTests/ProductLoadTests.swift");
+        assert!(tests.contains("SKTestSession(contentsOf:"));
+        assert!(tests.contains("disableDialogs"));
+        let prove_scheme = include_str!(
+            "../../tools/MabelStoreKitProve/MabelStoreKitProve.xcodeproj/xcshareddata/xcschemes/MabelStoreKitProve.xcscheme"
+        );
+        assert!(
+            !prove_scheme.contains("StoreKitConfigurationFileReference"),
+            "scheme Test/Run config + SKTestSession hangs; session-only for xcodebuild test"
+        );
     }
 
     #[test]

@@ -137,23 +137,20 @@ If Finder already has `Mabel.app`, Tauri may write `Mabel 2.app` in the bundle f
 
 MAS overlay (`tauri.mas.conf.json`) also lists `native-storekit/libMabelStoreKit.dylib`.
 
-### 3. Attach `Mabel.storekit` and actually Run
+### 3. Catalog smoke (`xcodebuild test`) vs purchase UI (⌘R)
 
 Checked-in project: `tools/MabelStoreKitProve/MabelStoreKitProve.xcodeproj`
 
-| Scheme | What it does |
+| Path | What it does |
 |---|---|
-| **Mabel-StoreKit** | PathRunnable → the Tauri `Mabel.app` you just built, with StoreKit Configuration on. **This is the purchase / trial prove.** |
-| MabelStoreKitProve | XCTest catalog smoke. StoreKit Configuration is on the Test action. Do **not** create `SKTestSession` (hangs when the scheme already has a config). |
+| **MabelStoreKitProve** + `xcodebuild test` | XCTest `ProductLoadTests` creates `SKTestSession(contentsOf: src-tauri/Mabel.storekit)` (or the copied bundle resource). This is the automated catalog prove. |
+| **Mabel-StoreKit** + **⌘R** | PathRunnable launches the Tauri `Mabel.app` with scheme StoreKit Configuration `container:Mabel.storekit`. **This is the purchase / trial UI prove.** |
 
-In Xcode:
+`xcodebuild test` does **not** apply a scheme `StoreKitConfigurationFileReference` (CIO tried relative, absolute, and copy-into-project on tip `446378a6` — still `NO_PRODUCTS`). Do **not** also set StoreKit Configuration on the **MabelStoreKitProve** Test action: pairing that with `SKTestSession` hangs.
 
-1. Open `tools/MabelStoreKitProve/MabelStoreKitProve.xcodeproj` (the prove script does this).
-2. Select scheme **Mabel-StoreKit** (not ProveHost).
-3. Product → Scheme → Edit Scheme → **Run → Options → StoreKit Configuration** → `Mabel.storekit`.
-4. Press **Run (⌘R)**. Confirm the debug title / console is the `target/release/bundle/macos/Mabel.app` path, not `/Applications`.
+Temporary limit: there is no supported way for `xcodebuild test` to launch the prebuilt Tauri `Mabel.app` under a scheme StoreKit Configuration. Purchase + trial sheets still need a human **⌘R** on **Mabel-StoreKit**.
 
-Catalog-only smoke without the UI:
+Catalog-only smoke:
 
 ```bash
 xcodebuild test \
@@ -161,6 +158,13 @@ xcodebuild test \
   -scheme MabelStoreKitProve \
   -destination 'platform=macOS'
 ```
+
+Purchase / trial UI:
+
+1. Open `tools/MabelStoreKitProve/MabelStoreKitProve.xcodeproj` (the prove script does this).
+2. Select scheme **Mabel-StoreKit** (not ProveHost / not MabelStoreKitProve Run).
+3. Product → Scheme → Edit Scheme → **Run → Options → StoreKit Configuration** → `Mabel.storekit` (`container:Mabel.storekit`).
+4. Press **Run (⌘R)**. Confirm the debug title / console is the `target/release/bundle/macos/Mabel.app` path, not `/Applications`.
 
 ### 4. Confirm products loaded
 

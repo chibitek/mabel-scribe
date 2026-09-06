@@ -1,5 +1,7 @@
 use arboard::{Clipboard, ImageData};
 
+use crate::system_ui;
+
 pub fn paste_text(text: &str) -> Result<(), String> {
     let mut clipboard = Clipboard::new().map_err(|e| e.to_string())?;
     let previous = ClipboardBackup::capture(&mut clipboard);
@@ -7,6 +9,31 @@ pub fn paste_text(text: &str) -> Result<(), String> {
 
     std::thread::sleep(std::time::Duration::from_millis(50));
 
+    let osa_err = match paste_via_osascript() {
+        Ok(()) => {
+            std::thread::sleep(std::time::Duration::from_millis(150));
+            previous.restore(&mut clipboard);
+            return Ok(());
+        }
+        Err(e) => e,
+    };
+
+    // MAS sandbox can block System Events without a temporary Apple Events
+    // exception. Accessibility-trusted CGEvent Cmd+V is the fallback so
+    // record→stop→text still lands when the user granted AX.
+    if system_ui::is_accessibility_trusted(false) {
+        if paste_via_cgevent().is_ok() {
+            std::thread::sleep(std::time::Duration::from_millis(150));
+            previous.restore(&mut clipboard);
+            return Ok(());
+        }
+    }
+
+    previous.restore(&mut clipboard);
+    Err(osa_err)
+}
+
+fn paste_via_osascript() -> Result<(), String> {
     let output = std::process::Command::new("osascript")
         .args([
             "-e",
@@ -16,14 +43,64 @@ pub fn paste_text(text: &str) -> Result<(), String> {
         .map_err(|e| format!("Failed to simulate paste: {}", e))?;
 
     if !output.status.success() {
-        previous.restore(&mut clipboard);
         return Err(format_command_failure("AppleScript paste", &output));
     }
-
-    std::thread::sleep(std::time::Duration::from_millis(150));
-    previous.restore(&mut clipboard);
-
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn paste_via_cgevent() -> Result<(), String> {
+    use std::ffi::c_void;
+
+    #[link(name = "ApplicationServices", kind = "framework")]
+    unsafe extern "C" {
+        fn CGEventSourceCreate(state_id: u32) -> *mut c_void;
+        fn CGEventCreateKeyboardEvent(
+            source: *mut c_void,
+            virtual_key: u16,
+            key_down: bool,
+        ) -> *mut c_void;
+        fn CGEventSetFlags(event: *mut c_void, flags: u64);
+        fn CGEventPost(tap: u32, event: *mut c_void);
+        fn CFRelease(cf: *const c_void);
+    }
+
+    const HID_SYSTEM_STATE: u32 = 1;
+    const HID_TAP: u32 = 0;
+    const COMMAND: u64 = 0x0010_0000; // kCGEventFlagMaskCommand
+    const KEY_V: u16 = 9;
+
+    unsafe {
+        let source = CGEventSourceCreate(HID_SYSTEM_STATE);
+        if source.is_null() {
+            return Err("CGEventSourceCreate failed".into());
+        }
+        let down = CGEventCreateKeyboardEvent(source, KEY_V, true);
+        let up = CGEventCreateKeyboardEvent(source, KEY_V, false);
+        if down.is_null() || up.is_null() {
+            if !down.is_null() {
+                CFRelease(down);
+            }
+            if !up.is_null() {
+                CFRelease(up);
+            }
+            CFRelease(source);
+            return Err("CGEventCreateKeyboardEvent failed".into());
+        }
+        CGEventSetFlags(down, COMMAND);
+        CGEventSetFlags(up, COMMAND);
+        CGEventPost(HID_TAP, down);
+        CGEventPost(HID_TAP, up);
+        CFRelease(down);
+        CFRelease(up);
+        CFRelease(source);
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+fn paste_via_cgevent() -> Result<(), String> {
+    Err("CGEvent paste is macOS-only".into())
 }
 
 enum ClipboardBackup {

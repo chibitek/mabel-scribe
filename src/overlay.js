@@ -67,9 +67,33 @@ const pushLevel = (raw) => {
   renderAll();
 };
 
+let errorTimer = null;
+
+const showError = (title) => {
+  if (errorTimer) {
+    clearTimeout(errorTimer);
+    errorTimer = null;
+  }
+  pill.dataset.state = 'error';
+  label.textContent = title || 'Dictation failed';
+  levels = levels.map(() => 0);
+  renderAll();
+  errorTimer = setTimeout(() => {
+    errorTimer = null;
+    setState('Ready');
+  }, 4500);
+};
+
 const setState = (state) => {
   const map = { Ready: 'ready', Recording: 'recording', Transcribing: 'transcribing' };
   const s = map[state] || 'ready';
+  if (s === 'ready' && pill.dataset.state === 'error' && errorTimer) {
+    return;
+  }
+  if (errorTimer && s !== 'ready') {
+    clearTimeout(errorTimer);
+    errorTimer = null;
+  }
   pill.dataset.state = s;
   if (s === 'recording') label.textContent = 'Listening...';
   else if (s === 'transcribing') label.textContent = 'Transcribing...';
@@ -78,6 +102,17 @@ const setState = (state) => {
     levels = levels.map(() => 0);
     renderAll();
   }
+};
+
+const errorTitle = (payload) => {
+  if (payload && typeof payload === 'object' && payload.title) return payload.title;
+  const msg = typeof payload === 'string' ? payload : payload?.message || '';
+  if (/mic|silence|microphone/i.test(msg)) return 'Mic access needed';
+  if (/model|parakeet|whisper|downloaded|not linked/i.test(msg)) return 'Model not ready';
+  if (/no audio|too short|captured/i.test(msg)) return 'No audio captured';
+  if (/no text|recognized/i.test(msg)) return 'Nothing recognized';
+  if (/paste|system events|accessibility/i.test(msg)) return 'Paste blocked';
+  return 'Dictation failed';
 };
 
 renderAll();
@@ -92,6 +127,10 @@ listen('audio-level', (e) => {
   const lvl = Number(e.payload) || 0;
   pushLevel(lvl);
 });
+listen('transcription-error', (e) => {
+  console.error('[Mabel overlay] transcription-error:', e.payload);
+  showError(errorTitle(e.payload));
+});
 stopBtn.addEventListener('click', async () => {
   console.log('[Mabel overlay] stop button clicked -> toggle_recording');
   try {
@@ -99,5 +138,6 @@ stopBtn.addEventListener('click', async () => {
     console.log('[Mabel overlay] toggle_recording result:', result);
   } catch (err) {
     console.error('[Mabel overlay] toggle_recording failed:', err);
+    showError(errorTitle(typeof err === 'string' ? err : err?.message || String(err)));
   }
 });

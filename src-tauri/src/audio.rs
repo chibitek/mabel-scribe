@@ -6,6 +6,32 @@ use std::path::PathBuf;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 
+use crate::dictation_error::{self, UserError};
+
+/// RMS of digital silence / TCC-denied HAL buffers. Quiet speech is orders
+/// of magnitude louder after a real mic callback. Stay well below that so we
+/// only fail closed on empty MAS/TF captures, not whispered dictation.
+pub const DIGITAL_SILENCE_RMS: f32 = 1e-5;
+
+#[derive(Debug)]
+pub enum SaveError {
+    EmptyBuffer,
+    DigitalSilence { rms: f32 },
+    Other(String),
+}
+
+impl SaveError {
+    pub fn to_user_error(&self, elapsed_ms: u64) -> UserError {
+        match self {
+            SaveError::EmptyBuffer => dictation_error::capture_empty(elapsed_ms),
+            SaveError::DigitalSilence { rms } => dictation_error::capture_silent(elapsed_ms, *rms),
+            SaveError::Other(s) => {
+                UserError::new(dictation_error::TITLE_CAPTURE, format!("Failed to capture audio: {s}"))
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct MicDevice {
     pub name: String,
@@ -190,17 +216,21 @@ impl AudioRecorder {
         Ok(Some(mean_rms))
     }
 
-    pub fn stop_and_save(&mut self, output_path: &PathBuf) -> Result<PathBuf, String> {
+    pub fn stop_and_save(&mut self, output_path: &PathBuf) -> Result<(PathBuf, f32), SaveError> {
         self.running.store(false, Ordering::Relaxed);
         self.stream = None; // Drop stops the stream
         println!("[Mabel] Audio recording stopped");
 
-        let saved = self.drain_to_wav(output_path)?;
-        if saved.is_none() {
-            return Err("No audio captured".to_string());
+        let saved = self.drain_to_wav(output_path).map_err(SaveError::Other)?;
+        let Some(rms) = saved else {
+            return Err(SaveError::EmptyBuffer);
+        };
+        if is_digital_silence(rms) {
+            let _ = std::fs::remove_file(output_path);
+            return Err(SaveError::DigitalSilence { rms });
         }
-        println!("[Mabel] WAV saved to {:?}", output_path);
-        Ok(output_path.clone())
+        println!("[Mabel] WAV saved to {:?} (rms={:.6})", output_path, rms);
+        Ok((output_path.clone(), rms))
     }
 
     pub fn current_level(&self) -> f32 {
@@ -250,4 +280,39 @@ fn resample(samples: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
     }
 
     output
+}
+
+pub fn is_digital_silence(rms: f32) -> bool {
+    !rms.is_finite() || rms <= DIGITAL_SILENCE_RMS
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zero_rms_is_digital_silence() {
+        assert!(is_digital_silence(0.0));
+        assert!(is_digital_silence(1e-8));
+        assert!(is_digital_silence(DIGITAL_SILENCE_RMS));
+    }
+
+    #[test]
+    fn quiet_speech_is_not_digital_silence() {
+        // Streaming VAD treats 0.008 as silence-for-endpoint, but that is
+        // still real mic energy — not a TCC-denied zero buffer.
+        assert!(!is_digital_silence(0.001));
+        assert!(!is_digital_silence(0.008));
+        assert!(!is_digital_silence(0.02));
+    }
+
+    #[test]
+    fn save_error_maps_to_user_visible_copy() {
+        let empty = SaveError::EmptyBuffer.to_user_error(2_000);
+        assert_eq!(empty.title, dictation_error::TITLE_CAPTURE);
+        assert!(empty.message.contains("Microphone"));
+
+        let silent = SaveError::DigitalSilence { rms: 0.0 }.to_user_error(2_000);
+        assert!(silent.message.contains("silence"));
+    }
 }

@@ -1,5 +1,7 @@
 pub mod settings;
 pub mod audio;
+pub mod dictation_error;
+pub mod mic_permission;
 pub mod local_engine;
 pub mod transcribe_local;
 pub mod transcribe_native;

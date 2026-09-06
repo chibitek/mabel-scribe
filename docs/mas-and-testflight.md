@@ -19,8 +19,37 @@ Still open before any store upload:
 - Sandboxed WebKit may still need `allow-jit` (omitted today; add only with an App Review justification).
 - `llama-server` AI cleanup is a sidecar on the DMG. Keep it off or replace it before MAS.
 - `NemoTextProcessing.framework` (FluidAudio) must be re-signed with the same team as the app.
-- Paste via System Events may need a temporary Apple Events exception after the first sandbox run.
-- No Apple Distribution + MAS provisioning run has been done here. Notarized DMG is still Erick-on-M5.
+- No Apple Distribution + MAS provisioning run has been done in this repo. Notarized DMG is still Erick-on-M5.
+
+## P0: TestFlight empty-record (build 1.3.0 / 1302)
+
+Hotkey opened the overlay, stop produced no text. Root cause is **not** a missing `NSMicrophoneUsageDescription` (it is in `Info.plist`) and **not** a missing `com.apple.security.device.audio-input` key in source (it is in `entitlements.mas.plist`). The pipeline failed open:
+
+1. **Mic TCC / sandbox.** `cpal` opens a CoreAudio HAL stream. `stream.play()` succeeds and the overlay goes to Listening even when `kTCCServiceMicrophone` is not determined or denied. Under App Sandbox that often delivers **digital silence** (empty buffer or RMS ≈ 0) and **does not show the system prompt**. Developer ID / unsandboxed HAL is looser. The fix requests `AVCaptureDevice.requestAccess(for: .audio)` before capture and refuses to enter Recording if access is denied.
+2. **Model not ready.** `start_recording` did not check `engine_ready`. Parakeet `downloadAndLoad` during stop can return empty or fail late. The fix fail-closes before the overlay shows if Parakeet / WhisperKit / ggml is not on disk.
+3. **Empty capture / empty ASR treated as success.** `stop_and_save` only errored on a completely empty buffer. Zeroed HAL samples wrote a silent WAV; ASR returned `""`; paste was skipped; overlay went Ready. The fix fail-closes on empty buffer, digital-silence RMS, and empty transcript, and shows the reason on the overlay (the main-window `alert` is invisible while the user is dictating elsewhere).
+4. **Paste.** Sandboxed `osascript` → System Events is blocked without `com.apple.security.temporary-exception.apple-events` for `com.apple.systemevents`. If a later build actually gets text, paste would fail next. The exception is now in `entitlements.mas.plist`, with a CGEvent Cmd+V fallback when Accessibility is trusted.
+
+### How to prove on TestFlight
+
+1. Install the new MAS-signed build. Confirm entitlements on the **installed** `.app` (not the source plist):
+   ```
+   codesign -d --entitlements :- /Applications/Mabel.app
+   ```
+   Must include `com.apple.security.app-sandbox`, `com.apple.security.device.audio-input`, and `com.apple.security.temporary-exception.apple-events` → `com.apple.systemevents`. `plutil` / `defaults read` the bundle `Info.plist` must still have `NSMicrophoneUsageDescription`.
+2. Reset mic TCC: `tccutil reset Microphone com.mabel.app`. Launch via Finder / TestFlight, not a raw binary.
+3. Finish Parakeet download (Settings → Engine shows ready).
+4. **Deny path:** press the hotkey. The Microphone prompt must appear. Deny it. Overlay must show **Mic access needed** and must not return to Ready as a silent success.
+5. **Grant path:** grant Microphone, Accessibility, and Automation (System Events). Press hotkey, speak, stop. Text must paste. Overlay must not show an error.
+6. **Model-missing path:** before the model is downloaded, press the hotkey. Overlay must show **Model not ready**, not Listening.
+7. Console.app filter `[Mabel]` / `[MabelASR]`: look for `WAV saved … rms=`, `transcription returned chars=`, `paste command completed`, or the fail-closed title.
+
+### CIO signing / entitlement follow-ups
+
+- Re-sign the next TF cut with this `entitlements.mas.plist`. **Do not drop `device.audio-input`.** If that key is missing on the signed binary, TCC denies the mic with no prompt (same class of bug as a hardened-runtime helper without the entitlement).
+- Provisioning profile for `com.mabel.app` must allow the sandbox + audio-input + Apple Events entitlements.
+- Identity is **Apple Distribution** (not Developer ID). Re-sign `libMabelASR.dylib` and `NemoTextProcessing.framework` with the same team.
+- After the cut, attach the `codesign -d --entitlements` dump of the uploaded `.app` to the CIO notes so TF 1302-class drift is visible.
 
 ## Store listing (when a legal binary exists)
 
@@ -87,6 +116,7 @@ It does set:
 - `com.apple.security.device.audio-input`
 - `com.apple.security.network.client` (Hugging Face model download, optional Groq)
 - `com.apple.security.automation.apple-events` (paste)
+- `com.apple.security.temporary-exception.apple-events` → `com.apple.systemevents` (sandboxed osascript paste)
 - `com.apple.security.files.user-selected.read-write` (manual model file pick)
 
 `allow-jit` is omitted. If sandboxed WebKit will not start, add it back with an App Review justification. Do **not** re-add library-validation disable or unsigned-executable-memory to the MAS file.
@@ -98,7 +128,7 @@ A 1.2.0-style bundle that still ships `externalBin: whisper-cpp` plus Frameworks
 - Parakeet models download into FluidAudio's Application Support cache (container-safe). WhisperKit uses Mabel's app-dir cache.
 - User-selected files are for an explicit “choose a model” path, not a substitute for container writes.
 - llama-server must stay on `127.0.0.1` if it is ever enabled in this flavor. No inbound listen off loopback.
-- Paste via System Events may still need a temporary Apple Events exception for `com.apple.systemevents` after the first sandbox run.
+- Paste via System Events uses the temporary Apple Events exception plus an Accessibility CGEvent fallback.
 - Soft nits (review screenshots, privacy nutrition labels, sandbox path polish) come later.
 
 ## Suggested order

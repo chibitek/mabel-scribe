@@ -6,7 +6,10 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::audio::AudioRecorder;
 use crate::cleanup::cleanup_text;
+use crate::dictation_error::{self, UserError};
 use crate::llm::LlmServer;
+use crate::local_engine;
+use crate::mic_permission;
 use crate::paste::{extract_press_enter_command, paste_text, press_return};
 use crate::settings::Settings;
 use crate::stats::StatsStore;
@@ -85,17 +88,25 @@ impl Recorder {
         mic_name: &str,
         settings: &Settings,
         app_dir: &PathBuf,
-    ) -> Result<(), String> {
+    ) -> Result<(), UserError> {
         {
             let state = self.state.lock().unwrap();
             if *state != RecordingState::Ready {
-                return Err("Already recording or transcribing".to_string());
+                return Err(UserError::generic("Already recording or transcribing"));
             }
         }
 
+        // Fail closed before the overlay goes to Listening. MAS/TF can open a
+        // CoreAudio stream and show the UI while TCC is denied and the model
+        // is missing; that is the 1.3.0 build 1302 smoke failure.
+        mic_permission::ensure_granted()?;
+        ensure_engine_ready(settings, app_dir)?;
+
         {
             let mut recorder = self.audio_recorder.lock().unwrap();
-            recorder.start(app, mic_name)?;
+            recorder
+                .start(app, mic_name)
+                .map_err(|e| UserError::new(dictation_error::TITLE_CAPTURE, e))?;
         }
 
         self.streaming_words.store(0, Ordering::Relaxed);
@@ -153,13 +164,15 @@ impl Recorder {
         }
         crate::debug_log::append(app_dir, "recorder state is Transcribing");
 
-        let elapsed_seconds = self
+        let elapsed = self
             .started_at
             .lock()
             .unwrap()
             .take()
-            .map(|t| t.elapsed().as_secs_f64())
-            .unwrap_or(0.0);
+            .map(|t| t.elapsed())
+            .unwrap_or_default();
+        let elapsed_seconds = elapsed.as_secs_f64();
+        let elapsed_ms = elapsed.as_millis() as u64;
 
         let streaming_handle = self.streaming_handle.lock().unwrap().take();
         if let Some(handle) = streaming_handle {
@@ -197,25 +210,36 @@ impl Recorder {
             let mut recorder = self.audio_recorder.lock().unwrap();
             recorder.stop_and_save(&temp_path)
         };
-        if let Err(err) = stop_and_save_result {
-            crate::debug_log::append(app_dir, &format!("stop_and_save failed: {}", err));
-            eprintln!("[Mabel] stop_and_save failed: {}", err);
+        let captured_rms = match stop_and_save_result {
+            Ok((_path, rms)) => rms,
+            Err(err) => {
+                let user_err = err.to_user_error(elapsed_ms);
+                crate::debug_log::append(app_dir, &format!("stop_and_save failed: {}", user_err.message));
+                eprintln!("[Mabel] stop_and_save failed: {}", user_err.message);
+                let _ = std::fs::remove_file(&temp_path);
 
-            {
-                let mut state = self.state.lock().unwrap();
-                *state = RecordingState::Ready;
-                let _ = app.emit("recording-state", RecordingState::Ready);
-                let _ = app.emit("stats-updated", ());
-                update_overlay(app, &RecordingState::Ready);
+                {
+                    let mut state = self.state.lock().unwrap();
+                    *state = RecordingState::Ready;
+                    let _ = app.emit("recording-state", RecordingState::Ready);
+                    let _ = app.emit("stats-updated", ());
+                    update_overlay(app, &RecordingState::Ready);
+                }
+
+                dictation_error::emit(app, &user_err);
+                return Err(user_err.message);
             }
-
-            let msg = format!("Failed to capture audio: {}", err);
-            let _ = app.emit("transcription-error", msg.clone());
-            return Err(msg);
-        }
+        };
         if let Ok(meta) = std::fs::metadata(&temp_path) {
-            crate::debug_log::append(app_dir, &format!("captured temp wav {} bytes", meta.len()));
-            println!("[Mabel] Captured temp WAV: {} bytes", meta.len());
+            crate::debug_log::append(
+                app_dir,
+                &format!("captured temp wav {} bytes rms={:.6}", meta.len(), captured_rms),
+            );
+            println!(
+                "[Mabel] Captured temp WAV: {} bytes rms={:.6}",
+                meta.len(),
+                captured_rms
+            );
         } else {
             crate::debug_log::append(app_dir, "captured temp wav metadata unavailable");
             println!("[Mabel] Captured temp WAV: metadata unavailable");
@@ -324,15 +348,16 @@ impl Recorder {
                     press_enter
                 ),
             );
-            if !to_paste.is_empty() {
-                crate::debug_log::append(app_dir, "pasting text");
-                println!("[Mabel] Pasting text");
-                paste_text(&to_paste)?;
-                crate::debug_log::append(app_dir, "paste command completed");
-                let words = to_paste.split_whitespace().count() as u64;
-                if words > 0 {
-                    self.stats.record(words, elapsed_seconds);
-                }
+            if to_paste.is_empty() {
+                return Err(dictation_error::nothing_recognized().message);
+            }
+            crate::debug_log::append(app_dir, "pasting text");
+            println!("[Mabel] Pasting text");
+            paste_text(&to_paste)?;
+            crate::debug_log::append(app_dir, "paste command completed");
+            let words = to_paste.split_whitespace().count() as u64;
+            if words > 0 {
+                self.stats.record(words, elapsed_seconds);
             }
             if press_enter {
                 std::thread::sleep(std::time::Duration::from_millis(50));
@@ -369,8 +394,9 @@ impl Recorder {
                     &format!("transcription pipeline failed: {}", err),
                 );
                 eprintln!("[Mabel] Transcription pipeline failed: {}", err);
-                let _ = app.emit("transcription-error", err.clone());
-                Err(err)
+                let user_err = classify_pipeline_error(&err);
+                dictation_error::emit(app, &user_err);
+                Err(user_err.message)
             }
         }
     }
@@ -406,4 +432,128 @@ mod tests {
         assert!(!legacy.exists());
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    fn engine_ready_rejects_missing_whisper_cpp_on_mas_flavor() {
+        if local_engine::whisper_cpp_sidecar_compiled() {
+            return;
+        }
+        let settings = Settings {
+            engine: "local".into(),
+            local_engine: local_engine::WHISPER_CPP.to_string(),
+            ..Settings::default()
+        };
+        let err = ensure_engine_ready(&settings, &PathBuf::from("/tmp")).unwrap_err();
+        assert_eq!(err.title, dictation_error::TITLE_MODEL);
+        assert!(err.message.contains("whisper.cpp"), "{}", err.message);
+    }
+
+    #[test]
+    fn missing_parakeet_fails_closed_when_not_ready() {
+        if transcribe_native::engine_ready(local_engine::PARAKEET, "en", &PathBuf::from("/tmp")) {
+            return;
+        }
+        let settings = Settings::default();
+        let err = ensure_engine_ready(&settings, &PathBuf::from("/tmp")).unwrap_err();
+        assert_eq!(err.title, dictation_error::TITLE_MODEL);
+        assert!(err.message.contains("Parakeet"), "{}", err.message);
+    }
+
+    #[test]
+    fn classify_maps_empty_and_paste_and_model() {
+        let empty = classify_pipeline_error(&dictation_error::nothing_recognized().message);
+        assert_eq!(empty.title, dictation_error::TITLE_EMPTY);
+        let paste = classify_pipeline_error("AppleScript paste failed (status 1): not authorized");
+        assert_eq!(paste.title, dictation_error::TITLE_PASTE);
+        let model = classify_pipeline_error(
+            "Native CoreML engines are not linked in this binary. On a Mac with Xcode 16+",
+        );
+        assert_eq!(model.title, dictation_error::TITLE_MODEL);
+    }
+}
+
+fn ensure_engine_ready(settings: &Settings, app_dir: &PathBuf) -> Result<(), UserError> {
+    match settings.engine.as_str() {
+        "local" => {
+            let engine = local_engine::validate(&settings.local_engine)
+                .map_err(UserError::generic)?;
+            match engine {
+                local_engine::PARAKEET | local_engine::WHISPERKIT => {
+                    if !transcribe_native::engine_ready(
+                        engine,
+                        &settings.whisper_language,
+                        app_dir,
+                    ) {
+                        let label = if engine == local_engine::PARAKEET {
+                            "Parakeet"
+                        } else {
+                            "WhisperKit"
+                        };
+                        return Err(dictation_error::model_missing(label));
+                    }
+                }
+                local_engine::WHISPER_CPP => {
+                    if !local_engine::whisper_cpp_sidecar_compiled() {
+                        return Err(dictation_error::whisper_cpp_excluded());
+                    }
+                    let model_file = crate::transcribe_local::model_filename(
+                        &settings.whisper_model,
+                        &settings.whisper_language,
+                    )
+                    .map_err(UserError::generic)?;
+                    if !app_dir.join(model_file).exists() {
+                        return Err(dictation_error::model_missing("whisper.cpp"));
+                    }
+                }
+                other => {
+                    return Err(UserError::generic(format!("Unknown local engine: {other}")));
+                }
+            }
+        }
+        "cloud" => {
+            if !crate::secrets::has_groq_key() {
+                return Err(dictation_error::cloud_key_missing());
+            }
+        }
+        other => return Err(UserError::generic(format!("Unknown engine: {other}"))),
+    }
+    Ok(())
+}
+
+fn classify_pipeline_error(err: &str) -> UserError {
+    let lower = err.to_lowercase();
+    if err.contains(&dictation_error::nothing_recognized().message)
+        || lower.contains("returned no text")
+        || lower.contains("nothing was recognized")
+    {
+        return dictation_error::nothing_recognized();
+    }
+    if lower.contains("paste")
+        || lower.contains("system events")
+        || lower.contains("applescript")
+        || lower.contains("accessibility")
+    {
+        return dictation_error::paste_failed(err);
+    }
+    if lower.contains("not downloaded")
+        || lower.contains("not linked")
+        || lower.contains("model not found")
+        || lower.contains("model is not")
+        || lower.contains("parakeet")
+        || lower.contains("whisperkit")
+        || lower.contains("whisper.cpp")
+    {
+        let title_engine = if lower.contains("whisperkit") {
+            "WhisperKit"
+        } else if lower.contains("whisper.cpp") {
+            "whisper.cpp"
+        } else {
+            "Parakeet"
+        };
+        return dictation_error::model_missing(title_engine);
+    }
+    if lower.contains("microphone") || lower.contains("no audio") || lower.contains("silence") {
+        return UserError::new(dictation_error::TITLE_CAPTURE, err);
+    }
+    UserError::generic(err)
 }

@@ -166,4 +166,31 @@ mod tests {
         );
         assert_eq!(v["bundle"]["macOS"]["entitlements"], "entitlements.mas.plist");
     }
+
+    #[test]
+    fn info_plist_declares_microphone_and_apple_events_usage() {
+        let plist = include_str!("../Info.plist");
+        assert!(
+            plist.contains("<key>NSMicrophoneUsageDescription</key>"),
+            "Without NSMicrophoneUsageDescription, TCC will not prompt and HAL goes silent"
+        );
+        assert!(plist.contains("<key>NSAppleEventsUsageDescription</key>"));
+    }
+
+    #[test]
+    fn mas_entitlements_keep_mic_and_system_events_paste() {
+        let plist = include_str!("../entitlements.mas.plist");
+        assert!(
+            plist.contains("<key>com.apple.security.device.audio-input</key>"),
+            "MAS flavor must request the microphone entitlement; without it TCC denies silently"
+        );
+        assert!(
+            plist.contains("<key>com.apple.security.temporary-exception.apple-events</key>"),
+            "MAS sandbox blocks System Events paste without a temporary Apple Events exception"
+        );
+        assert!(
+            plist.contains("com.apple.systemevents"),
+            "Apple Events exception must name System Events"
+        );
+    }
 }

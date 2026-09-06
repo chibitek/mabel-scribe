@@ -1097,11 +1097,12 @@ mod tests {
             .split("pub async fn rewrite_transform")
             .nth(1)
             .expect("rewrite_transform");
-        let xf_fn = xf_fn.split("pub async fn ").next().unwrap();
+        let xf_fn = xf_fn.split("fn extract_clean_or_fail").next().unwrap();
         assert!(!xf_fn.contains("groq"));
         assert!(!xf_fn.contains("api.groq.com"));
         assert!(!xf_fn.contains("https://"));
-        assert!(xf_fn.contains("accept_or_fail_closed") || llm.contains("transforms::accept_or_fail_closed"));
+        assert!(xf_fn.contains("127.0.0.1"));
+        assert!(llm.contains("transforms::accept_or_fail_closed"));
     }
 
     #[test]

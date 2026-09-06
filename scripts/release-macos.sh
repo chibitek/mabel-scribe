@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Developer ID + notarized GitHub DMG only. Not Mac App Store / TestFlight.
 # MAS draft flavor: docs/mas-and-testflight.md and scripts/build-mas.sh.
+# DMG codesign identity comes from MABEL_SIGNING_IDENTITY (required). Do not bake a real identity in.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
@@ -8,7 +9,7 @@ cd "$ROOT"
 
 VERSION=$(node -p 'require("./package.json").version')
 TAG="v$VERSION"
-IDENTITY="${MABEL_SIGNING_IDENTITY:-Developer ID Application: Erick Grau (DF9FB764AR)}"
+IDENTITY="${MABEL_SIGNING_IDENTITY:-}"
 NOTARY_PROFILE="${MABEL_NOTARY_PROFILE:-AC_PASSWORD}"
 LOCAL_CONFIG="${MABEL_TAURI_CONFIG:-src-tauri/tauri.local.conf.json}"
 UPDATER_KEY="${TAURI_SIGNING_PRIVATE_KEY_PATH:-$HOME/.tauri/mabel-updater.key}"
@@ -26,6 +27,7 @@ die() {
 [[ "$(git rev-parse --abbrev-ref HEAD)" == "main" ]] || die "must run from main"
 git diff --quiet || die "working tree has unstaged changes"
 git diff --cached --quiet || die "working tree has staged changes"
+[[ -n "$IDENTITY" ]] || die "set MABEL_SIGNING_IDENTITY to your Developer ID Application identity (placeholder: Developer ID Application: Your Name (TEAMID)). Do not commit the real value."
 [[ -f "$LOCAL_CONFIG" ]] || die "missing local signing config: $LOCAL_CONFIG"
 [[ -f "$UPDATER_KEY" ]] || die "missing updater key: $UPDATER_KEY"
 grep -q "^## v$VERSION " docs/whatsnew.md || die "docs/whatsnew.md missing ## v$VERSION entry"

@@ -647,6 +647,14 @@ mod tests {
         assert!(clip.contains("local slot counts"));
         assert!(clip.contains("Fail closed when opt-in is off"));
         assert!(clip.contains("Not company memory"));
+        let dict = include_str!("dictionary.rs");
+        assert!(dict.contains("ENFORCER_BOUND"));
+        assert!(dict.contains("Pro-gated"));
+        assert!(dict.contains("no Nexus/SIEM write"));
+        assert!(dict.contains("no auto-promote"));
+        assert!(dict.contains("no HIPAA/BAA"));
+        assert!(dict.contains("Scratchpad/Insights local-only default"));
+        assert!(dict.contains("fail closed if ACL missing"));
     }
 
     #[cfg(unix)]

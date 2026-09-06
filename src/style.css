@@ -373,6 +373,13 @@ kbd.capturing { background: var(--salmon-dim); border-color: var(--salmon); }
   margin-bottom: 8px;
 }
 .locked-card p { margin: 0 0 16px; color: var(--text-mute); }
+.locked-actions, .row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
 
 .modal { position: fixed; inset: 0; z-index: 100; }
 .modal.hidden { display: none; }
@@ -566,8 +573,18 @@ select:focus, input:focus { outline: 2px solid var(--salmon); outline-offset: -1
   padding: 0 2px;
 }
 .dict-chip button:hover { color: var(--text); }
+.dict-chip.editing {
+  border-color: var(--gold, #c4a35a);
+  background: var(--gold-soft, rgba(196, 163, 90, 0.12));
+}
 .dict-empty { margin-top: 12px; color: var(--muted); font-size: 13px; }
 .dict-empty.hidden { display: none; }
+.dict-error {
+  margin-top: 8px;
+  color: var(--danger, #b45555);
+  font-size: 12.5px;
+}
+.dict-error[hidden] { display: none; }
 .key-status {
   display: inline-block;
   margin-left: 6px;

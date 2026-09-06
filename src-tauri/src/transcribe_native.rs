@@ -324,12 +324,13 @@ pub async fn transcribe_local_engine(
                 &settings.whisper_language,
             )?;
             let model_path = app_dir.join(model_file);
+            let dictionary = crate::dictionary::effective_terms(&settings.dictionary);
             crate::transcribe_local::transcribe_local(
                 app,
                 &model_path,
                 &audio_path.to_path_buf(),
                 &settings.whisper_language,
-                &settings.dictionary,
+                &dictionary,
             )
             .await
         }

@@ -108,8 +108,8 @@ Both Wispr and Glaido run an LLM cleanup after transcription: strip filler ("um"
 - Official binaries already use `@loader_path`; the vendor script re-applies that rpath on Darwin. The runtime is bundled as a Tauri resource so it does not share Frameworks with Whisper's older ggml dylibs.
 - Homebrew remains a last-resort fallback. The server idle-unloads after five minutes.
 
-### F2. Custom dictionary / personal vocabulary
-Wispr "learns" proper nouns and jargon automatically. Glaido lets users add terms manually. Easiest version: a settings pane with a textarea of names/terms/acronyms, injected as Whisper's `initial_prompt`.
+### F2. Custom dictionary / personal vocabulary — SHIPPED as Pro (local-first)
+Personal terms / jargon. Sidebar Dictionary is first in the Pro catalog (Dictionary → Snippets → Style → Transforms → Scratchpad → Insights). Pro surface: StoreKit entitlement AND Stiki session. Free is locked with Activate Pro / Sign in with Stiki. Signed-in Pro add/edit/delete writes `config.json` on this Mac. Terms feed the existing whisper.cpp `--prompt` hook and local Gemma spelling hints. Cloud / team share is not shipped (stub fail-closed until Enforcer BOUND). Stiki session is not folder ACL.
 
 ### F3. Snippets (voice shortcuts)
 "insert my calendar link" → expands to a stored URL. "standard reply" → full email template. Dictionary of trigger phrase → replacement string, applied during the cleanup pass.

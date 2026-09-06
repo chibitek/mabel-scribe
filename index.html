@@ -34,13 +34,10 @@
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2.5h7l3 3v8H3v-11z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M10 2.5v3h3M5 9h6M5 11.5h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Transcribe file
           </a>
-          <a class="nav-item" data-view="insights">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 13h12M4 13V8M7.5 13V5M11 13V9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-            Insights
-          </a>
-          <a class="nav-item" data-view="dictionary">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2.5h7l3 3v8H3v-11z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M10 2.5v3h3" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+          <a class="nav-item locked" data-view="dictionary">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 3h9v11h-9V3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 3v11M5.5 6.5h1.2M5.5 9h1.2M9.3 6.5h1.2M9.3 9h1.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
             Dictionary
+            <span class="lock-pill">Pro</span>
           </a>
           <a class="nav-item locked" data-view="snippets">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="5" r="1.5" stroke="currentColor" stroke-width="1.4"/><circle cx="4" cy="11" r="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 5.5L13 9.5M5.5 10.5L13 6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
@@ -61,6 +58,10 @@
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2.5" y="2.5" width="11" height="11" rx="1.5" stroke="currentColor" stroke-width="1.4"/><path d="M5 6h6M5 9h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
             Scratchpad
             <span class="lock-pill">Pro</span>
+          </a>
+          <a class="nav-item" data-view="insights">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 13h12M4 13V8M7.5 13V5M11 13V9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            Insights
           </a>
           <a class="nav-item locked" data-view="teams">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5.5" cy="6" r="2" stroke="currentColor" stroke-width="1.4"/><circle cx="10.5" cy="6" r="2" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 12.5c.4-2 2-3 3-3s2.6 1 3 3M8.5 12.5c.4-2 2-3 3-3s2.6 1 3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
@@ -170,7 +171,7 @@
                 Mabel Pro
               </div>
               <h2 class="pro-title">Smarter dictation, still on-device.</h2>
-              <p class="pro-body">Teams, snippets, style, transforms, and scratchpad. Personal use stays free. Pro is an App Store subscription with a 30-day free trial — prices come from StoreKit, not a marketing site.</p>
+              <p class="pro-body">Dictionary, snippets, style, transforms, scratchpad, and teams. Personal use stays free. Pro is an App Store subscription with a 30-day free trial — prices come from StoreKit, not a marketing site.</p>
             </div>
             <button type="button" class="btn-primary" id="cta-pro">Activate Pro</button>
           </div>
@@ -211,26 +212,31 @@
         </section>
 
         <section class="view" data-view="dictionary">
-          <header class="view-header"><h1 class="view-title">Dictionary</h1><p class="view-sub">Custom vocabulary so Mabel spells the words that matter to you. Stored locally on this Mac &mdash; never uploaded.</p></header>
-          <div class="card pane-card">
-            <div class="row">
-              <div class="row-text">
-                <div class="row-label">Add a word or phrase</div>
-                <div class="row-hint">Names, acronyms, jargon, brand names. One entry per line. Mabel passes these to Whisper as decoding hints.</div>
+          <header class="view-header"><h1 class="view-title">Dictionary</h1><p class="view-sub">Names, jargon, and shop talk Mabel should spell your way. She keeps this list on this Mac &mdash; no cloud, no sharing.</p></header>
+          <div class="card locked-card pro-lock" data-dict-gate="lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and sign in with Stiki so Mabel can remember your personal terms locally, like a house cat who never forgets the names that matter.</p><div class="locked-actions"><button type="button" class="btn-primary pro-activate" id="dict-pane-activate">Activate Pro</button><button type="button" class="btn-secondary" id="dict-pane-stiki">Sign in with Stiki</button></div></div>
+          <div class="pro-unlock hidden" data-dict-gate="unlock">
+            <div class="card pane-card">
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Add a word or phrase</div>
+                  <div class="row-hint">Proper nouns, acronyms, jargon. Comma or newline to paste a list. Mabel applies these as local replacements during dictation — ASR hints and spelling fixes on this Mac.</div>
+                </div>
               </div>
+              <div class="dict-input-row">
+                <input type="text" id="dict-input" placeholder="e.g. Chibitek, GGUF, Erick" autocomplete="off" />
+                <button type="button" id="dict-add-btn" class="btn-secondary">Add</button>
+                <button type="button" id="dict-cancel-btn" class="btn-secondary hidden">Cancel</button>
+              </div>
+              <div id="dict-error" class="dict-error" hidden></div>
+              <div id="dict-list" class="dict-list"></div>
+              <div id="dict-empty" class="dict-empty">No words yet. Add the terms you dictate often.</div>
             </div>
-            <div class="dict-input-row">
-              <input type="text" id="dict-input" placeholder="e.g. Chibitek, GGUF, Erick" autocomplete="off" />
-              <button type="button" id="dict-add-btn" class="btn-secondary">Add</button>
-            </div>
-            <div id="dict-list" class="dict-list"></div>
-            <div id="dict-empty" class="dict-empty">No words yet. Add the proper nouns, acronyms, or jargon you dictate often.</div>
-          </div>
-          <div class="card pane-card">
-            <div class="row">
-              <div class="row-text">
-                <div class="row-label">Privacy</div>
-                <div class="row-hint">Dictionary entries are stored in this Mac&rsquo;s local config file. They never leave the device, even when using the cloud engine.</div>
+            <div class="card pane-card">
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Privacy</div>
+                  <div class="row-hint">Terms live in this Mac&rsquo;s local config. They are not uploaded, not Nexus memory, and not shared with a team. Cloud and team share stay off.</div>
+                </div>
               </div>
             </div>
           </div>
@@ -366,6 +372,14 @@
               <span class="streak-legend-text">Less</span>
             </div>
           </div>
+          <div class="card pane-card">
+            <div class="row">
+              <div class="row-text">
+                <div class="row-label">On this Mac</div>
+                <div class="row-hint">Mabel counts the days, not the secrets. These numbers stay in a local file. They are not uploaded.</div>
+              </div>
+            </div>
+          </div>
         </section>
 
         <section class="view" data-view="help">
@@ -473,7 +487,7 @@
 
           <div class="card help-card">
             <h2 class="help-h">Mabel Pro</h2>
-            <p>Free is personal-only. Pro unlocks teams (org, seats, invites) plus snippets, style, transforms, and scratchpad. Subscribe from Settings → Plans and Billing. The App Store shows the live price and the 30-day free trial. Restore Purchases, Manage Subscriptions, and Have a code? are in that same pane. Offer codes use Apple’s system sheet — Mabel never opens a marketing site to upgrade or redeem.</p>
+            <p>Free is personal-only. Pro unlocks dictionary, snippets, style, transforms, scratchpad, and teams (org, seats, invites). Subscribe from Settings → Plans and Billing. The App Store shows the live price and the 30-day free trial. Restore Purchases, Manage Subscriptions, and Have a code? are in that same pane. Offer codes use Apple’s system sheet — Mabel never opens a marketing site to upgrade or redeem.</p>
           </div>
         </section>
 
@@ -483,6 +497,7 @@
           <div class="pro-unlock hidden">
             <div class="card pane-card">
               <textarea id="scratchpad-text" class="scratchpad" placeholder="Scratch notes stay on this Mac." rows="14"></textarea>
+              <p class="row-hint">A local file on this Mac. Not uploaded, not a shared notebook.</p>
             </div>
           </div>
         </section>
@@ -709,6 +724,17 @@
               </div>
               <div id="download-progress" class="hidden">
                 <div id="progress-bar"><div id="progress-fill"></div></div>
+              </div>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Dictionary</div>
+                  <div class="row-hint">Pro + Stiki. Personal terms, jargon, and spelling replacements during dictation. Local on this Mac &mdash; not Polish, not Clipboard History, not a team list. Menu bar → Dictionary…</div>
+                </div>
+                <div class="row-actions">
+                  <button type="button" class="btn-secondary hidden" id="dictionary-open">Open Dictionary</button>
+                  <button type="button" class="btn-secondary" id="dictionary-activate">Activate Pro</button>
+                  <button type="button" class="btn-secondary" id="dictionary-stiki">Sign in with Stiki</button>
+                </div>
               </div>
               <div class="row">
                 <div class="row-text">

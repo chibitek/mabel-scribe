@@ -194,11 +194,15 @@ public func mabel_asr_parakeet_transcribe(
             if !(await manager.isAvailable) {
                 throw ASRBridgeError.failed("Parakeet models are not available")
             }
-            // Language hint is v3-only in FluidAudio 0.15; English installs
-            // already use the v2 checkpoint. Keep the decoder default.
-            _ = languageHint
+            // FluidAudio 0.15.6: transcribe(_:decoderState:language:), not
+            // transcribe(_:source:). language is v3-only; v2 English ignores it.
+            var state = try TdtDecoderState(decoderLayers: models.version.decoderLayers)
             let url = URL(fileURLWithPath: wavPath)
-            let result = try await manager.transcribe(url, source: .system)
+            let result = try await manager.transcribe(
+                url,
+                decoderState: &state,
+                language: languageHint
+            )
             return transcribedText(result.text as String?)
         }
         if let outText {

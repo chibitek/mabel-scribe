@@ -214,6 +214,15 @@ mod tests {
             "WhisperKit text is String, not String?"
         );
         assert!(swift.contains("[TranscriptionResult]"));
+        assert!(
+            swift.contains("decoderState: &state"),
+            "FluidAudio 0.15.6 AsrManager.transcribe takes decoderState, not source:"
+        );
+        assert!(
+            swift.contains("language: languageHint"),
+            "FluidAudio 0.15.6 AsrManager.transcribe(_:decoderState:language:)"
+        );
+        assert!(!swift.contains("source: .system"));
         let manifest = include_str!("../../native/MabelASR/Package.swift");
         assert!(
             !manifest.contains("publicHeadersPath"),

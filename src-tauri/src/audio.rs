@@ -286,6 +286,54 @@ pub fn is_digital_silence(rms: f32) -> bool {
     !rms.is_finite() || rms <= DIGITAL_SILENCE_RMS
 }
 
+/// FluidAudio Parakeet 0.15.6 rejects clips shorter than 1 second
+/// (`audioSamples.count >= 16_000` or `ASRError.invalidAudioData`). Short
+/// hotkey taps used to fail closed as "Model not ready" after the overlapping
+/// toggle race stopped capture almost immediately. Pad with trailing digital
+/// silence so the model sees the real speech plus a quiet tail. Whisper.cpp
+/// is not padded — Silero VAD would drop the tail, and extra silence there
+/// re-opens the "Thanks for watching" hallucination.
+pub const NATIVE_ASR_MIN_SAMPLES: u32 = 16_000;
+pub const NATIVE_ASR_SAMPLE_RATE: u32 = 16_000;
+
+pub fn native_engine_needs_min_duration(local_engine: &str) -> bool {
+    crate::local_engine::is_native_coreml(local_engine)
+}
+
+/// Append zero samples to a 16 kHz mono PCM16 WAV until it is at least
+/// `min_samples` long. Leaves a longer file untouched. RMS is computed
+/// before this runs, so padding cannot hide a silent/TCC-denied capture.
+pub fn pad_pcm16_mono_wav(path: &PathBuf, min_samples: u32) -> Result<u32, String> {
+    let mut reader = hound::WavReader::open(path).map_err(|e| e.to_string())?;
+    let spec = reader.spec();
+    if spec.channels != 1
+        || spec.sample_rate != NATIVE_ASR_SAMPLE_RATE
+        || spec.bits_per_sample != 16
+        || spec.sample_format != hound::SampleFormat::Int
+    {
+        return Err(format!(
+            "refusing to pad unexpected wav spec: {}Hz {}ch {}bit {:?}",
+            spec.sample_rate, spec.channels, spec.bits_per_sample, spec.sample_format
+        ));
+    }
+    let samples: Vec<i16> = reader
+        .samples::<i16>()
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| e.to_string())?;
+    let have = samples.len() as u32;
+    if have >= min_samples {
+        return Ok(have);
+    }
+    let mut padded = samples;
+    padded.resize(min_samples as usize, 0);
+    let mut writer = WavWriter::create(path, spec).map_err(|e| e.to_string())?;
+    for sample in padded {
+        writer.write_sample(sample).map_err(|e| e.to_string())?;
+    }
+    writer.finalize().map_err(|e| e.to_string())?;
+    Ok(min_samples)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -314,5 +362,71 @@ mod tests {
 
         let silent = SaveError::DigitalSilence { rms: 0.0 }.to_user_error(2_000);
         assert!(silent.message.contains("silence"));
+    }
+
+    fn write_mono_pcm16(path: &PathBuf, samples: &[i16]) {
+        let spec = WavSpec {
+            channels: 1,
+            sample_rate: NATIVE_ASR_SAMPLE_RATE,
+            bits_per_sample: 16,
+            sample_format: hound::SampleFormat::Int,
+        };
+        let mut writer = WavWriter::create(path, spec).unwrap();
+        for &sample in samples {
+            writer.write_sample(sample).unwrap();
+        }
+        writer.finalize().unwrap();
+    }
+
+    fn read_mono_pcm16(path: &PathBuf) -> Vec<i16> {
+        let mut reader = hound::WavReader::open(path).unwrap();
+        reader.samples::<i16>().map(|s| s.unwrap()).collect()
+    }
+
+    #[test]
+    fn pad_extends_short_native_wav_to_one_second() {
+        let dir = std::env::temp_dir().join(format!(
+            "mabel-pad-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("short.wav");
+        write_mono_pcm16(&path, &[100, -100, 200, -200]);
+        let len = pad_pcm16_mono_wav(&path, NATIVE_ASR_MIN_SAMPLES).unwrap();
+        assert_eq!(len, NATIVE_ASR_MIN_SAMPLES);
+        let samples = read_mono_pcm16(&path);
+        assert_eq!(samples.len(), NATIVE_ASR_MIN_SAMPLES as usize);
+        assert_eq!(&samples[..4], &[100, -100, 200, -200]);
+        assert!(samples[4..].iter().all(|s| *s == 0));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn pad_leaves_long_enough_wav_alone() {
+        let dir = std::env::temp_dir().join(format!(
+            "mabel-pad-long-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("long.wav");
+        let original: Vec<i16> = (0..NATIVE_ASR_MIN_SAMPLES + 32).map(|i| (i % 17) as i16).collect();
+        write_mono_pcm16(&path, &original);
+        let len = pad_pcm16_mono_wav(&path, NATIVE_ASR_MIN_SAMPLES).unwrap();
+        assert_eq!(len, original.len() as u32);
+        assert_eq!(read_mono_pcm16(&path), original);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn only_coreml_engines_request_padding() {
+        assert!(native_engine_needs_min_duration(crate::local_engine::PARAKEET));
+        assert!(native_engine_needs_min_duration(crate::local_engine::WHISPERKIT));
+        assert!(!native_engine_needs_min_duration(crate::local_engine::WHISPER_CPP));
     }
 }

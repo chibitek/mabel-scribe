@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt as AutostartManagerExt, MacosLauncher};
@@ -40,6 +41,10 @@ struct AppState {
     llm_server: Arc<LlmServer>,
     clipboard: Arc<clipboard_history::Service>,
     storage_status: storage::StorageStatus,
+    /// Serializes start/stop so overlapping hotkey tasks cannot start and
+    /// immediately stop the paste-once recorder.
+    dictation_lock: tokio::sync::Mutex<()>,
+    hotkey_held: AtomicBool,
 }
 
 #[derive(serde::Serialize)]
@@ -961,6 +966,14 @@ fn build_shortcut_handler(
 
         match event.state {
             ShortcutState::Pressed => {
+                let already_held = handle
+                    .state::<AppState>()
+                    .hotkey_held
+                    .swap(true, Ordering::SeqCst);
+                if !mabel_lib::recorder::hotkey_pressed_is_new(already_held) {
+                    println!("[Mabel] Ignoring repeated hotkey Pressed while key is held");
+                    return;
+                }
                 tauri::async_runtime::spawn(async move {
                     let state = handle.state::<AppState>();
                     match mode.as_str() {
@@ -972,6 +985,7 @@ fn build_shortcut_handler(
                             }
                         }
                         "push-to-talk" => {
+                            let _guard = state.dictation_lock.lock().await;
                             let current = state.recorder.get_state();
                             println!("[Mabel] PTT mode, current state: {:?}", current);
                             if current == RecordingState::Ready {
@@ -993,9 +1007,14 @@ fn build_shortcut_handler(
                 });
             }
             ShortcutState::Released => {
+                handle
+                    .state::<AppState>()
+                    .hotkey_held
+                    .store(false, Ordering::SeqCst);
                 if mode == "push-to-talk" {
                     tauri::async_runtime::spawn(async move {
                         let state = handle.state::<AppState>();
+                        let _guard = state.dictation_lock.lock().await;
                         let current = state.recorder.get_state();
                         if current == RecordingState::Recording {
                             let settings = state.settings.lock().unwrap().clone();
@@ -1020,6 +1039,7 @@ async fn do_toggle_recording(
     app: &tauri::AppHandle,
     state: &AppState,
 ) -> Result<String, String> {
+    let _guard = state.dictation_lock.lock().await;
     let current_state = state.recorder.get_state();
     mabel_lib::debug_log::append(
         &state.app_dir,
@@ -1147,6 +1167,8 @@ fn main() {
             llm_server: llm_server.clone(),
             clipboard: clipboard.clone(),
             storage_status,
+            dictation_lock: tokio::sync::Mutex::new(()),
+            hotkey_held: AtomicBool::new(false),
         })
         .invoke_handler(tauri::generate_handler![
             get_settings,

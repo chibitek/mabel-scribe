@@ -21,6 +21,13 @@ use crate::transcribe_native;
 pub const TEMP_RECORDING_WAV: &str = "temp_recording.wav";
 pub const LEGACY_LAST_RECORDING_WAV: &str = "last_recording.wav";
 
+/// Global-shortcut backends can deliver a second Pressed (key-repeat or a
+/// doubled CGEvent) before Released. Toggle mode used to treat that as
+/// start-then-stop and feed Parakeet a ~50–250ms clip.
+pub fn hotkey_pressed_is_new(already_held: bool) -> bool {
+    !already_held
+}
+
 /// Delete leftover dictation audio in App Support. Called after a successful
 /// transcribe and on launch so a leftover `last_recording.wav` from older
 /// builds cannot linger.
@@ -89,24 +96,41 @@ impl Recorder {
         settings: &Settings,
         app_dir: &PathBuf,
     ) -> Result<(), UserError> {
+        // Claim Recording before the slow TCC / engine / cpal work. The May
+        // hotkey-stop deadlock fix released this lock too early, so a second
+        // Pressed (key-repeat or a doubled global-shortcut event) still saw
+        // Ready and either started a second stream or immediately stopped a
+        // ~50–250ms tap. Parakeet then rejected the short WAV.
         {
-            let state = self.state.lock().unwrap();
+            let mut state = self.state.lock().unwrap();
             if *state != RecordingState::Ready {
                 return Err(UserError::generic("Already recording or transcribing"));
             }
+            *state = RecordingState::Recording;
         }
+
+        let revert_ready = || {
+            *self.state.lock().unwrap() = RecordingState::Ready;
+        };
 
         // Fail closed before the overlay goes to Listening. MAS/TF can open a
         // CoreAudio stream and show the UI while TCC is denied and the model
         // is missing; that is the 1.3.0 build 1302 smoke failure.
-        mic_permission::ensure_granted()?;
-        ensure_engine_ready(settings, app_dir)?;
+        if let Err(err) = mic_permission::ensure_granted() {
+            revert_ready();
+            return Err(err);
+        }
+        if let Err(err) = ensure_engine_ready(settings, app_dir) {
+            revert_ready();
+            return Err(err);
+        }
 
         {
             let mut recorder = self.audio_recorder.lock().unwrap();
-            recorder
-                .start(app, mic_name)
-                .map_err(|e| UserError::new(dictation_error::TITLE_CAPTURE, e))?;
+            if let Err(e) = recorder.start(app, mic_name) {
+                revert_ready();
+                return Err(UserError::new(dictation_error::TITLE_CAPTURE, e));
+            }
         }
 
         self.streaming_words.store(0, Ordering::Relaxed);
@@ -115,13 +139,12 @@ impl Recorder {
         // Temporary safety switch: disable streaming worker until we resolve
         // a shutdown hang seen in stop_and_transcribe on some machines.
         // This keeps dictation reliable by always using full-utterance
-        // transcription on stop.
+        // transcription on stop. Do NOT unpark live streaming from this tip.
         if settings.streaming && settings.cleanup_mode != "llm" {
             crate::debug_log::append(app_dir, "streaming requested but temporarily disabled");
             *self.streaming_handle.lock().unwrap() = None;
         }
 
-        *self.state.lock().unwrap() = RecordingState::Recording;
         let _ = app.emit("recording-state", RecordingState::Recording);
         update_overlay(app, &RecordingState::Recording);
 
@@ -233,6 +256,24 @@ impl Recorder {
                 return Err(user_err.message);
             }
         };
+        if settings.engine == "local"
+            && crate::audio::native_engine_needs_min_duration(&settings.local_engine)
+        {
+            match crate::audio::pad_pcm16_mono_wav(
+                &temp_path,
+                crate::audio::NATIVE_ASR_MIN_SAMPLES,
+            ) {
+                Ok(samples) => {
+                    crate::debug_log::append(
+                        app_dir,
+                        &format!("padded native wav to {} samples", samples),
+                    );
+                }
+                Err(err) => {
+                    crate::debug_log::append(app_dir, &format!("native wav pad skipped: {err}"));
+                }
+            }
+        }
         if let Ok(meta) = std::fs::metadata(&temp_path) {
             crate::debug_log::append(
                 app_dir,
@@ -379,6 +420,12 @@ mod tests {
     }
 
     #[test]
+    fn hotkey_repeat_pressed_is_ignored_until_release() {
+        assert!(hotkey_pressed_is_new(false));
+        assert!(!hotkey_pressed_is_new(true));
+    }
+
+    #[test]
     fn wipe_audio_artifacts_deletes_temp_and_legacy_wav() {
         let dir = std::env::temp_dir().join(format!(
             "mabel-wav-wipe-{}",
@@ -434,6 +481,37 @@ mod tests {
             "Native CoreML engines are not linked in this binary. On a Mac with Xcode 16+",
         );
         assert_eq!(model.title, dictation_error::TITLE_MODEL);
+        let short = classify_pipeline_error("Parakeet transcribe failed: invalid audio data");
+        assert_eq!(short.title, dictation_error::TITLE_CAPTURE);
+        assert_ne!(short.title, dictation_error::TITLE_MODEL);
+        assert!(short.message.contains("too short"), "{}", short.message);
+    }
+
+    #[test]
+    fn start_recording_claims_state_before_capture() {
+        let src = include_str!("recorder.rs");
+        let start = src
+            .split("pub fn start_recording")
+            .nth(1)
+            .expect("start_recording");
+        let start = start.split("pub async fn stop_and_transcribe").next().unwrap();
+        let ready_idx = start.find("RecordingState::Ready").expect("Ready check");
+        let claim_idx = start
+            .find("*state = RecordingState::Recording")
+            .expect("claim Recording under the same lock");
+        let mic_idx = start.find("mic_permission::ensure_granted").expect("mic gate");
+        assert!(
+            ready_idx < claim_idx && claim_idx < mic_idx,
+            "Ready check must claim Recording before TCC/cpal so a second hotkey cannot also start"
+        );
+        assert!(
+            start.contains("revert_ready"),
+            "failed start must put the recorder back to Ready"
+        );
+        assert!(
+            !start.contains("spawn_vad_worker"),
+            "this tip must not unpark live streaming"
+        );
     }
 }
 
@@ -500,13 +578,23 @@ fn classify_pipeline_error(err: &str) -> UserError {
     {
         return dictation_error::paste_failed(err);
     }
+    if lower.contains("invalid audio")
+        || lower.contains("too short")
+        || lower.contains("invalidaudiodata")
+    {
+        return UserError::new(
+            dictation_error::TITLE_CAPTURE,
+            "Recording was too short for the on-device model. Hold the hotkey, speak a full phrase, then stop.",
+        );
+    }
+    // Engine names appear on every native failure ("Parakeet transcribe
+    // failed: …"). Only treat actual readiness failures as Model not ready.
     if lower.contains("not downloaded")
         || lower.contains("not linked")
         || lower.contains("model not found")
         || lower.contains("model is not")
-        || lower.contains("parakeet")
-        || lower.contains("whisperkit")
-        || lower.contains("whisper.cpp")
+        || lower.contains("is not in this flavor")
+        || lower.contains("switch the local engine")
     {
         let title_engine = if lower.contains("whisperkit") {
             "WhisperKit"

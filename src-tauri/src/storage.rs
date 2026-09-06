@@ -647,6 +647,11 @@ mod tests {
         assert!(clip.contains("local slot counts"));
         assert!(clip.contains("Fail closed when opt-in is off"));
         assert!(clip.contains("Not company memory"));
+        let dict = include_str!("dictionary.rs");
+        assert!(dict.contains("ENFORCER_BOUND"));
+        assert!(dict.contains("Pro-gated"));
+        assert!(dict.contains("no Nexus write"));
+        assert!(dict.contains("share fail-closed"));
     }
 
     #[cfg(unix)]

@@ -289,6 +289,7 @@ pub async fn polish_or_rules(
     let llm_result = match model_filename(&settings.llm_model) {
         Ok(name) => {
             let model_path = app_dir.join(name);
+            let dictionary_hint = crate::dictionary::cleanup_spelling_hint(&settings.dictionary);
             ensure_and_cleanup_mode(
                 app,
                 server,
@@ -296,6 +297,7 @@ pub async fn polish_or_rules(
                 &model_path,
                 &rule_cleaned,
                 &mode,
+                &dictionary_hint,
             )
             .await
         }
@@ -338,7 +340,16 @@ pub async fn ensure_and_cleanup(
     model_path: &PathBuf,
     text: &str,
 ) -> Result<String, String> {
-    ensure_and_cleanup_mode(app, server, model, model_path, text, crate::polish::MODE_CASUAL).await
+    ensure_and_cleanup_mode(
+        app,
+        server,
+        model,
+        model_path,
+        text,
+        crate::polish::MODE_CASUAL,
+        "",
+    )
+    .await
 }
 
 /// Same as `ensure_and_cleanup`, with a Polish register preset.
@@ -349,10 +360,11 @@ pub async fn ensure_and_cleanup_mode(
     model_path: &PathBuf,
     text: &str,
     polish_mode: &str,
+    dictionary_hint: &str,
 ) -> Result<String, String> {
     server.start(app, model, model_path).await?;
     server.touch();
-    cleanup_with_llm_mode(text, polish_mode).await
+    cleanup_with_llm_mode_and_hint(text, polish_mode, dictionary_hint).await
 }
 
 impl Default for LlmServer {
@@ -401,6 +413,14 @@ pub async fn cleanup_with_llm(text: &str) -> Result<String, String> {
 }
 
 pub async fn cleanup_with_llm_mode(text: &str, polish_mode: &str) -> Result<String, String> {
+    cleanup_with_llm_mode_and_hint(text, polish_mode, "").await
+}
+
+pub async fn cleanup_with_llm_mode_and_hint(
+    text: &str,
+    polish_mode: &str,
+    dictionary_hint: &str,
+) -> Result<String, String> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
         return Ok(String::new());
@@ -414,7 +434,12 @@ pub async fn cleanup_with_llm_mode(text: &str, polish_mode: &str) -> Result<Stri
             },
             ChatMessage {
                 role: "user",
-                content: format!("{}{}", crate::polish::user_prompt_prefix(), trimmed),
+                content: format!(
+                    "{}{}{}",
+                    crate::polish::user_prompt_prefix(),
+                    trimmed,
+                    dictionary_hint
+                ),
             },
         ],
         temperature: 0.2,

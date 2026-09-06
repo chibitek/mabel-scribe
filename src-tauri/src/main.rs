@@ -131,6 +131,52 @@ fn teams_revoke_invite(state: State<AppState>, invite_id: String) -> Result<team
     teams::revoke_invite(&state.app_dir, invite_id)
 }
 
+fn persist_dictionary(
+    state: &State<AppState>,
+    update: impl FnOnce(&mut Vec<String>) -> Result<Vec<String>, String>,
+) -> Result<Vec<String>, String> {
+    if let Some(err) = state.storage_status.settings_error.as_ref() {
+        return Err(err.clone());
+    }
+    let mut held = state.settings.lock().unwrap();
+    let next = update(&mut held.dictionary)?;
+    held.save(&state.app_dir)?;
+    Ok(next)
+}
+
+#[tauri::command]
+fn dictionary_get(state: State<AppState>) -> Result<Vec<String>, String> {
+    let held = state.settings.lock().unwrap();
+    mabel_lib::dictionary::require_list(&held.dictionary)
+}
+
+#[tauri::command]
+fn dictionary_add(state: State<AppState>, term: String) -> Result<Vec<String>, String> {
+    persist_dictionary(&state, |stored| mabel_lib::dictionary::add_terms(stored, &term))
+}
+
+#[tauri::command]
+fn dictionary_update(
+    state: State<AppState>,
+    from: String,
+    to: String,
+) -> Result<Vec<String>, String> {
+    persist_dictionary(&state, |stored| {
+        mabel_lib::dictionary::update_term(stored, &from, &to)
+    })
+}
+
+#[tauri::command]
+fn dictionary_remove(state: State<AppState>, term: String) -> Result<Vec<String>, String> {
+    persist_dictionary(&state, |stored| mabel_lib::dictionary::remove_term(stored, &term))
+}
+
+#[tauri::command]
+fn dictionary_share() -> Result<(), String> {
+    // Soft later. Fail closed until Enforcer BOUND — do not ship cloud/team share.
+    mabel_lib::dictionary::share_cloud_or_team()
+}
+
 #[tauri::command]
 fn snippets_get(state: State<AppState>) -> Result<Vec<pro_features::Snippet>, String> {
     pro_features::snippets_get(&state.app_dir)
@@ -307,10 +353,20 @@ fn save_settings(app: tauri::AppHandle, state: State<AppState>, settings: Settin
         settings.polish_mode = mabel_lib::polish::require_mode_allowed(&settings.polish_mode)?;
         settings.cleanup_mode = "llm".into();
     }
-    let (prev_clip, prev_polish) = {
+    let (prev_clip, prev_polish, prev_dictionary) = {
         let held = state.settings.lock().unwrap();
-        (held.clipboard_history_enabled, held.polish_mode.clone())
+        (
+            held.clipboard_history_enabled,
+            held.polish_mode.clone(),
+            held.dictionary.clone(),
+        )
     };
+    // Dictionary mutations are Pro-only. Other settings still save for Free.
+    if storekit::current_entitlement().entitled {
+        settings.dictionary = mabel_lib::dictionary::normalize_terms(&settings.dictionary);
+    } else {
+        settings.dictionary = prev_dictionary;
+    }
     settings.save(&state.app_dir)?;
     *state.settings.lock().unwrap() = settings.clone();
     if settings.clipboard_history_enabled != prev_clip {
@@ -494,12 +550,13 @@ async fn transcribe_audio_file(
     let model_file =
         transcribe_local::model_filename(&settings.whisper_model, &settings.whisper_language)?;
     let model_path = state.app_dir.join(model_file);
+    let dictionary = mabel_lib::dictionary::effective_terms(&settings.dictionary);
     let transcript = transcribe_local::transcribe_local_detailed(
         &app,
         &model_path,
         &audio_path,
         &settings.whisper_language,
-        &settings.dictionary,
+        &dictionary,
     )
     .await?;
     if transcript.text.trim().is_empty() {
@@ -974,6 +1031,11 @@ fn main() {
             teams_remove_seat,
             teams_create_invite,
             teams_revoke_invite,
+            dictionary_get,
+            dictionary_add,
+            dictionary_update,
+            dictionary_remove,
+            dictionary_share,
             snippets_get,
             snippets_add,
             snippets_remove,

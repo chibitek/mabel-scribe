@@ -72,9 +72,9 @@ pub struct Settings {
     /// and first-run persist "en". large-v3 Q5 is multilingual-only on disk.
     #[serde(rename = "whisperLanguage", default = "default_whisper_language")]
     pub whisper_language: String,
-    /// Custom dictionary words. Prepended to whisper.cpp's `--prompt` so
-    /// proper nouns, acronyms, and jargon get spelled correctly. Stored
-    /// locally only.
+    /// Local-first Pro dictionary (personal terms / jargon). Whisper.cpp
+    /// `--prompt` and local Gemma cleanup read `dictionary::effective_terms`.
+    /// Free cannot mutate. Not Nexus / cloud / team share.
     #[serde(default)]
     pub dictionary: Vec<String>,
     /// Opt-in Mac clipboard history. Default off. When off, Mabel must not

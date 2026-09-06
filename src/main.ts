@@ -669,16 +669,30 @@ localEngineSelect.addEventListener("change", async () => {
 modelSelect.addEventListener("change", async () => { await checkModelStatus(); saveSettings(); });
 languageSelect.addEventListener("change", async () => { await checkModelStatus(); saveSettings(); });
 
-// Custom dictionary editor. Words are stored locally in settings and prepended
-// to whisper.cpp's --prompt so proper nouns / acronyms / jargon decode
-// correctly. Never uploaded.
+// Pro dictionary editor. Terms stay in local config and feed the existing
+// whisper.cpp --prompt hook plus local Gemma spelling hints. Free is locked.
 const dictInput = $<HTMLInputElement>("dict-input");
 const dictAddBtn = $<HTMLButtonElement>("dict-add-btn");
+const dictCancelBtn = $<HTMLButtonElement>("dict-cancel-btn");
 const dictList = $("dict-list");
 const dictEmpty = $("dict-empty");
+const dictError = $("dict-error");
+let editingTerm: string | null = null;
+
+function showDictError(message: string) {
+  if (!dictError) return;
+  dictError.textContent = message;
+  dictError.hidden = !message;
+}
+
+function applyDictionary(words: string[]) {
+  if (!currentSettings) return;
+  currentSettings.dictionary = words;
+  renderDictionary();
+}
 
 function renderDictionary() {
-  if (!dictList) return;
+  if (!dictList || !currentSettings) return;
   const words = currentSettings.dictionary || [];
   dictList.innerHTML = "";
   if (words.length === 0) {
@@ -689,50 +703,108 @@ function renderDictionary() {
   for (const word of words) {
     const chip = document.createElement("span");
     chip.className = "dict-chip";
+    if (editingTerm && editingTerm.toLowerCase() === word.toLowerCase()) {
+      chip.classList.add("editing");
+    }
     const text = document.createElement("span");
     text.textContent = word;
+    const edit = document.createElement("button");
+    edit.type = "button";
+    edit.setAttribute("aria-label", `Edit ${word}`);
+    edit.textContent = "Edit";
+    edit.addEventListener("click", () => beginEditTerm(word));
     const remove = document.createElement("button");
     remove.type = "button";
     remove.setAttribute("aria-label", `Remove ${word}`);
     remove.textContent = "×";
     remove.addEventListener("click", () => {
-      currentSettings.dictionary = currentSettings.dictionary.filter((w) => w !== word);
-      renderDictionary();
-      saveSettings();
+      void removeDictionaryEntry(word);
     });
     chip.appendChild(text);
+    chip.appendChild(edit);
     chip.appendChild(remove);
     dictList.appendChild(chip);
   }
 }
 
-function addDictionaryEntry() {
-  const raw = dictInput.value.trim();
-  if (!raw) return;
-  // Allow multiple entries split by comma or newline so users can paste a list.
-  const candidates = raw
-    .split(/[,\n]/)
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-  const existing = new Set((currentSettings.dictionary || []).map((w) => w.toLowerCase()));
-  const next = [...(currentSettings.dictionary || [])];
-  for (const c of candidates) {
-    if (!existing.has(c.toLowerCase())) {
-      next.push(c);
-      existing.add(c.toLowerCase());
-    }
+function beginEditTerm(word: string) {
+  if (!currentEntitlement.entitled) {
+    openPlans();
+    return;
   }
-  currentSettings.dictionary = next;
-  dictInput.value = "";
+  editingTerm = word;
+  dictInput.value = word;
+  dictAddBtn.textContent = "Save";
+  dictCancelBtn.classList.remove("hidden");
+  showDictError("");
   renderDictionary();
-  saveSettings();
+  dictInput.focus();
+  dictInput.select();
 }
 
-dictAddBtn.addEventListener("click", addDictionaryEntry);
+function cancelEditTerm() {
+  editingTerm = null;
+  dictInput.value = "";
+  dictAddBtn.textContent = "Add";
+  dictCancelBtn.classList.add("hidden");
+  showDictError("");
+  renderDictionary();
+}
+
+async function addOrSaveDictionaryEntry() {
+  if (!currentEntitlement.entitled) {
+    openPlans();
+    return;
+  }
+  const raw = dictInput.value.trim();
+  if (!raw) return;
+  showDictError("");
+  try {
+    if (editingTerm) {
+      const next = await invoke<string[]>("dictionary_update", { from: editingTerm, to: raw });
+      cancelEditTerm();
+      applyDictionary(next);
+    } else {
+      const next = await invoke<string[]>("dictionary_add", { term: raw });
+      dictInput.value = "";
+      applyDictionary(next);
+    }
+  } catch (e) {
+    showDictError(String(e));
+    console.error("dictionary mutate:", e);
+  }
+}
+
+async function removeDictionaryEntry(word: string) {
+  if (!currentEntitlement.entitled) {
+    openPlans();
+    return;
+  }
+  showDictError("");
+  try {
+    const next = await invoke<string[]>("dictionary_remove", { term: word });
+    if (editingTerm && editingTerm.toLowerCase() === word.toLowerCase()) {
+      cancelEditTerm();
+    }
+    applyDictionary(next);
+  } catch (e) {
+    showDictError(String(e));
+    console.error("dictionary_remove:", e);
+  }
+}
+
+dictAddBtn.addEventListener("click", () => {
+  void addOrSaveDictionaryEntry();
+});
+dictCancelBtn.addEventListener("click", cancelEditTerm);
 dictInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
-    addDictionaryEntry();
+    void addOrSaveDictionaryEntry();
+  }
+  if (e.key === "Escape") {
+    e.preventDefault();
+    cancelEditTerm();
   }
 });
 
@@ -1292,7 +1364,7 @@ function applyEntitlement(ent: Entitlement) {
 
   document.querySelectorAll<HTMLElement>(".nav-item.locked, .nav-item[data-pro]").forEach((item) => {
     const view = item.dataset.view;
-    if (!view || !["snippets", "style", "transforms", "scratchpad", "teams"].includes(view)) return;
+    if (!view || !["dictionary", "snippets", "style", "transforms", "scratchpad", "teams"].includes(view)) return;
     item.classList.toggle("locked", !unlocked);
     item.toggleAttribute("data-pro", true);
     const lock = item.querySelector(".lock-pill");
@@ -1531,6 +1603,9 @@ function row(html: string, onRemove: () => void) {
 
 async function loadProSurfaces() {
   if (!proSurfacesUnlocked()) return;
+
+  const terms = await invoke<string[]>("dictionary_get");
+  applyDictionary(terms);
 
   const snippets = await invoke<Snippet[]>("snippets_get");
   const snippetList = document.getElementById("snippet-list");

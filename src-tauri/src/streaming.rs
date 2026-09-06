@@ -188,7 +188,8 @@ async fn transcribe_and_paste(
             let cleaned = if is_final {
                 let mode = crate::polish::effective_mode(&settings.polish_mode);
                 if crate::polish::is_live(&mode) {
-                    match crate::llm::cleanup_with_llm_mode(&rule_cleaned, &mode).await {
+                    let hint = crate::dictionary::cleanup_spelling_hint(&settings.dictionary);
+                    match crate::llm::cleanup_with_llm_mode_and_hint(&rule_cleaned, &mode, &hint).await {
                         Ok(s) if !s.is_empty() => s,
                         Ok(_) => rule_cleaned,
                         Err(e) => {

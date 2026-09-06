@@ -30,9 +30,21 @@ final class SettingsStore {
     /// v1 unavailable. Always false — cloud ON is a hard break.
     private(set) var cloudStorage = EnforcerBound.cloudStorageAvailableV1
     var autoDelete = false
+    /// Ready switch only. Does not start the microphone.
+    var masterOn = true
 
     /// Pro surfaces require Stiki AND StoreKit. Not used by Free dictate.
     var isProUnlocked: Bool { stikiSignedIn && storeKitEntitled }
+
+    func isTabUnlocked(_ tab: String) -> Bool {
+        if EnforcerBound.freeHomeTabs.contains(tab) {
+            return true
+        }
+        if EnforcerBound.proHomeTabs.contains(tab) {
+            return isProUnlocked
+        }
+        return false
+    }
 
     init(defaults: UserDefaults? = nil) {
         self.defaults = defaults ?? UserDefaults(suiteName: IOSIdentity.appGroup) ?? .standard
@@ -49,6 +61,7 @@ final class SettingsStore {
         keyboardSounds = self.defaults.bool(forKey: Key.keyboardSounds)
         pushNotifications = self.defaults.bool(forKey: Key.push)
         liveActivities = self.defaults.bool(forKey: Key.liveActivities)
+        masterOn = self.defaults.object(forKey: Key.masterOn) as? Bool ?? true
         // Ignore any stored true. Cloud ON v1 / silent cloud is a hard break.
         cloudStorage = EnforcerBound.cloudStorageAvailableV1
     }
@@ -74,6 +87,7 @@ final class SettingsStore {
         defaults.set(keyboardSounds, forKey: Key.keyboardSounds)
         defaults.set(pushNotifications, forKey: Key.push)
         defaults.set(liveActivities, forKey: Key.liveActivities)
+        defaults.set(masterOn, forKey: Key.masterOn)
         defaults.set(EnforcerBound.cloudStorageAvailableV1, forKey: Key.cloudStorage)
         cloudStorage = EnforcerBound.cloudStorageAvailableV1
     }
@@ -93,5 +107,6 @@ final class SettingsStore {
         static let keyboardSounds = "settings.keyboardSounds"
         static let push = "settings.push"
         static let liveActivities = "settings.liveActivities"
+        static let masterOn = "settings.masterOn"
     }
 }

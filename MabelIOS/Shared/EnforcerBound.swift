@@ -20,6 +20,10 @@ enum EnforcerBound {
     static let thisTip = "Keyboard"
     /// Host Settings IA. Scaffold only. Free dictate does not use these panes.
     static let settingsPanes = ["Account", "General", "Keyboard", "Notifications", "Data & privacy"]
+    /// Host Home IA. Free: Home only. Pro tabs need Stiki AND StoreKit.
+    static let homeTabs = ["Home", "Dictionary", "Snippets", "Style", "Scratchpad"]
+    static let freeHomeTabs = ["Home"]
+    static let proHomeTabs = ["Dictionary", "Snippets", "Style", "Scratchpad"]
     /// Suite b6530197 — Data & privacy. Cloud cannot be ON in v1.
     static let cloudStorageAvailableV1 = false
     /// Improve-models must boot OFF. User may toggle locally; never silent upload.

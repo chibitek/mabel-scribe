@@ -12,6 +12,8 @@
 		B2C20001B2C10203 /* HostDictatePlayground.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10103 /* HostDictatePlayground.swift */; };
 		B2C20001B2C10204 /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10104 /* SettingsRootView.swift */; };
 		B2C20001B2C10205 /* SettingsPanes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10118 /* SettingsPanes.swift */; };
+		B2C20001B2C10206 /* HomeTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10119 /* HomeTabView.swift */; };
+		B2C20001B2C10207 /* LockedProTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C1011A /* LockedProTabView.swift */; };
 		B2C20001B2C10218 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10116 /* SettingsStore.swift */; };
 		B2C20001B2C10210 /* IOSIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10110 /* IOSIdentity.swift */; };
 		B2C20001B2C10211 /* DictatePermissionGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10111 /* DictatePermissionGate.swift */; };
@@ -66,6 +68,8 @@
 		B2C20001B2C10103 /* HostDictatePlayground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostDictatePlayground.swift; sourceTree = "<group>"; };
 		B2C20001B2C10104 /* SettingsRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRootView.swift; sourceTree = "<group>"; };
 		B2C20001B2C10118 /* SettingsPanes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPanes.swift; sourceTree = "<group>"; };
+		B2C20001B2C10119 /* HomeTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeTabView.swift; sourceTree = "<group>"; };
+		B2C20001B2C1011A /* LockedProTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LockedProTabView.swift; sourceTree = "<group>"; };
 		B2C20001B2C10105 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B2C20001B2C10106 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B2C20001B2C10107 /* MabelIOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MabelIOS.entitlements; sourceTree = "<group>"; };
@@ -167,6 +171,8 @@
 				B2C20001B2C10103 /* HostDictatePlayground.swift */,
 				B2C20001B2C10104 /* SettingsRootView.swift */,
 				B2C20001B2C10118 /* SettingsPanes.swift */,
+				B2C20001B2C10119 /* HomeTabView.swift */,
+				B2C20001B2C1011A /* LockedProTabView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -277,6 +283,8 @@
 				B2C20001B2C10203 /* HostDictatePlayground.swift in Sources */,
 				B2C20001B2C10204 /* SettingsRootView.swift in Sources */,
 				B2C20001B2C10205 /* SettingsPanes.swift in Sources */,
+				B2C20001B2C10206 /* HomeTabView.swift in Sources */,
+				B2C20001B2C10207 /* LockedProTabView.swift in Sources */,
 				B2C20001B2C10218 /* SettingsStore.swift in Sources */,
 				B2C20001B2C10210 /* IOSIdentity.swift in Sources */,
 				B2C20001B2C10211 /* DictatePermissionGate.swift in Sources */,

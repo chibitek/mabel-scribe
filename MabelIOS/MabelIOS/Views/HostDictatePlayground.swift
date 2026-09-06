@@ -4,6 +4,7 @@ import SwiftUI
 /// Used to grant permissions and prove the orb start/stop without Stiki.
 struct HostDictatePlayground: View {
     @Environment(SpeechSession.self) private var session
+    @Environment(SettingsStore.self) private var settings
     @State private var scratch = ""
 
     var body: some View {
@@ -17,6 +18,7 @@ struct HostDictatePlayground: View {
 
             HStack(alignment: .center, spacing: 18) {
                 Button {
+                    guard settings.masterOn else { return }
                     session.toggleListening(context: .host) { text in
                         if scratch.isEmpty {
                             scratch = text
@@ -27,7 +29,7 @@ struct HostDictatePlayground: View {
                 } label: {
                     MabelOrb(
                         listening: session.isListening,
-                        enabled: true,
+                        enabled: settings.masterOn,
                         diameter: 108
                     )
                 }

@@ -30,15 +30,16 @@ Ship order (do not skip or reorder): **Keyboard → Polish → Dictionary → Sc
 - **Mabel cat UI only.** No Flow brand. No Wispr clone.
 - **Free dictate:** no account, no Stiki, no StoreKit. Tap the orb → speak → tap to stop → text inserts.
 - **Keyboard is not a silent spy.** Explicit orb start. Fail closed without Microphone (and Speech / Full Access). Lifecycle hooks never start the mic. `viewWillDisappear` tears it down. No ambient / always-on listen.
-- **No HIPAA / BAA UI.** Data & privacy uses **local-only privacy mode** copy only.
+- **Data & privacy (Suite b6530197):** cloud storage OFF/unavailable v1; improve-models OFF default; no silent cloud; no HIPAA/BAA/Wispr BAA; local-first toggles OK.
 - Host **Settings** scaffold: Account (Stiki + Pro, dual gate), General, Keyboard, Notifications, Data & privacy. Free dictate does not use Account.
+- Host **Home IA:** tabs Home | Dictionary | Snippets | Style | Scratchpad. Free: Home + dictate. Pro tabs locked until Stiki AND purchase.
 - Later ships (Polish, Dictionary, Scratchpad, Languages) plus Connectors / Notetaker stay out of this tip.
 
 **BREAKS IF:** Flow brand; keyboard spy / ambient always-on listen; Free dictate requires Stiki; keyboard audio without permission; cloud ON v1; improve-models default ON / silent upload; BAA/HIPAA claim; silent cloud.
 
 ## What v0.1.0 does
 
-- Host app shell with Mabel cat chrome (cream / rose / portrait). Setup steps to enable the keyboard and Full Access. Settings gear opens the five-pane IA.
+- Host app shell with Mabel cat chrome (cream / rose / portrait). Bottom tabs Home | Dictionary | Snippets | Style | Scratchpad. Hamburger opens Account / Settings. Setup steps enable the keyboard.
 - Host playground: same on-device dictate path, used to grant permissions.
 - Custom keyboard (`UIInputViewController`) with the orb, live preview, globe / delete / space / return.
 - On-device `SFSpeechRecognizer` (`requiresOnDeviceRecognition = true`). No Apple network-speech fallback. No whisper.cpp / Parakeet / WhisperKit.

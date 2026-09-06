@@ -36,6 +36,8 @@ need_file "$IOS/Shared/EnforcerBound.swift"
 need_file "$IOS/Shared/SettingsStore.swift"
 need_file "$IOS/MabelIOS/Views/SettingsRootView.swift"
 need_file "$IOS/MabelIOS/Views/SettingsPanes.swift"
+need_file "$IOS/MabelIOS/Views/HomeTabView.swift"
+need_file "$IOS/MabelIOS/Views/LockedProTabView.swift"
 need_file "$IOS/MabelKeyboard/KeyboardViewController.swift"
 need_file "$IOS/MabelKeyboard/KeyboardRootView.swift"
 need_file "$IOS/MabelKeyboard/Info.plist"
@@ -149,10 +151,12 @@ if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift"
   && grep -q 'static let settingsPanes = \["Account", "General", "Keyboard", "Notifications", "Data & privacy"\]' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let cloudStorageAvailableV1 = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let improveModelsDefaultOn = false' "$IOS/Shared/EnforcerBound.swift" \
-  && grep -q 'static let silentCloudAllowed = false' "$IOS/Shared/EnforcerBound.swift"; then
-  ok "EnforcerBound locks Mabel brand, ship order, Settings IA, Data & privacy (b6530197)"
+  && grep -q 'static let silentCloudAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let homeTabs = \["Home", "Dictionary", "Snippets", "Style", "Scratchpad"\]' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let freeHomeTabs = \["Home"\]' "$IOS/Shared/EnforcerBound.swift"; then
+  ok "EnforcerBound locks Mabel brand, ship order, Settings IA, Home IA, Data & privacy"
 else
-  bad "EnforcerBound missing brand/shipOrder/settings/cloud/improve-models locks"
+  bad "EnforcerBound missing brand/shipOrder/settings/home/cloud locks"
 fi
 
 if grep -q 'INFOPLIST_KEY_CFBundleDisplayName = Mabel' "$PBX" \
@@ -172,7 +176,7 @@ allow = re.compile(
     r'forbiddenBrands|isForbiddenBrand|BREAKS IF|no Flow|not a |clone|hard break|do not',
     re.I,
 )
-later_ship_files = re.compile(r'(Dictionary|Scratchpad|LanguagePack|PolishPanel)', re.I)
+later_ship_files = re.compile(r'(LanguagePack|PolishPanel|DictionaryEngine|ScratchpadStore)', re.I)
 
 for dirpath, _, files in os.walk(root):
     if "xcodeproj" in dirpath or "DerivedData" in dirpath:
@@ -347,6 +351,44 @@ for dirpath, _, files in os.walk(root):
 if not claim_hit:
     print("  PASS  no HIPAA/BAA/Wispr BAA UI claim (local-only privacy mode)")
 
+home = open(os.path.join(root, "MabelIOS/Views/HomeTabView.swift")).read()
+lock = open(os.path.join(root, "MabelIOS/Views/LockedProTabView.swift")).read()
+tabshell = open(os.path.join(root, "MabelIOS/Views/HostRootView.swift")).read()
+for required in (
+    "Stats carousel",
+    "Dated activity feed",
+    "Master On",
+    "Try in any app",
+    "Account and Settings",
+    "line.3.horizontal",
+):
+    if required not in home:
+        print(f"  FAIL  Home IA missing {required}")
+        failed = True
+if "TabView" not in tabshell or "HomeTabView" not in tabshell:
+    print("  FAIL  host shell missing bottom tabs")
+    failed = True
+else:
+    print("  PASS  Home IA tabs + hamburger + master + try-in-any-app")
+if "Activate Pro" not in lock or "Sign in with Stiki" not in lock:
+    print("  FAIL  locked Pro tabs must offer Activate Pro / Sign in with Stiki")
+    failed = True
+else:
+    print("  PASS  locked Pro tabs use dual-gate CTAs")
+if "func isTabUnlocked" not in settings_store or "isProUnlocked" not in settings_store:
+    print("  FAIL  tab unlock must use Pro dual gate")
+    failed = True
+else:
+    print("  PASS  tab unlock uses Stiki AND purchase")
+if "masterOn" not in settings_store:
+    print("  FAIL  Master On toggle missing from store")
+    failed = True
+if "Does not listen until you tap the orb" not in home:
+    print("  FAIL  Master On must not start the microphone")
+    failed = True
+else:
+    print("  PASS  Master On is ready-only, not ambient listen")
+
 # Free dictate must not require Stiki
 gate = open(os.path.join(root, "Shared/DictatePermissionGate.swift")).read()
 if re.search(r'\bStiki\b', gate) and not re.search(r'No account, StoreKit, or Stiki', gate):
@@ -403,7 +445,7 @@ else
 fi
 
 if grep -q 'promptHostPermissions' "$IOS/Shared/OnDeviceSpeechEngine.swift" \
-  && grep -q 'requestHostPermissions()' "$IOS/MabelIOS/Views/HostRootView.swift"; then
+  && grep -q 'requestHostPermissions()' "$IOS/MabelIOS/Views/HomeTabView.swift"; then
   ok "Allow permissions does not start the mic"
 else
   bad "host Allow button must prompt without starting audio"

@@ -469,7 +469,8 @@ mod tests {
                 "transforms",
                 "scratchpad",
                 "insights",
-                "teams"
+                "teams",
+                "connectors"
             ],
             "BREAKS IF: Pro catalog order drifted"
         );

@@ -1,7 +1,8 @@
 //! Local-only dictation stats. Counts and durations, never content.
 //!
 //! Persisted to `<app_dir>/stats.json`. The Insights UI reads this directly.
-//! Nothing in here ever leaves the device.
+//! Nothing in here ever leaves the device. Recording during Free dictation
+//! stays local and does not require Stiki. Insights *read* is Pro-gated.
 
 use chrono::{Datelike, Local, NaiveDate};
 use serde::{Deserialize, Serialize};

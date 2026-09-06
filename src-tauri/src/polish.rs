@@ -12,6 +12,8 @@
 //! Product LOCK still applies: Pro only, modes Off|Casual|Professional|Polite,
 //! after ASR, autocorrect + light reword, cat UI, no website upgrade.
 
+use std::path::PathBuf;
+
 use crate::storekit;
 
 /// Named Enforcer BOUND. `enforcer_bound_*` tests fail if this is violated.
@@ -57,20 +59,41 @@ pub fn is_live(mode: &str) -> bool {
     )
 }
 
-/// Persist-time gate. Off is always allowed. Live modes need Pro.
-/// No silent Pro path: callers must surface the error (upsell), not clamp.
+/// Persist-time gate. Off is always allowed. Live modes need StoreKit Pro
+/// and a Stiki session. No silent Pro path: callers must surface the error.
 pub fn require_mode_allowed(mode: &str) -> Result<String, String> {
+    require_mode_allowed_at(None, mode)
+}
+
+pub fn require_mode_allowed_at(app_dir: Option<&PathBuf>, mode: &str) -> Result<String, String> {
     let mode = normalize_mode(mode);
     if is_live(&mode) {
-        storekit::require_pro()?;
+        match app_dir {
+            Some(dir) => {
+                crate::stiki::require_pro_unlock(dir)?;
+            }
+            None => {
+                storekit::require_pro()?;
+            }
+        }
     }
     Ok(mode)
 }
 
-/// Runtime gate. Free / lapsed / stub entitlement → Off.
+/// Runtime gate. Free / lapsed / stub entitlement or signed-out Stiki → Off.
 pub fn effective_mode(persisted: &str) -> String {
+    effective_mode_at(None, persisted)
+}
+
+pub fn effective_mode_at(app_dir: Option<&PathBuf>, persisted: &str) -> String {
     let mode = normalize_mode(persisted);
     if !is_live(&mode) {
+        return MODE_OFF.to_string();
+    }
+    if let Some(dir) = app_dir {
+        if crate::stiki::pro_unlocked(dir) {
+            return mode;
+        }
         return MODE_OFF.to_string();
     }
     if storekit::pro_surfaces_unlocked() {
@@ -227,7 +250,7 @@ mod tests {
         assert!(ts.contains("polish-toggle"));
         assert!(!ts.contains("https://chibiteklabs"));
         let main = include_str!("main.rs");
-        assert!(main.contains("require_mode_allowed"));
+        assert!(main.contains("require_mode_allowed_at"));
         assert!(main.contains("polish_set"));
         assert!(!main.contains("MabelSpatial"));
     }

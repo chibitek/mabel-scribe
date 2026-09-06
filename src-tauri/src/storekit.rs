@@ -343,7 +343,7 @@ fn native_redeem_offer_code() -> Result<c_int, String> {
 
 #[cfg(all(target_os = "macos", mabel_native_storekit))]
 fn native_offer_codes_supported() -> bool {
-    unsafe { ffi::mabel_storekit_offer_codes_supported() } == 1
+    (unsafe { ffi::mabel_storekit_offer_codes_supported() }) == 1
 }
 
 #[cfg(all(target_os = "macos", mabel_native_storekit))]

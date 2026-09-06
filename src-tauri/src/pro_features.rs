@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
-use crate::storekit;
+use crate::stiki;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Snippet {
@@ -152,12 +152,12 @@ pub fn snippets_remove_local(app_dir: &PathBuf, snippet_id: String) -> Result<Ve
 
 
 pub fn style_get(app_dir: &PathBuf) -> Result<StylePrefs, String> {
-    storekit::require_pro()?;
+    stiki::require_pro_unlock(app_dir)?;
     Ok(read_json(&app_dir.join("style.json")))
 }
 
 pub fn style_save(app_dir: &PathBuf, prefs: StylePrefs) -> Result<StylePrefs, String> {
-    storekit::require_pro()?;
+    stiki::require_pro_unlock(app_dir)?;
     let tone = match prefs.tone.as_str() {
         "default" | "formal" | "casual" => prefs.tone,
         _ => "default".into(),
@@ -176,23 +176,23 @@ pub fn style_save(app_dir: &PathBuf, prefs: StylePrefs) -> Result<StylePrefs, St
 }
 
 pub fn transforms_get(app_dir: &PathBuf) -> Result<TransformPrefs, String> {
-    storekit::require_pro()?;
+    stiki::require_pro_unlock(app_dir)?;
     Ok(read_json(&app_dir.join("transforms.json")))
 }
 
 pub fn transforms_save(app_dir: &PathBuf, prefs: TransformPrefs) -> Result<TransformPrefs, String> {
-    storekit::require_pro()?;
+    stiki::require_pro_unlock(app_dir)?;
     write_json(app_dir, "transforms.json", &prefs)?;
     Ok(prefs)
 }
 
 pub fn scratchpad_get(app_dir: &PathBuf) -> Result<String, String> {
-    storekit::require_pro()?;
+    stiki::require_pro_unlock(app_dir)?;
     Ok(fs::read_to_string(app_dir.join("scratchpad.txt")).unwrap_or_default())
 }
 
 pub fn scratchpad_save(app_dir: &PathBuf, text: String) -> Result<(), String> {
-    storekit::require_pro()?;
+    stiki::require_pro_unlock(app_dir)?;
     fs::create_dir_all(app_dir).map_err(|e| e.to_string())?;
     fs::write(app_dir.join("scratchpad.txt"), text).map_err(|e| e.to_string())
 }

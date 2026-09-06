@@ -4,7 +4,14 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+use crate::stiki;
 use crate::storekit;
+
+fn require_org_acl(app_dir: &PathBuf) -> Result<(), String> {
+    storekit::require_pro()?;
+    stiki::require_acl(app_dir)?;
+    Ok(())
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Seat {
@@ -74,12 +81,12 @@ fn new_id() -> String {
 }
 
 pub fn get(app_dir: &PathBuf) -> Result<TeamState, String> {
-    storekit::require_pro()?;
+    require_org_acl(app_dir)?;
     Ok(load(app_dir))
 }
 
 pub fn set_org(app_dir: &PathBuf, org_name: String) -> Result<TeamState, String> {
-    storekit::require_pro()?;
+    require_org_acl(app_dir)?;
     let mut state = load(app_dir);
     state.org_name = org_name.trim().to_string();
     save(app_dir, &state)?;
@@ -92,7 +99,7 @@ pub fn add_seat(
     email: String,
     role: String,
 ) -> Result<TeamState, String> {
-    storekit::require_pro()?;
+    require_org_acl(app_dir)?;
     let email = normalize_email(&email)?;
     let name = display_name.trim();
     if name.is_empty() {
@@ -117,7 +124,7 @@ pub fn add_seat(
 }
 
 pub fn remove_seat(app_dir: &PathBuf, seat_id: String) -> Result<TeamState, String> {
-    storekit::require_pro()?;
+    require_org_acl(app_dir)?;
     let mut state = load(app_dir);
     let before = state.seats.len();
     state.seats.retain(|s| s.id != seat_id);
@@ -129,7 +136,7 @@ pub fn remove_seat(app_dir: &PathBuf, seat_id: String) -> Result<TeamState, Stri
 }
 
 pub fn create_invite(app_dir: &PathBuf, email: String) -> Result<TeamState, String> {
-    storekit::require_pro()?;
+    require_org_acl(app_dir)?;
     let email = normalize_email(&email)?;
     let mut state = load(app_dir);
     if state
@@ -152,7 +159,7 @@ pub fn create_invite(app_dir: &PathBuf, email: String) -> Result<TeamState, Stri
 }
 
 pub fn revoke_invite(app_dir: &PathBuf, invite_id: String) -> Result<TeamState, String> {
-    storekit::require_pro()?;
+    require_org_acl(app_dir)?;
     let mut state = load(app_dir);
     let Some(invite) = state.invites.iter_mut().find(|i| i.id == invite_id) else {
         return Err("Invite not found".into());
@@ -203,6 +210,33 @@ mod tests {
         let loaded = load(&dir);
         assert_eq!(loaded.org_name, "Chibitek");
         assert_eq!(loaded.seats[0].email, "erick@example.com");
+    }
+
+    #[test]
+    fn org_acl_mutations_require_stiki() {
+        let src = include_str!("teams.rs");
+        assert!(src.contains("require_org_acl"));
+        assert!(src.contains("stiki::require_acl"));
+        for fn_name in [
+            "pub fn set_org",
+            "pub fn add_seat",
+            "pub fn remove_seat",
+            "pub fn create_invite",
+            "pub fn revoke_invite",
+        ] {
+            let body = src.split(fn_name).nth(1).expect(fn_name);
+            let body = body.split("pub fn ").next().unwrap();
+            assert!(
+                body.contains("require_org_acl"),
+                "{fn_name} must require Stiki ACL"
+            );
+        }
+        let get = src.split("pub fn get").nth(1).unwrap();
+        let get = get.split("pub fn set_org").next().unwrap();
+        assert!(
+            get.contains("require_org_acl"),
+            "BREAKS IF: Pro surface usable without Stiki"
+        );
     }
 
     #[test]

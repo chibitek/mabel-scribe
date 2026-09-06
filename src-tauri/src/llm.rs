@@ -276,7 +276,7 @@ pub async fn polish_or_rules(
     if rule_cleaned.is_empty() {
         return rule_cleaned;
     }
-    let mode = crate::polish::effective_mode(&settings.polish_mode);
+    let mode = crate::polish::effective_mode_at(Some(app_dir), &settings.polish_mode);
     if !crate::polish::is_live(&mode) {
         return rule_cleaned;
     }

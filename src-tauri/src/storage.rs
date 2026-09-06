@@ -642,6 +642,18 @@ mod tests {
         assert!(polish.contains("default OFF"));
         assert!(polish.contains("clipboardHistoryEnabled != Polish"));
         assert!(polish.contains("never invent"));
+        let connectors = include_str!("connectors.rs");
+        assert!(connectors.contains("ENFORCER_BOUND"));
+        assert!(connectors.contains("no default always-on"));
+        assert!(connectors.contains("Scratchpad NOT MCP"));
+        assert!(connectors.contains("no HIPAA/BAA"));
+        assert!(connectors.contains("Sign in with Stiki before MCP"));
+        assert!(connectors.contains("SIGN_ON_BOUND"));
+        assert!(connectors.contains("b6530197"));
+        let stiki = include_str!("stiki.rs");
+        assert!(stiki.contains("SESSION_FILE"));
+        assert!(stiki.contains("sign_in"));
+        assert!(stiki.contains("client_wired"));
         let clip = include_str!("clipboard_history.rs");
         assert!(clip.contains("Default OFF"));
         assert!(clip.contains("local slot counts"));

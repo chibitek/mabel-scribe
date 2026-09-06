@@ -23,13 +23,17 @@ A shared Xcode multiplatform app (macOS + iOS, or “Designed for iPhone” on V
 
 `MabelIOS/` follows `MabelSpatial/`: one repo, separate bundle, separate ASC later.
 
-## Product lock (this tip = keyboard only)
+## Product lock + Enforcer BOUND (fold hard)
 
+Ship order (do not skip or reorder): **Keyboard → Polish → Dictionary → Scratchpad → Languages**. This tip is Keyboard only.
+
+- **Mabel cat UI only.** No Flow brand. No Wispr clone.
 - **Free dictate:** no account, no Stiki, no StoreKit. Tap the orb → speak → tap to stop → text inserts.
-- **Fail closed:** if Microphone, Speech Recognition, or keyboard Full Access is missing, the keyboard does **not** open an audio session.
-- **No ambient listen:** lifecycle hooks (`viewDidLoad` / `viewWillAppear` / `textDidChange`) never start the mic. `viewWillDisappear` tears it down.
+- **Keyboard is not a silent spy.** Explicit orb start. Fail closed without Microphone (and Speech / Full Access). Lifecycle hooks never start the mic. `viewWillDisappear` tears it down. No ambient / always-on listen.
 - **No HIPAA / BAA claim.**
-- Out of scope: Polish, Dictionary, Scratchpad, Languages, Connectors, Notetaker, Pro IAP.
+- Later ships (Polish, Dictionary, Scratchpad, Languages) plus Connectors / Notetaker / Pro IAP stay out of this tip.
+
+**BREAKS IF:** Flow brand; keyboard spy / ambient always-on listen; Free dictate requires Stiki; keyboard audio without permission.
 
 ## What v0.1.0 does
 
@@ -126,7 +130,7 @@ MabelIOS/
   scripts/validate-ios-keyboard-scaffold.sh
   scripts/xcodebuild-ios.sh
   MabelIOS.xcodeproj/
-  Shared/                          Gate + on-device speech (host + keyboard)
+  Shared/                          Gate + EnforcerBound + on-device speech
   MabelIOS/                        Host app shell (cat UI)
   MabelKeyboard/                   Custom keyboard extension
 ```

@@ -15,6 +15,7 @@
 		B2C20001B2C10212 /* OnDeviceSpeechEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10112 /* OnDeviceSpeechEngine.swift */; };
 		B2C20001B2C10213 /* SpeechSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10113 /* SpeechSession.swift */; };
 		B2C20001B2C10214 /* CatChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10114 /* CatChrome.swift */; };
+		B2C20001B2C10217 /* EnforcerBound.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10115 /* EnforcerBound.swift */; };
 		B2C20001B2C10215 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10105 /* Assets.xcassets */; };
 		B2C20001B2C10216 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10108 /* PrivacyInfo.xcprivacy */; };
 		B2C20001B2C10220 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10120 /* KeyboardViewController.swift */; };
@@ -24,6 +25,7 @@
 		B2C20001B2C10224 /* OnDeviceSpeechEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10112 /* OnDeviceSpeechEngine.swift */; };
 		B2C20001B2C10225 /* SpeechSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10113 /* SpeechSession.swift */; };
 		B2C20001B2C10226 /* CatChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10114 /* CatChrome.swift */; };
+		B2C20001B2C10229 /* EnforcerBound.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10115 /* EnforcerBound.swift */; };
 		B2C20001B2C10227 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10124 /* PrivacyInfo.xcprivacy */; };
 		B2C20001B2C10228 /* MabelKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10021 /* MabelKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -67,6 +69,7 @@
 		B2C20001B2C10112 /* OnDeviceSpeechEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnDeviceSpeechEngine.swift; sourceTree = "<group>"; };
 		B2C20001B2C10113 /* SpeechSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechSession.swift; sourceTree = "<group>"; };
 		B2C20001B2C10114 /* CatChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatChrome.swift; sourceTree = "<group>"; };
+		B2C20001B2C10115 /* EnforcerBound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnforcerBound.swift; sourceTree = "<group>"; };
 		B2C20001B2C10120 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
 		B2C20001B2C10121 /* KeyboardRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardRootView.swift; sourceTree = "<group>"; };
 		B2C20001B2C10122 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -132,6 +135,7 @@
 				B2C20001B2C10112 /* OnDeviceSpeechEngine.swift */,
 				B2C20001B2C10113 /* SpeechSession.swift */,
 				B2C20001B2C10114 /* CatChrome.swift */,
+				B2C20001B2C10115 /* EnforcerBound.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -266,6 +270,7 @@
 				B2C20001B2C10212 /* OnDeviceSpeechEngine.swift in Sources */,
 				B2C20001B2C10213 /* SpeechSession.swift in Sources */,
 				B2C20001B2C10214 /* CatChrome.swift in Sources */,
+				B2C20001B2C10217 /* EnforcerBound.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -280,6 +285,7 @@
 				B2C20001B2C10224 /* OnDeviceSpeechEngine.swift in Sources */,
 				B2C20001B2C10225 /* SpeechSession.swift in Sources */,
 				B2C20001B2C10226 /* CatChrome.swift in Sources */,
+				B2C20001B2C10229 /* EnforcerBound.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

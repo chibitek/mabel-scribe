@@ -4,7 +4,7 @@ import SwiftUI
 /// Not Mochii. Not Mac TestFlight (`com.mabel.app` / ASC 6809059582) on a phone.
 /// Spatial stays `com.mabel.vision` — do not reuse that listing here.
 enum IOSIdentity {
-    static let displayName = "Mabel"
+    static let displayName = EnforcerBound.displayBrand
     static let bundleID = "com.mabel.ios"
     static let keyboardBundleID = "com.mabel.ios.keyboard"
     static let appGroup = "group.com.mabel.ios"

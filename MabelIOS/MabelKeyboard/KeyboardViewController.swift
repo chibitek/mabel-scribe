@@ -1,9 +1,10 @@
 import SwiftUI
 import UIKit
 
-/// System keyboard extension. Dictation starts only on an explicit tap
-/// after the fail-closed permission gate. Never listen in viewDidLoad /
-/// viewWillAppear / textDidChange.
+/// System keyboard extension. Not a silent spy.
+/// Dictation starts only on an explicit orb tap after the fail-closed
+/// permission gate. Never listen in viewDidLoad / viewWillAppear /
+/// textDidChange. Ambient / always-on listen is a hard break.
 final class KeyboardViewController: UIInputViewController {
     private let session = SpeechSession()
     private let chrome = KeyboardChrome()

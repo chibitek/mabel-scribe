@@ -132,7 +132,7 @@ struct HostRootView: View {
     }
 
     private var versionLine: some View {
-        Text("v\(IOSIdentity.marketingVersion) · \(IOSIdentity.bundleID) · native iOS keyboard")
+        Text("v\(IOSIdentity.marketingVersion) · \(IOSIdentity.bundleID) · \(EnforcerBound.thisTip) · \(EnforcerBound.shipOrderLine)")
             .font(.caption2.monospaced())
             .foregroundStyle(IOSPalette.mist.opacity(0.85))
             .frame(maxWidth: .infinity, alignment: .center)

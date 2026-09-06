@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Shared cat-energy chrome for the host shell and the keyboard overlay.
-/// Rose / cream / whisker — not a dark Wispr or Flow clone.
+/// Mabel cat UI only. Flow / Wispr brand is a hard break.
 struct MabelOrb: View {
     var listening: Bool
     var enabled: Bool = true

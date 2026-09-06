@@ -14,7 +14,7 @@ Open source under the [MIT license](LICENSE). Fork it, build it, ship your own v
 
 A native **visionOS** sibling — **Mabel Spatial** (`com.mabel.vision`, v0.1.0) — lives in [`MabelSpatial/`](MabelSpatial/README.md). It is SwiftUI + RealityKit + on-device Apple Speech, not a Tauri port and not Mac TestFlight on a headset.
 
-A native **iOS** sibling — **Mabel** (`com.mabel.ios`, v0.1.0) — lives in [`MabelIOS/`](MabelIOS/README.md). Custom keyboard overlay dictation in any app. New ASC listing later. Not Mochii, not Mac TestFlight on a phone, not Spatial. Mac 1.4.0 paths below are unchanged.
+A native **iOS** sibling — **Mabel** (`com.mabel.ios`, v0.1.0) — lives in [`MabelIOS/`](MabelIOS/README.md). Custom keyboard overlay dictation in any app. Mabel cat UI only (no Flow brand). Keyboard is not a silent spy. Ship order Keyboard → Polish → Dictionary → Scratchpad → Languages. New ASC listing later. Not Mochii, not Mac TestFlight on a phone, not Spatial. Mac 1.4.0 paths below are unchanged.
 
 ---
 

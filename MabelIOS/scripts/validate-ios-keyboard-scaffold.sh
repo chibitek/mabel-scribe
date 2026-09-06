@@ -32,6 +32,7 @@ need_file "$IOS/Shared/DictatePermissionGate.swift"
 need_file "$IOS/Shared/OnDeviceSpeechEngine.swift"
 need_file "$IOS/Shared/SpeechSession.swift"
 need_file "$IOS/Shared/CatChrome.swift"
+need_file "$IOS/Shared/EnforcerBound.swift"
 need_file "$IOS/MabelKeyboard/KeyboardViewController.swift"
 need_file "$IOS/MabelKeyboard/KeyboardRootView.swift"
 need_file "$IOS/MabelKeyboard/Info.plist"
@@ -120,22 +121,148 @@ for PRIV in "$IOS/MabelIOS/PrivacyInfo.xcprivacy" "$IOS/MabelKeyboard/PrivacyInf
   fi
 done
 
-# Product locks in Swift: no Stiki/StoreKit/HIPAA-claim/Wispr/Mac ASR
+# Product locks in Swift: no Stiki/StoreKit/HIPAA-claim/Mac ASR as dependencies
 LEAK="$(mktemp)"
-if grep -R -n -E 'StoreKit|Stiki|HIPAA|BAA|Wispr|whisper\.cpp|WhisperKit|FluidAudio|Parakeet|tauri|com\.mabel\.app|com\.mabel\.vision' \
+if grep -R -n -E 'StoreKit|Stiki|HIPAA|BAA|whisper\.cpp|WhisperKit|FluidAudio|Parakeet|tauri|com\.mabel\.app|com\.mabel\.vision' \
   --include='*.swift' "$IOS/MabelIOS" "$IOS/MabelKeyboard" "$IOS/Shared" \
-  | grep -v -i -E 'macBundleID|spatialBundleID|macASC|do not|not tauri|no whisper|stiki|hipaa|wispr|no storekit|no account|not mochii|not mac' \
+  | grep -v -i -E 'macBundleID|spatialBundleID|macASC|do not|not tauri|no whisper|stiki|hipaa|no storekit|no account|not mochii|not mac|BREAKS IF|forbidden' \
   >"$LEAK" || true
 then
   :
 fi
 if [[ -s "$LEAK" ]]; then
-  bad "iOS Swift leaked StoreKit / Stiki / Mac ASR / foreign brand"
+  bad "iOS Swift leaked StoreKit / Stiki / Mac ASR"
   cat "$LEAK"
 else
-  ok "iOS Swift has no StoreKit / Stiki / Mac ASR / Wispr clone"
+  ok "iOS Swift has no StoreKit / Stiki / Mac ASR"
 fi
 rm -f "$LEAK"
+
+# Enforcer BOUND addendum — fold hard
+if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let forbiddenBrands = \["Flow", "Wispr"\]' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let shipOrder = \["Keyboard", "Polish", "Dictionary", "Scratchpad", "Languages"\]' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let thisTip = "Keyboard"' "$IOS/Shared/EnforcerBound.swift"; then
+  ok "EnforcerBound locks Mabel brand, forbids Flow/Wispr, ship order Keyboard→Polish→Dictionary→Scratchpad→Languages"
+else
+  bad "EnforcerBound missing displayBrand/forbiddenBrands/shipOrder/thisTip"
+fi
+
+if grep -q 'INFOPLIST_KEY_CFBundleDisplayName = Mabel' "$PBX" \
+  && ! grep -q 'INFOPLIST_KEY_CFBundleDisplayName = Flow' "$PBX" \
+  && ! grep -q 'PRODUCT_NAME = Flow' "$PBX"; then
+  ok "Xcode display/product name is Mabel, not Flow"
+else
+  bad "display or product name drifted toward Flow"
+fi
+
+if python3 - "$IOS" <<'PY'
+import os, re, sys
+root = sys.argv[1]
+failed = False
+brand = re.compile(r'\b(Flow|Wispr)\b')
+allow = re.compile(
+    r'forbiddenBrands|isForbiddenBrand|BREAKS IF|no Flow|not a |clone|hard break|do not',
+    re.I,
+)
+later_ship_files = re.compile(r'(Dictionary|Scratchpad|LanguagePack|PolishPanel)', re.I)
+
+for dirpath, _, files in os.walk(root):
+    if "xcodeproj" in dirpath or "DerivedData" in dirpath:
+        continue
+    for name in files:
+        if later_ship_files.search(name) and not name.endswith(".md"):
+            print(f"  FAIL  later-ship file present this tip: {name}")
+            failed = True
+        if not name.endswith(".swift"):
+            continue
+        path = os.path.join(dirpath, name)
+        for i, line in enumerate(open(path), 1):
+            stripped = line.strip()
+            if stripped.startswith("//") or stripped.startswith("///") or stripped.startswith("*"):
+                continue
+            if brand.search(line) and not allow.search(line):
+                print(f"  FAIL  Flow/Wispr brand leak {path}:{i}: {stripped}")
+                failed = True
+
+# Display strings must stay Mabel
+identity = open(os.path.join(root, "Shared/IOSIdentity.swift")).read()
+enforcer = open(os.path.join(root, "Shared/EnforcerBound.swift")).read()
+if 'displayName = EnforcerBound.displayBrand' not in identity:
+    print("  FAIL  IOSIdentity.displayName must be EnforcerBound.displayBrand")
+    failed = True
+if 'static let displayBrand = "Mabel"' not in enforcer:
+    print("  FAIL  EnforcerBound.displayBrand must be Mabel")
+    failed = True
+if 'static let thisTip = "Keyboard"' not in enforcer:
+    print("  FAIL  this tip must stay Keyboard")
+    failed = True
+
+# Keyboard is not a silent spy: no audio start in lifecycle methods
+vc = open(os.path.join(root, "MabelKeyboard/KeyboardViewController.swift")).read()
+for hook, start, end in (
+    ("viewDidLoad", "func viewDidLoad", "func viewWillAppear"),
+    ("viewWillAppear", "func viewWillAppear", "func viewWillDisappear"),
+    ("textDidChange", "func textDidChange", "final class KeyboardChrome"),
+):
+    chunk = vc
+    if start in vc and end in vc:
+        chunk = vc.split(start, 1)[1].split(end, 1)[0]
+    if re.search(r'startListening|toggleListening|startMicTap|AVAudioEngine\(|speech\.start', chunk):
+        print(f"  FAIL  keyboard {hook} starts audio (spy / ambient listen)")
+        failed = True
+    else:
+        print(f"  PASS  keyboard {hook} does not start audio")
+
+engine = open(os.path.join(root, "Shared/OnDeviceSpeechEngine.swift")).read()
+start_fn = engine.split("func start(", 1)[1].split("func stop(", 1)[0]
+if "assertPermissions" not in start_fn:
+    print("  FAIL  speech start() missing assertPermissions")
+    failed = True
+elif start_fn.find("assertPermissions") > start_fn.find("startMicTap"):
+    print("  FAIL  startMicTap runs before permission assert (audio without permission)")
+    failed = True
+else:
+    print("  PASS  start() asserts permissions before startMicTap")
+
+# AVAudioEngine is created only after the gate, inside startMicTap
+mic_fn = engine.split("private func startMicTap", 1)[1].split("private func deactivateAudioSession", 1)[0]
+if "AVAudioEngine()" not in mic_fn or engine.count("AVAudioEngine()") != 1:
+    print("  FAIL  AVAudioEngine must be created once, only inside startMicTap")
+    failed = True
+else:
+    print("  PASS  AVAudioEngine created only after gate, in startMicTap")
+
+session = open(os.path.join(root, "Shared/SpeechSession.swift")).read()
+if "lastGate.allowsAudio == false && mayPrompt == false" not in session:
+    print("  FAIL  SpeechSession missing fail-closed return before audio")
+    failed = True
+else:
+    print("  PASS  SpeechSession fail-closes before speech.start")
+if "context == .host && lastGate == .undeterminedOpenHost" not in session:
+    print("  FAIL  keyboard must not get a permission-prompt audio path")
+    failed = True
+else:
+    print("  PASS  permission prompt is host-only; keyboard never prompts")
+
+# Free dictate must not require Stiki
+gate = open(os.path.join(root, "Shared/DictatePermissionGate.swift")).read()
+if re.search(r'\bStiki\b', gate) and not re.search(r'No account, StoreKit, or Stiki', gate):
+    print("  FAIL  permission gate must not require Stiki")
+    failed = True
+elif "allowsAudio" not in gate:
+    print("  FAIL  gate missing allowsAudio")
+    failed = True
+else:
+    print("  PASS  Free dictate gate has no Stiki requirement")
+
+sys.exit(1 if failed else 0)
+PY
+then
+  :
+else
+  FAIL=1
+fi
 
 if grep -q 'requiresOnDeviceRecognition' "$IOS/Shared/OnDeviceSpeechEngine.swift" \
   && grep -q 'SFSpeechRecognizer' "$IOS/Shared/OnDeviceSpeechEngine.swift"; then

@@ -154,10 +154,16 @@ if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift"
   && grep -q 'static let silentCloudAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let privacySurfaceName = "Local-only privacy mode"' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let dictationCloudAvailableV1 = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let cloudSyncAvailableV1 = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let localOnlyModeShips = true' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let hipaaBAAFollowUpParked = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'privacySuite = "b6530197"' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'GREEN (b6530197): no HIPAA/BAA claim UI' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'BREAKS IF (b6530197): HIPAA/BAA claim; improve-models default ON' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'dictation/cloud sync available v1' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let homeTabs = \["Home", "Dictionary", "Snippets", "Style", "Scratchpad"\]' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let freeHomeTabs = \["Home"\]' "$IOS/Shared/EnforcerBound.swift"; then
-  ok "EnforcerBound locks Mabel brand, ship order, Settings IA, Home IA, Local-only privacy mode"
+  ok "EnforcerBound locks Mabel brand, ship order, Settings IA, Home IA, Suite b6530197"
 else
   bad "EnforcerBound missing brand/shipOrder/settings/home/cloud locks"
 fi
@@ -314,16 +320,32 @@ if "static let privacySurfaceName = \"Local-only privacy mode\"" not in enforcer
     failed = True
 else:
     print("  PASS  privacy surface is Local-only privacy mode")
+if "static let localOnlyModeShips = true" not in enforcer:
+    print("  FAIL  local-only mode must ship")
+    failed = True
+else:
+    print("  PASS  local-only mode ships")
 if "static let dictationCloudAvailableV1 = false" not in enforcer:
     print("  FAIL  dictation cloud must stay unavailable v1")
     failed = True
 else:
     print("  PASS  dictation cloud unavailable v1")
-if "static let hipaaBAAFollowUpParked = true" not in enforcer:
-    print("  FAIL  HIPAA/BAA follow-up must stay parked (no claim)")
+if "static let cloudSyncAvailableV1 = false" not in enforcer:
+    print("  FAIL  dictation/cloud sync must stay unavailable v1")
     failed = True
 else:
-    print("  PASS  HIPAA/BAA follow-up parked")
+    print("  PASS  dictation/cloud sync unavailable v1")
+if "static let hipaaBAAFollowUpParked = true" not in enforcer:
+    print("  FAIL  real BAA must stay parked (no claim)")
+    failed = True
+else:
+    print("  PASS  real BAA parked")
+if "GREEN (b6530197): no HIPAA/BAA claim UI" not in enforcer \
+        or "BREAKS IF (b6530197): HIPAA/BAA claim; improve-models default ON" not in enforcer:
+    print("  FAIL  Suite b6530197 GREEN/BREAKS IF missing")
+    failed = True
+else:
+    print("  PASS  Suite b6530197 GREEN/BREAKS IF folded")
 if "request.requiresOnDeviceRecognition = EnforcerBound.dictationCloudAvailableV1 == false" not in engine:
     print("  FAIL  speech engine must bind requiresOnDeviceRecognition to dictation-cloud lock")
     failed = True

@@ -225,6 +225,8 @@ mod tests {
         assert!(crate::transforms::apply_local(&dir, "email".into(), "hi".into()).is_err());
         assert!(crate::scratchpad::require_text(&dir).is_err());
         assert!(crate::scratchpad::save(&dir, "hello".into()).is_err());
+        let stats = crate::stats::StatsStore::load(&dir);
+        assert!(crate::insights::require_summary(&stats).is_err());
     }
 
     #[test]

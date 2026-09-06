@@ -364,13 +364,25 @@
           </div>
         </section>
         <section class="view" data-view="insights">
-          <header class="view-header">
-            <h1 class="view-title">Insights</h1>
-            <p class="view-sub">Local-only counts of how you use Mabel. Never the words themselves.</p>
-          </header>
-          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and Sign in with Stiki to see local Insights. Free dictation does not need an account.</p><button type="button" class="btn-primary pro-activate">Unlock Pro</button></div>
-          <div class="pro-unlock hidden">
+          <header class="view-header"><h1 class="view-title">Insights</h1><p class="view-sub">Local-only counts, streaks, and time saved on this Mac. Never the words. Not Scratchpad, not Dictionary, not Snippets, not Style, not Transforms, not Polish, not Clipboard.</p></header>
+          <div class="card locked-card pro-lock" data-insights-gate="lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and sign in with Stiki so Mabel can show how many dictations, streaks, and minutes she saved you on this Mac, like a house cat who keeps a tally of every nap &mdash; never the secrets, never the words. Free dictation does not need an account.</p><div class="locked-actions"><button type="button" class="btn-primary pro-activate" id="insights-pane-activate">Activate Pro</button><button type="button" class="btn-secondary" id="insights-pane-stiki">Sign in with Stiki</button></div></div>
+          <div class="pro-unlock hidden" data-insights-gate="unlock">
             <div class="insights-grid">
+              <div class="card stat-big">
+                <div class="stat-label">Today</div>
+                <div class="stat-value" id="ins-today">0</div>
+                <div class="stat-unit">dictations</div>
+              </div>
+              <div class="card stat-big">
+                <div class="stat-label">All time</div>
+                <div class="stat-value" id="ins-total">0</div>
+                <div class="stat-unit">dictations</div>
+              </div>
+              <div class="card stat-big">
+                <div class="stat-label">Streak</div>
+                <div class="stat-value" id="ins-streak">0</div>
+                <div class="stat-unit">days</div>
+              </div>
               <div class="card stat-big">
                 <div class="stat-label">Words per minute</div>
                 <div class="stat-value" id="ins-wpm">0</div>
@@ -382,16 +394,16 @@
                 <div class="stat-unit">all time</div>
               </div>
               <div class="card stat-big">
-                <div class="stat-label">Total dictations</div>
-                <div class="stat-value" id="ins-total">0</div>
-                <div class="stat-unit">all time</div>
+                <div class="stat-label">Time saved</div>
+                <div class="stat-value" id="ins-time-saved">0</div>
+                <div class="stat-unit">minutes</div>
               </div>
             </div>
 
             <div class="card streak-card">
               <div class="streak-head">
-                <h2 class="streak-title"><span id="ins-streak">0</span> day streak</h2>
-                <span class="streak-sub">Last 30 days</span>
+                <h2 class="streak-title">Last 30 days</h2>
+                <span class="streak-sub">Dictation days on this Mac</span>
               </div>
               <div class="streak-grid" id="streak-grid"></div>
               <div class="streak-legend">
@@ -404,12 +416,12 @@
                 <span class="streak-legend-text">Less</span>
               </div>
             </div>
-          </div>
-          <div class="card pane-card">
-            <div class="row">
-              <div class="row-text">
-                <div class="row-label">On this Mac</div>
-                <div class="row-hint">Mabel counts the days, not the secrets. These numbers stay in a local file. They are not uploaded.</div>
+            <div class="card pane-card">
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Privacy</div>
+                  <div class="row-hint">Insights lives on this Mac. Counts, streaks, and time saved stay here. Never the words. Not uploaded, not Nexus memory, not Mochii, not an MCP source or sink, not a team or company dashboard, and not a third-party analytics vendor. Cloud and team share stay off. Distinct from Scratchpad, Dictionary, Snippets, Style, Transforms, Polish, and Clipboard.</div>
+                </div>
               </div>
             </div>
           </div>
@@ -505,7 +517,7 @@
               <li>Audio files are written to a temp directory, transcribed, then deleted.</li>
               <li>Transcripts are never logged to disk.</li>
               <li>No telemetry, no analytics, no phoning home.</li>
-              <li>Stats on the Home view (today, all-time, streak) are counts only, never content.</li>
+              <li>Insights (Pro + Stiki) and Home counts are local-only tallies — never the words. Free dictation does not need an account.</li>
               <li>API keys live in the macOS Keychain.</li>
             </ul>
           </div>
@@ -871,6 +883,17 @@
               </div>
               <div class="row">
                 <div class="row-text">
+                  <div class="row-label">Insights</div>
+                  <div class="row-hint">Pro + Stiki. Local-only usage counts, streaks, and time saved on this Mac &mdash; not Scratchpad, not Dictionary, not Snippets, not Style, not Transforms, not Polish, not Clipboard. Menu bar → Insights…</div>
+                </div>
+                <div class="row-actions">
+                  <button type="button" class="btn-secondary hidden" id="insights-open">Open Insights</button>
+                  <button type="button" class="btn-secondary" id="insights-activate">Activate Pro</button>
+                  <button type="button" class="btn-secondary" id="insights-stiki">Sign in with Stiki</button>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row-text">
                   <div class="row-label">Polish</div>
                   <div class="row-hint">Off by default. Pro only. After dictation, local Gemma autocorrects and lightly rewords what you said. Never invents facts or expands meaning. Stays on this Mac &mdash; not Nexus, not company memory. Coach cannot rewrite your dictation. Same control: menu bar → Polish.</div>
                 </div>
@@ -1058,7 +1081,7 @@
               <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">No telemetry, no analytics</div><div class="row-hint">No usage tracking, no phoning home. Clipboard History never leaves this Mac.</div></div></div>
               <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">Connectors never auto-push</div><div class="row-hint">Mochii MCP and Nexus MCP stay off until you connect each one. Scratchpad stays on this Mac. Dictation and Polish are not sent.</div></div></div>
               <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">Keys live in the OS Keychain</div><div class="row-hint">Your Groq key, if you provide one, is never written to a config file.</div></div></div>
-              <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">Local stats are counts only</div><div class="row-hint">Dictation counts and dates, never content.</div></div></div>
+              <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">Local stats are counts only</div><div class="row-hint">Insights (Pro + Stiki) shows dictation counts, streaks, and time saved on this Mac — never the words. Not a third-party analytics vendor.</div></div></div>
             </div>
           </div>
 

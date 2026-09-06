@@ -417,8 +417,25 @@ fn get_version() -> VersionInfo {
 
 #[tauri::command]
 fn get_stats(state: State<AppState>) -> Result<StatsSummary, String> {
-    mabel_lib::stiki::require_pro_unlock(&state.app_dir)?;
-    Ok(state.stats.summary())
+    mabel_lib::insights::require_summary(&state.stats)
+}
+
+#[tauri::command]
+fn insights_get(state: State<AppState>) -> Result<StatsSummary, String> {
+    // Dual gate: StoreKit Pro AND Stiki. Counts stay in stats.json on this Mac.
+    mabel_lib::insights::require_summary(&state.stats)
+}
+
+#[tauri::command]
+fn insights_share() -> Result<(), String> {
+    // HELD: fail closed if Stiki/folder-style ACL is missing.
+    mabel_lib::insights::share_cloud_or_team()
+}
+
+#[tauri::command]
+fn insights_promote() -> Result<(), String> {
+    // BREAKS IF: private insights auto-promote to company memory.
+    mabel_lib::insights::promote_to_company_memory()
 }
 
 #[tauri::command]
@@ -1243,6 +1260,9 @@ fn main() {
             scratchpad_clear,
             scratchpad_share,
             scratchpad_promote,
+            insights_get,
+            insights_share,
+            insights_promote,
             connectors_status,
             connectors_connect,
             connectors_disconnect,

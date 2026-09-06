@@ -31,6 +31,7 @@ pub mod snippets;
 pub mod style;
 pub mod transforms;
 pub mod scratchpad;
+pub mod insights;
 pub mod clipboard_history;
 #[cfg(target_os = "macos")]
 pub mod pasteboard_macos;

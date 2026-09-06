@@ -1372,28 +1372,69 @@ async function refreshStorefront() {
   }
 }
 
+const STOREKIT_UI_TIMEOUT_MS = 125_000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    promise.then(
+      (value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        window.clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
+}
+
 async function buyProduct(productId: string, btn: HTMLButtonElement) {
   const errorEl = document.getElementById("plan-error");
+  const statusEl = document.getElementById("plan-status");
+  const original = btn.textContent;
   btn.disabled = true;
+  btn.textContent = "Waiting for App Store…";
+  if (errorEl) errorEl.textContent = "";
+  if (statusEl) statusEl.textContent = "Waiting for App Store…";
   try {
-    const ent = await invoke<Entitlement>("storekit_purchase", { productId });
+    const ent = await withTimeout(
+      invoke<Entitlement>("storekit_purchase", { productId }),
+      STOREKIT_UI_TIMEOUT_MS,
+      "Purchase timed out. Restore Purchases and Manage Subscriptions still work. Mabel did not grant Pro.",
+    );
     applyEntitlement(ent);
     await refreshStorefront();
   } catch (e) {
     if (errorEl) errorEl.textContent = String(e);
+    if (statusEl) statusEl.textContent = "Purchase did not complete.";
   } finally {
     btn.disabled = false;
+    btn.textContent = original;
   }
 }
 
 document.getElementById("plan-restore")?.addEventListener("click", async () => {
   const errorEl = document.getElementById("plan-error");
+  const statusEl = document.getElementById("plan-status");
+  const restoreBtn = document.getElementById("plan-restore") as HTMLButtonElement | null;
+  if (errorEl) errorEl.textContent = "";
+  if (statusEl) statusEl.textContent = "Waiting for App Store…";
+  if (restoreBtn) restoreBtn.disabled = true;
   try {
-    const ent = await invoke<Entitlement>("storekit_restore");
+    const ent = await withTimeout(
+      invoke<Entitlement>("storekit_restore"),
+      STOREKIT_UI_TIMEOUT_MS,
+      "Restore timed out. Manage Subscriptions still works. Mabel did not grant Pro.",
+    );
     applyEntitlement(ent);
     await refreshStorefront();
   } catch (e) {
     if (errorEl) errorEl.textContent = String(e);
+    if (statusEl) statusEl.textContent = "Restore did not complete.";
+  } finally {
+    if (restoreBtn) restoreBtn.disabled = false;
   }
 });
 
@@ -1587,9 +1628,37 @@ $("invite-add").addEventListener("click", async () => {
   }
 });
 
+function showStorageError(message: string) {
+  console.error("storage-status:", message);
+  alert(`Could not load previous Mabel data: ${message}`);
+}
+
+async function checkStorageStatus() {
+  try {
+    const status = await invoke<{
+      migration: { status: string; message?: string | null };
+      settingsError?: string | null;
+      statsError?: string | null;
+      historyError?: string | null;
+    }>("get_storage_status");
+    const msg =
+      status.migration.status === "failed"
+        ? status.migration.message
+        : status.settingsError || status.statsError || status.historyError;
+    if (msg) showStorageError(msg);
+  } catch (e) {
+    console.error("get_storage_status:", e);
+  }
+}
+
+listen<string>("storage-status-error", (event) => {
+  if (event.payload) showStorageError(event.payload);
+});
+
 loadSettings();
 loadVersion();
 loadStats();
+checkStorageStatus();
 refreshEntitlement();
 maybeRunFirstTimeSetup();
 setTimeout(() => {

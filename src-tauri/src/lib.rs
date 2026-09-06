@@ -20,6 +20,7 @@ pub mod system_ui;
 pub mod overlay_macos;
 pub mod debug_log;
 pub mod storekit;
+pub mod storage;
 pub mod teams;
 pub mod pro_features;
 pub mod clipboard_history;

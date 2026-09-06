@@ -21,6 +21,9 @@
   Do not add com.apple.developer.in-app-payments (Apple Pay merchants).
   CIO/CoS must enable In-App Purchase on the App ID before MAS/TF StoreKit
   works. Developer ID DMG keeps entitlements.plist unchanged.
+  home-relative-path.read-only is for one-time import of prior DMG
+  Application Support (1.3.x → TF 1.4.0). Do not drop device.audio-input
+  or the System Events AE exception (#10).
 -->
 <plist version="1.0">
 <dict>
@@ -38,5 +41,10 @@
     </array>
     <key>com.apple.security.files.user-selected.read-write</key>
     <true/>
+    <key>com.apple.security.temporary-exception.files.home-relative-path.read-only</key>
+    <array>
+        <string>/Library/Application Support/com.mabel.app</string>
+        <string>/Library/Application Support/com.typr.app</string>
+    </array>
 </dict>
 </plist>

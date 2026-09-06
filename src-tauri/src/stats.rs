@@ -52,14 +52,33 @@ pub struct StatsStore {
 
 impl StatsStore {
     pub fn load(app_dir: &PathBuf) -> Self {
+        Self::load_with_status(app_dir).0
+    }
+
+    pub fn load_with_status(app_dir: &PathBuf) -> (Self, Option<String>) {
         let path = app_dir.join("stats.json");
-        let inner = fs::read_to_string(&path)
-            .ok()
-            .and_then(|s| serde_json::from_str::<Stats>(&s).ok())
-            .unwrap_or_default();
-        Self {
-            path: Mutex::new(path),
-            inner: Mutex::new(inner),
+        match crate::storage::read_existing_json::<Stats>(&path, "Insights history") {
+            Ok(Some(inner)) => (
+                Self {
+                    path: Mutex::new(path),
+                    inner: Mutex::new(inner),
+                },
+                None,
+            ),
+            Ok(None) => (
+                Self {
+                    path: Mutex::new(path),
+                    inner: Mutex::new(Stats::default()),
+                },
+                None,
+            ),
+            Err(e) => (
+                Self {
+                    path: Mutex::new(path),
+                    inner: Mutex::new(Stats::default()),
+                },
+                Some(e),
+            ),
         }
     }
 
@@ -151,4 +170,49 @@ fn last_30_days(s: &Stats) -> Vec<u32> {
 #[allow(dead_code)]
 fn _silence_datelike(d: NaiveDate) -> u32 {
     d.day()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn garbage_stats_file_is_left_untouched() {
+        let dir = std::env::temp_dir().join(format!("mabel-stats-corrupt-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("stats.json");
+        fs::write(&path, "???broken").unwrap();
+        let (_store, err) = StatsStore::load_with_status(&dir);
+        assert!(err.as_deref().unwrap_or("").contains("left untouched"), "{err:?}");
+        assert_eq!(fs::read_to_string(&path).unwrap(), "???broken");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn missing_stats_is_empty_not_an_error() {
+        let dir = std::env::temp_dir().join(format!("mabel-stats-missing-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let (store, err) = StatsStore::load_with_status(&dir);
+        assert!(err.is_none());
+        assert_eq!(store.summary().total, 0);
+        assert!(!dir.join("stats.json").exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn same_container_reload_keeps_existing_stats_bytes() {
+        let dir = std::env::temp_dir().join(format!("mabel-stats-keep-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("stats.json");
+        let raw = r#"{"daily":{"2026-09-01":{"dictations":4,"words":20,"seconds":2.0}},"total_dictations":4,"total_words":20,"total_seconds":2.0}"#;
+        fs::write(&path, raw).unwrap();
+        let (store, err) = StatsStore::load_with_status(&dir);
+        assert!(err.is_none());
+        assert_eq!(store.summary().total, 4);
+        assert_eq!(fs::read_to_string(&path).unwrap(), raw);
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

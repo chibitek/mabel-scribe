@@ -44,10 +44,20 @@ private func clearError() {
     }
 }
 
-private func runBlocking<T>(_ body: @escaping @Sendable () async throws -> T) throws -> T {
+/// Seconds the C ABI will wait for StoreKit. Must stay off the AppKit
+/// main thread: `semaphore.wait()` on main deadlocks the purchase sheet.
+private let bridgeTimeoutSeconds: TimeInterval = 120
+
+private func runBlocking<T>(
+    onMainActor: Bool = false,
+    _ body: @escaping @Sendable () async throws -> T
+) throws -> T {
+    if Thread.isMainThread {
+        throw StoreBridgeError.failed("StoreKit bridge must not block the main thread")
+    }
     let semaphore = DispatchSemaphore(value: 0)
     let box = BlockingBox<T>()
-    Task.detached {
+    let work: @Sendable () async -> Void = {
         do {
             let value = try await body()
             box.set(.success(value))
@@ -56,14 +66,36 @@ private func runBlocking<T>(_ body: @escaping @Sendable () async throws -> T) th
         }
         semaphore.signal()
     }
-    semaphore.wait()
+    if onMainActor {
+        Task { @MainActor in
+            await work()
+        }
+    } else {
+        Task.detached {
+            await work()
+        }
+    }
+    if semaphore.wait(timeout: .now() + bridgeTimeoutSeconds) == .timedOut {
+        throw StoreBridgeError.failed(
+            "StoreKit timed out after \(Int(bridgeTimeoutSeconds))s. Try Restore Purchases or Manage Subscriptions."
+        )
+    }
     return try box.take()
 }
 
 private final class BlockingBox<T>: @unchecked Sendable {
+    private let lock = NSLock()
     private var result: Result<T, Error>?
-    func set(_ value: Result<T, Error>) { result = value }
+    func set(_ value: Result<T, Error>) {
+        lock.lock()
+        defer { lock.unlock() }
+        if result == nil {
+            result = value
+        }
+    }
     func take() throws -> T {
+        lock.lock()
+        defer { lock.unlock() }
         guard let result else {
             throw StoreBridgeError.failed("async bridge produced no result")
         }
@@ -332,7 +364,7 @@ public func mabel_storekit_purchase(_ productId: UnsafePointer<CChar>?) -> Int32
         return -1
     }
     do {
-        try runBlocking {
+        try runBlocking(onMainActor: true) {
             let products = try await Product.products(for: [id])
             guard let product = products.first else {
                 throw StoreBridgeError.failed(

@@ -30,8 +30,8 @@ The bundled `whisper-cpp` sidecar in v1.0.5 has rpaths pointing to the developer
 
 **Ship action (RECOMMENDED HOTFIX):** cherry-pick this fix onto main, bump to v1.0.6, sign + notarize, push out. Every user on v1.0.5 needs this — they currently have a non-functional app.
 
-### B4. Stats lost on app update
-Reported by user during 1.1.0-dev testing. Stats currently live in app config dir but apparently not surviving updates. Need to verify and either change persistence path or back up before update.
+### B4. Stats lost on app update — addressed in 1.4.0 (same-container LOCK)
+Reported by user during 1.1.0-dev testing and again on TF 1.4.0/1401. Product LOCK: dictation/usage history must survive TF version bumps on the same install/container. Load no longer replaces Application Support history with defaults. Unreadable files fail closed with a visible reason and are not overwritten. Schema migrate is later.
 
 ---
 

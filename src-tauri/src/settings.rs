@@ -203,14 +203,26 @@ impl Default for Settings {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct SettingsLoad {
+    pub settings: Settings,
+    pub error: Option<String>,
+}
+
 impl Settings {
     pub fn config_path(app_dir: &PathBuf) -> PathBuf {
         app_dir.join("config.json")
     }
 
     pub fn load(app_dir: &PathBuf) -> Self {
+        Self::load_with_status(app_dir).settings
+    }
+
+    /// Load settings. A present-but-unparseable `config.json` is never
+    /// overwritten with defaults — that used to look like an upgrade wipe.
+    pub fn load_with_status(app_dir: &PathBuf) -> SettingsLoad {
         let path = Self::config_path(app_dir);
-        let (mut settings, mut needs_migration) = match fs::read_to_string(&path) {
+        let (mut settings, mut needs_migration, error) = match fs::read_to_string(&path) {
             Ok(contents) => {
                 // Detect plaintext groqApiKey in old config.json and stage it
                 // for migration into the keychain.
@@ -223,45 +235,60 @@ impl Settings {
                             .map(|s| s.to_string())
                     });
 
-                let parsed = serde_json::from_str::<DiskSettings>(&contents)
-                    .map(|d| Settings {
-                        microphone: d.microphone,
-                        engine: d.engine,
-                        local_engine: d
-                            .local_engine
-                            .unwrap_or_else(crate::local_engine::migrate_missing_field),
-                        whisper_model: d.whisper_model,
-                        groq_api_key: String::new(),
-                        recording_mode: d.recording_mode,
-                        hotkey: d.hotkey,
-                        streaming: d.streaming,
-                        groq_key_configured: d.groq_key_configured,
-                        launch_at_login: d.launch_at_login,
-                        show_in_dock: d.show_in_dock,
-                        dictation_sounds: d.dictation_sounds,
-                        press_enter_command: d.press_enter_command,
-                        cleanup_mode: d.cleanup_mode,
-                        llm_model: d.llm_model,
-                        polish_mode: crate::polish::normalize_mode(&d.polish_mode),
-                        companion_enabled: d.companion_enabled,
-                        companion_size: d.companion_size,
-                        companion_frequency: d.companion_frequency,
-                        companion_visit: d.companion_visit,
-                        last_seen_version: d.last_seen_version,
-                        whisper_language: d.whisper_language,
-                        dictionary: d.dictionary,
-                        clipboard_history_enabled: d.clipboard_history_enabled,
-                    })
-                    .unwrap_or_default();
-
-                if let Some(key) = legacy_key {
-                    let _ = secrets::set_groq_key(&key);
-                    (parsed, true)
-                } else {
-                    (parsed, false)
+                match serde_json::from_str::<DiskSettings>(&contents) {
+                    Ok(d) => {
+                        let parsed = Settings {
+                            microphone: d.microphone,
+                            engine: d.engine,
+                            local_engine: d
+                                .local_engine
+                                .unwrap_or_else(crate::local_engine::migrate_missing_field),
+                            whisper_model: d.whisper_model,
+                            groq_api_key: String::new(),
+                            recording_mode: d.recording_mode,
+                            hotkey: d.hotkey,
+                            streaming: d.streaming,
+                            groq_key_configured: d.groq_key_configured,
+                            launch_at_login: d.launch_at_login,
+                            show_in_dock: d.show_in_dock,
+                            dictation_sounds: d.dictation_sounds,
+                            press_enter_command: d.press_enter_command,
+                            cleanup_mode: d.cleanup_mode,
+                            llm_model: d.llm_model,
+                            polish_mode: crate::polish::normalize_mode(&d.polish_mode),
+                            companion_enabled: d.companion_enabled,
+                            companion_size: d.companion_size,
+                            companion_frequency: d.companion_frequency,
+                            companion_visit: d.companion_visit,
+                            last_seen_version: d.last_seen_version,
+                            whisper_language: d.whisper_language,
+                            dictionary: d.dictionary,
+                            clipboard_history_enabled: d.clipboard_history_enabled,
+                        };
+                        if let Some(key) = legacy_key {
+                            let _ = secrets::set_groq_key(&key);
+                            (parsed, true, None)
+                        } else {
+                            (parsed, false, None)
+                        }
+                    }
+                    Err(e) => {
+                        let msg = format!(
+                            "Could not read settings in {}. The file was left untouched so nothing was wiped. ({e})",
+                            path.display()
+                        );
+                        (Self::default(), false, Some(msg))
+                    }
                 }
             }
-            Err(_) => (Self::default(), false),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (Self::default(), false, None),
+            Err(e) => {
+                let msg = format!(
+                    "Could not read settings in {}. The file was left untouched so nothing was wiped. ({e})",
+                    path.display()
+                );
+                (Self::default(), false, Some(msg))
+            }
         };
 
         // Backward-compat migration: older builds stored whisperLanguage as
@@ -296,11 +323,12 @@ impl Settings {
         // causes macOS to prompt for keychain access repeatedly and can hang the
         // launch. The key is fetched on-demand at cloud transcription time, and
         // the UI shows a "key is set" status without exposing the value.
-        if needs_migration {
+        // Never persist defaults over an unreadable file.
+        if error.is_none() && needs_migration {
             let _ = settings.save(app_dir);
         }
 
-        settings
+        SettingsLoad { settings, error }
     }
 
 
@@ -425,5 +453,26 @@ mod tests {
             .clone()
             .unwrap_or_else(crate::local_engine::migrate_missing_field);
         assert_eq!(migrated, "whisper-cpp");
+    }
+
+    #[test]
+    fn unreadable_config_is_not_overwritten() {
+        let dir = std::env::temp_dir().join(format!(
+            "mabel-settings-corrupt-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = Settings::config_path(&dir);
+        fs::write(&path, "{not-json").unwrap();
+        let loaded = Settings::load_with_status(&dir);
+        assert!(loaded.error.is_some(), "{:?}", loaded.error);
+        assert!(
+            loaded.error.as_deref().unwrap().contains("left untouched"),
+            "{:?}",
+            loaded.error
+        );
+        assert_eq!(fs::read_to_string(&path).unwrap(), "{not-json");
+        let _ = fs::remove_dir_all(&dir);
     }
 }

@@ -456,6 +456,46 @@ mod tests {
     }
 
     #[test]
+    fn tf_1303_config_survives_1401_load() {
+        // Erick's smoke: TF 1.3.x/1303 → 1.4.0/1401 (ASC 6809059582).
+        // 1.3 DiskSettings had no polishMode / clipboardHistoryEnabled.
+        let dir = std::env::temp_dir().join(format!(
+            "mabel-settings-1303-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        let path = Settings::config_path(&dir);
+        let raw = r#"{
+            "microphone": "BuiltIn",
+            "engine": "local",
+            "localEngine": "parakeet",
+            "whisperModel": "large-v3",
+            "recordingMode": "toggle",
+            "hotkey": "CmdOrCtrl+D",
+            "streaming": false,
+            "lastSeenVersion": "1.3.0",
+            "dictionary": ["Mabel"]
+        }"#;
+        fs::write(&path, raw).unwrap();
+        let loaded = Settings::load_with_status(&dir);
+        assert!(loaded.error.is_none(), "{:?}", loaded.error);
+        assert_eq!(loaded.settings.last_seen_version, "1.3.0");
+        assert_eq!(loaded.settings.microphone, "BuiltIn");
+        assert_eq!(loaded.settings.dictionary, vec!["Mabel".to_string()]);
+        assert_eq!(loaded.settings.polish_mode, "off");
+        assert!(
+            !loaded.settings.clipboard_history_enabled,
+            "1.3 had no clipboard field; must stay opt-in off"
+        );
+        let after = fs::read_to_string(&path).unwrap();
+        assert!(after.contains("1.3.0"), "{after}");
+        assert!(after.contains("BuiltIn"), "{after}");
+        assert!(after.contains("Mabel"), "{after}");
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn unreadable_config_is_not_overwritten() {
         let dir = std::env::temp_dir().join(format!(
             "mabel-settings-corrupt-{}",

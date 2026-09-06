@@ -585,6 +585,33 @@ mod tests {
     }
 
     #[test]
+    fn tf_1303_same_container_survives_1401() {
+        // Same sandbox container as TF 1.3.x/1303: config + Insights stats,
+        // no clipboard-history.json (that file is #14). 1.4.0/1401 must
+        // keep those bytes. Schema rewrite is later.
+        let dest = tmp();
+        let config_1303 = r#"{
+            "microphone": "BuiltIn",
+            "engine": "local",
+            "localEngine": "parakeet",
+            "whisperModel": "large-v3",
+            "recordingMode": "toggle",
+            "hotkey": "CmdOrCtrl+D",
+            "lastSeenVersion": "1.3.0"
+        }"#;
+        write(&dest, "config.json", config_1303);
+        write(&dest, "stats.json", &sample_stats(1303));
+        let before_stats = fs::read_to_string(dest.join("stats.json")).unwrap();
+        let report = migrate_into(&dest, &[dest.clone()]);
+        assert_eq!(report.status, "already_current", "{report:?}");
+        assert_eq!(fs::read_to_string(dest.join("stats.json")).unwrap(), before_stats);
+        assert!(fs::read_to_string(dest.join("config.json"))
+            .unwrap()
+            .contains("1.3.0"));
+        assert!(!dest.join("clipboard-history.json").exists());
+    }
+
+    #[test]
     fn same_container_upgrade_does_not_wipe_history() {
         let dest = tmp();
         write(&dest, "stats.json", &sample_stats(44));

@@ -25,6 +25,15 @@ Still open before any store upload:
 - `NemoTextProcessing.framework` (FluidAudio) must be re-signed with the same team as the app.
 - No Apple Distribution + MAS provisioning run has been done in this repo. Notarized DMG is still Erick-on-M5.
 
+## P0: TF 1.3.x/1303 → 1.4.0/1401 history + StoreKit hang
+
+Erick smoked **1.4.0 (1401)** on ASC `6809059582` from tip-era `main` `ee86d523` (StoreKit #11), not a later Polish tip. Prior install was TF **1.3.x / 1303**. Same sandbox container.
+
+- Insights / usage (`stats.json`) and `config.json` must still be there after the 1.4.0 open. Do not load-or-default over those files. Schema migrate is later.
+- Subscribe must not beachball. Purchase is async + timeout; Restore / Manage stay usable; Pro only after a verified transaction.
+
+Clipboard #14 and Polish #15 on current `main` stay intact.
+
 ## P0: TestFlight empty-record (build 1.3.0 / 1302)
 
 Hotkey opened the overlay, stop produced no text. Root cause is **not** a missing `NSMicrophoneUsageDescription` (it is in `Info.plist`) and **not** a missing `com.apple.security.device.audio-input` key in source (it is in `entitlements.mas.plist`). The pipeline failed open:

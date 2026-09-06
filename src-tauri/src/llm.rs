@@ -481,6 +481,127 @@ pub async fn cleanup_with_llm_mode_and_hint(
     crate::polish::accept_or_fail_closed(trimmed, &cleaned)
 }
 
+/// User-invoked Transforms rewrite. Local Gemma on loopback, or the
+/// deterministic local reshape. Never auto-applied during dictation.
+pub async fn rewrite_transform(
+    app: &AppHandle,
+    server: &LlmServer,
+    model: &str,
+    app_dir: &PathBuf,
+    action: &str,
+    source: &str,
+) -> String {
+    let local = crate::transforms::rewrite_local(source, action);
+    if source.trim().is_empty() {
+        return local;
+    }
+    let name = match model_filename(model) {
+        Ok(n) => n,
+        Err(_) => return local,
+    };
+    let model_path = app_dir.join(name);
+    if !model_path.exists() {
+        return local;
+    }
+    println!(
+        "[Mabel] Transform {} requested (chars={})",
+        action,
+        source.chars().count()
+    );
+    let t0 = std::time::Instant::now();
+    match rewrite_with_llm(app, server, model, &model_path, action, source).await {
+        Ok(s) => match crate::transforms::accept_or_fail_closed(source, &s) {
+            Ok(ok) => {
+                println!(
+                    "[Mabel] Transform succeeded ({:?}, chars={})",
+                    t0.elapsed(),
+                    ok.chars().count()
+                );
+                ok
+            }
+            Err(e) => {
+                eprintln!(
+                    "[Mabel] Transform invented/expanded ({:?}); using local reshape: {}",
+                    t0.elapsed(),
+                    e
+                );
+                local
+            }
+        },
+        Err(e) => {
+            eprintln!(
+                "[Mabel] Transform Gemma failed ({:?}); using local reshape: {}",
+                t0.elapsed(),
+                e
+            );
+            local
+        }
+    }
+}
+
+async fn rewrite_with_llm(
+    app: &AppHandle,
+    server: &LlmServer,
+    model: &str,
+    model_path: &PathBuf,
+    action: &str,
+    source: &str,
+) -> Result<String, String> {
+    server.start(app, model, model_path).await?;
+    server.touch();
+    let trimmed = source.trim();
+    if trimmed.is_empty() {
+        return Ok(String::new());
+    }
+
+    let req = ChatRequest {
+        messages: vec![
+            ChatMessage {
+                role: "system",
+                content: crate::transforms::system_prompt(action),
+            },
+            ChatMessage {
+                role: "user",
+                content: format!("{}{}", crate::transforms::user_prompt_prefix(), trimmed),
+            },
+        ],
+        temperature: 0.2,
+        max_tokens: 512,
+        stream: false,
+    };
+
+    let client = reqwest::Client::builder()
+        .timeout(CLEANUP_TIMEOUT)
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let url = format!("http://127.0.0.1:{}/v1/chat/completions", SERVER_PORT);
+    let resp = client
+        .post(&url)
+        .json(&req)
+        .send()
+        .await
+        .map_err(|e| format!("LLM request failed: {}", e))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("LLM returned status {}", resp.status()));
+    }
+
+    let parsed: ChatResponse = resp
+        .json()
+        .await
+        .map_err(|e| format!("LLM response parse failed: {}", e))?;
+
+    let raw = parsed
+        .choices
+        .into_iter()
+        .next()
+        .map(|c| c.message.content)
+        .ok_or_else(|| "LLM response had no choices".to_string())?;
+
+    extract_clean_or_fail(&raw)
+}
+
 /// Sanitizes the raw LLM output and returns the cleaned transcript, or an
 /// error if the response looks contaminated with reasoning/preamble that we
 /// can't safely extract from. The caller treats Err as "fall back to rules" —

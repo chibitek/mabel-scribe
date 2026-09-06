@@ -316,6 +316,14 @@ function openStyle() {
   document.querySelector('.view[data-view="style"]')?.classList.add("active");
 }
 
+function openTransforms() {
+  modal.classList.add("hidden");
+  document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
+  document.querySelectorAll<HTMLElement>(".view").forEach((s) => s.classList.remove("active"));
+  document.querySelector('.nav-item[data-view="transforms"]')?.classList.add("active");
+  document.querySelector('.view[data-view="transforms"]')?.classList.add("active");
+}
+
 function openAccount(e?: Event) {
   e?.preventDefault();
   openSettingsPane("account");
@@ -872,6 +880,14 @@ $("style-stiki").addEventListener("click", () => {
 $("style-pane-stiki").addEventListener("click", () => {
   void signInWithStiki();
 });
+$("transforms-open").addEventListener("click", openTransforms);
+$("transforms-activate").addEventListener("click", openPlans);
+$("transforms-stiki").addEventListener("click", () => {
+  void signInWithStiki();
+});
+$("xf-pane-stiki").addEventListener("click", () => {
+  void signInWithStiki();
+});
 
 dictAddBtn.addEventListener("click", () => {
   void addOrSaveDictionaryEntry();
@@ -1385,9 +1401,9 @@ interface StylePrefs {
 }
 
 interface TransformPrefs {
-  fillerWords: boolean;
-  grammar: boolean;
-  punctuation: boolean;
+  lastAction: string;
+  lastSource: string;
+  lastResult: string;
 }
 
 interface ConnectorView {
@@ -1442,6 +1458,10 @@ function snippetsSurfaceReady() {
 }
 
 function styleSurfaceReady() {
+  return proSurfacesUnlocked();
+}
+
+function transformsSurfaceReady() {
   return proSurfacesUnlocked();
 }
 
@@ -1541,6 +1561,33 @@ function applyStyleGate() {
   }
 }
 
+function applyTransformsGate() {
+  const ready = transformsSurfaceReady();
+  const entitled = !!currentEntitlement.entitled;
+  const signedIn = stikiLive();
+
+  document.querySelectorAll<HTMLElement>("[data-xf-gate='lock']").forEach((el) => {
+    el.classList.toggle("hidden", ready);
+  });
+  document.querySelectorAll<HTMLElement>("[data-xf-gate='unlock']").forEach((el) => {
+    el.classList.toggle("hidden", !ready);
+  });
+
+  $("transforms-open").classList.toggle("hidden", !ready);
+  $("transforms-activate").classList.toggle("hidden", entitled);
+  $("transforms-stiki").classList.toggle("hidden", signedIn);
+  $("xf-pane-activate").classList.toggle("hidden", entitled);
+  $("xf-pane-stiki").classList.toggle("hidden", signedIn);
+
+  const xfNav = document.querySelector<HTMLElement>('.nav-item[data-view="transforms"]');
+  if (xfNav) {
+    xfNav.classList.toggle("locked", !ready);
+    xfNav.toggleAttribute("data-pro", true);
+    const lock = xfNav.querySelector<HTMLElement>(".lock-pill");
+    if (lock) lock.style.display = ready ? "none" : "";
+  }
+}
+
 function askProUnlock(err?: string) {
   if (err && String(err).includes("Sign in with Stiki")) {
     openAccount();
@@ -1561,16 +1608,17 @@ function applyProLocks() {
     if (lock) (lock as HTMLElement).style.display = unlocked ? "none" : "";
   });
   document.querySelectorAll(".pro-lock").forEach((el) => {
-    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate) return;
+    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate || (el as HTMLElement).dataset.xfGate) return;
     el.classList.toggle("hidden", unlocked);
   });
   document.querySelectorAll(".pro-unlock").forEach((el) => {
-    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate) return;
+    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate || (el as HTMLElement).dataset.styleGate || (el as HTMLElement).dataset.xfGate) return;
     el.classList.toggle("hidden", !unlocked);
   });
   applyDictionaryGate();
   applySnippetsGate();
   applyStyleGate();
+  applyTransformsGate();
   if (unlocked) loadStats();
   else resetStatsDisplay();
 }
@@ -1849,6 +1897,9 @@ listen("open-snippets", () => {
 listen("open-style", () => {
   openStyle();
 });
+listen("open-transforms", () => {
+  openTransforms();
+});
 listen("open-account", () => {
   openAccount();
 });
@@ -2009,16 +2060,71 @@ async function clearStyleMode() {
   }
 }
 
+function showTransformsError(message: string) {
+  const errorEl = document.getElementById("xf-error");
+  if (!errorEl) return;
+  errorEl.textContent = message;
+  errorEl.hidden = !message;
+}
+
+function renderTransforms(prefs: TransformPrefs) {
+  const source = $<HTMLTextAreaElement>("xf-source");
+  const result = $<HTMLTextAreaElement>("xf-result");
+  if (prefs.lastSource) source.value = prefs.lastSource;
+  result.value = prefs.lastResult || "";
+  const picked = ["email", "bullets", "shorter", "clearer"].includes(prefs.lastAction)
+    ? prefs.lastAction
+    : "";
+  document.querySelectorAll<HTMLButtonElement>("[data-xf-action]").forEach((btn) => {
+    btn.classList.toggle("active", !!picked && btn.dataset.xfAction === picked);
+  });
+}
+
+async function loadTransformsSurface() {
+  if (!transformsSurfaceReady()) return;
+  const xf = await invoke<TransformPrefs>("transforms_get");
+  renderTransforms(xf);
+  showTransformsError("");
+}
+
+async function invokeTransform(action: string) {
+  if (!transformsSurfaceReady()) {
+    if (!currentEntitlement.entitled) openPlans();
+    return;
+  }
+  const source = $<HTMLTextAreaElement>("xf-source").value;
+  showTransformsError("");
+  try {
+    const next = await invoke<TransformPrefs>("transforms_apply", { action, source });
+    renderTransforms(next);
+  } catch (e) {
+    showTransformsError(String(e));
+    console.error("transforms_apply:", e);
+  }
+}
+
+async function clearTransforms() {
+  if (!transformsSurfaceReady()) {
+    if (!currentEntitlement.entitled) openPlans();
+    return;
+  }
+  showTransformsError("");
+  try {
+    const next = await invoke<TransformPrefs>("transforms_clear");
+    $<HTMLTextAreaElement>("xf-source").value = "";
+    renderTransforms(next);
+  } catch (e) {
+    showTransformsError(String(e));
+    console.error("transforms_clear:", e);
+  }
+}
+
 async function loadProSurfaces() {
   if (!proSurfacesUnlocked()) return;
   await loadDictionarySurface();
   await loadSnippetsSurface();
   await loadStyleSurface();
-
-  const xf = await invoke<TransformPrefs>("transforms_get");
-  setSwitch($<HTMLButtonElement>("xf-filler"), xf.fillerWords);
-  setSwitch($<HTMLButtonElement>("xf-grammar"), xf.grammar);
-  setSwitch($<HTMLButtonElement>("xf-punct"), xf.punctuation);
+  await loadTransformsSurface();
 
   const pad = $<HTMLTextAreaElement>("scratchpad-text");
   pad.value = await invoke<string>("scratchpad_get");
@@ -2257,21 +2363,13 @@ $("style-clear-btn").addEventListener("click", () => {
   void clearStyleMode();
 });
 
-async function saveTransforms() {
-  await invoke("transforms_save", {
-    prefs: {
-      fillerWords: $("xf-filler").getAttribute("aria-checked") === "true",
-      grammar: $("xf-grammar").getAttribute("aria-checked") === "true",
-      punctuation: $("xf-punct").getAttribute("aria-checked") === "true",
-    },
+document.querySelectorAll<HTMLButtonElement>("[data-xf-action]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    void invokeTransform(btn.dataset.xfAction || "");
   });
-}
-["xf-filler", "xf-grammar", "xf-punct"].forEach((id) => {
-  $(id).addEventListener("click", () => {
-    const btn = $<HTMLButtonElement>(id);
-    setSwitch(btn, btn.getAttribute("aria-checked") !== "true");
-    saveTransforms().catch(console.error);
-  });
+});
+$("xf-clear-btn").addEventListener("click", () => {
+  void clearTransforms();
 });
 
 let scratchpadTimer: number | undefined;

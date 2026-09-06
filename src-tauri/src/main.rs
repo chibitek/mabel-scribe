@@ -256,15 +256,60 @@ fn style_promote() -> Result<(), String> {
 
 #[tauri::command]
 fn transforms_get(state: State<AppState>) -> Result<pro_features::TransformPrefs, String> {
-    pro_features::transforms_get(&state.app_dir)
+    mabel_lib::transforms::require_prefs(&state.app_dir)
 }
 
 #[tauri::command]
-fn transforms_save(
-    state: State<AppState>,
-    prefs: pro_features::TransformPrefs,
+async fn transforms_apply(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    action: String,
+    source: String,
 ) -> Result<pro_features::TransformPrefs, String> {
-    pro_features::transforms_save(&state.app_dir, prefs)
+    mabel_lib::transforms::require_surface()?;
+    let action = mabel_lib::transforms::normalize_action(&action);
+    if !mabel_lib::transforms::is_live(&action) {
+        return Err("Pick Email, Bullet points, Make shorter, or Make clearer.".into());
+    }
+    let source = source.trim().to_string();
+    if source.is_empty() {
+        return Err("Paste dictated or selected text first.".into());
+    }
+    let (model, app_dir, server) = {
+        let settings = state.settings.lock().unwrap();
+        (
+            settings.llm_model.clone(),
+            state.app_dir.clone(),
+            state.llm_server.clone(),
+        )
+    };
+    let result = mabel_lib::llm::rewrite_transform(
+        &app,
+        &server,
+        &model,
+        &app_dir,
+        &action,
+        &source,
+    )
+    .await;
+    mabel_lib::transforms::persist_result(&app_dir, action, source, result)
+}
+
+#[tauri::command]
+fn transforms_clear(state: State<AppState>) -> Result<pro_features::TransformPrefs, String> {
+    mabel_lib::transforms::clear(&state.app_dir)
+}
+
+#[tauri::command]
+fn transforms_share() -> Result<(), String> {
+    // HELD: fail closed if Stiki/folder-style ACL is missing.
+    mabel_lib::transforms::share_cloud_or_team()
+}
+
+#[tauri::command]
+fn transforms_promote() -> Result<(), String> {
+    // BREAKS IF: private transforms auto-promote to company memory.
+    mabel_lib::transforms::promote_to_company_memory()
 }
 
 #[tauri::command]
@@ -1150,7 +1195,10 @@ fn main() {
             style_share,
             style_promote,
             transforms_get,
-            transforms_save,
+            transforms_apply,
+            transforms_clear,
+            transforms_share,
+            transforms_promote,
             scratchpad_get,
             scratchpad_save,
             connectors_status,

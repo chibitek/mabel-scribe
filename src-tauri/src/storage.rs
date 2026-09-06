@@ -694,6 +694,23 @@ mod tests {
         assert!(style.contains("distinct from Polish/Dictionary/Snippets stores"));
         assert!(style.contains("fail-closed"));
         assert!(style.contains("enforcer_bound_style_v1_suite_b6530197"));
+        let xf = include_str!("transforms.rs");
+        assert!(xf.contains("ENFORCER_BOUND"));
+        assert!(xf.contains("b6530197"));
+        assert!(xf.contains("StoreKit Pro + Stiki dual gate"));
+        assert!(xf.contains("Email|Bullet points|Make shorter|Make clearer"));
+        assert!(xf.contains("NOT auto-on"));
+        assert!(xf.contains("Local Gemma"));
+        assert!(xf.contains("never invent facts"));
+        assert!(xf.contains("local-only"));
+        assert!(xf.contains("sign-out locks Transforms"));
+        assert!(xf.contains("distinct Style/Polish/Snippets/Dictionary/Clipboard"));
+        assert!(xf.contains("no Nexus/SIEM write"));
+        assert!(xf.contains("no auto-promote"));
+        assert!(xf.contains("no HIPAA/BAA"));
+        assert!(xf.contains("Free dictate no Stiki"));
+        assert!(xf.contains("fail-closed"));
+        assert!(xf.contains("enforcer_bound_transforms_v1_suite_b6530197"));
     }
 
     #[cfg(unix)]

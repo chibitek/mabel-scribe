@@ -1723,6 +1723,38 @@ async function loadDictionarySurface() {
   applyDictionary(terms);
 }
 
+let editingSnippetId: string | null = null;
+
+function showSnippetError(message: string) {
+  const errorEl = document.getElementById("snippet-error");
+  if (!errorEl) return;
+  errorEl.textContent = message;
+  errorEl.hidden = !message;
+}
+
+function cancelEditSnippet() {
+  editingSnippetId = null;
+  $<HTMLInputElement>("snippet-trigger").value = "";
+  $<HTMLInputElement>("snippet-expansion").value = "";
+  $("snippet-add-btn").textContent = "Add";
+  $("snippet-cancel-btn").classList.add("hidden");
+  showSnippetError("");
+}
+
+function beginEditSnippet(snippet: Snippet) {
+  if (!snippetsSurfaceReady()) {
+    if (!currentEntitlement.entitled) openPlans();
+    return;
+  }
+  editingSnippetId = snippet.id;
+  $<HTMLInputElement>("snippet-trigger").value = snippet.trigger;
+  $<HTMLInputElement>("snippet-expansion").value = snippet.expansion;
+  $("snippet-add-btn").textContent = "Save";
+  $("snippet-cancel-btn").classList.remove("hidden");
+  showSnippetError("");
+  $<HTMLInputElement>("snippet-trigger").focus();
+}
+
 async function loadSnippetsSurface() {
   if (!snippetsSurfaceReady()) return;
   const snippets = await invoke<Snippet[]>("snippets_get");
@@ -1731,19 +1763,49 @@ async function loadSnippetsSurface() {
   if (snippetList) {
     snippetList.innerHTML = "";
     snippets.forEach((s) => {
-      snippetList.appendChild(
-        row(
-          `<div><div>${s.trigger}</div><div class="pro-row-meta">${s.expansion}</div></div>`,
-          async () => {
-            if (!snippetsSurfaceReady()) {
-              if (!currentEntitlement.entitled) openPlans();
-              return;
-            }
-            await invoke("snippets_remove", { snippetId: s.id });
-            await loadSnippetsSurface();
-          }
-        )
-      );
+      const el = document.createElement("div");
+      el.className = "pro-row";
+      const text = document.createElement("div");
+      const trigger = document.createElement("div");
+      trigger.textContent = s.trigger;
+      const meta = document.createElement("div");
+      meta.className = "pro-row-meta";
+      meta.textContent = s.expansion;
+      text.appendChild(trigger);
+      text.appendChild(meta);
+      const edit = document.createElement("button");
+      edit.type = "button";
+      edit.className = "btn-secondary";
+      edit.textContent = "Edit";
+      edit.setAttribute("aria-label", `Edit ${s.trigger}`);
+      edit.addEventListener("click", () => beginEditSnippet(s));
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "btn-secondary";
+      remove.textContent = "Remove";
+      remove.setAttribute("aria-label", `Remove ${s.trigger}`);
+      remove.addEventListener("click", async () => {
+        if (!snippetsSurfaceReady()) {
+          if (!currentEntitlement.entitled) openPlans();
+          return;
+        }
+        showSnippetError("");
+        try {
+          await invoke("snippets_remove", { snippetId: s.id });
+          if (editingSnippetId === s.id) cancelEditSnippet();
+          await loadSnippetsSurface();
+        } catch (e) {
+          showSnippetError(String(e));
+          console.error("snippets_remove:", e);
+        }
+      });
+      const actions = document.createElement("div");
+      actions.className = "row-actions";
+      actions.appendChild(edit);
+      actions.appendChild(remove);
+      el.appendChild(text);
+      el.appendChild(actions);
+      snippetList.appendChild(el);
     });
   }
   snippetEmpty?.classList.toggle("hidden", snippets.length > 0);
@@ -1807,29 +1869,56 @@ function renderTeams(team: TeamState) {
   }
 }
 
-document.getElementById("snippet-add-btn")?.addEventListener("click", async () => {
+async function addOrSaveSnippet() {
   if (!snippetsSurfaceReady()) {
     if (!currentEntitlement.entitled) openPlans();
     return;
   }
-  const errorEl = document.getElementById("snippet-error");
-  if (errorEl) {
-    errorEl.textContent = "";
-    errorEl.hidden = true;
-  }
+  showSnippetError("");
+  const trigger = $<HTMLInputElement>("snippet-trigger").value;
+  const expansion = $<HTMLInputElement>("snippet-expansion").value;
   try {
-    const trigger = $<HTMLInputElement>("snippet-trigger").value;
-    const expansion = $<HTMLInputElement>("snippet-expansion").value;
-    await invoke("snippets_add", { trigger, expansion });
-    $<HTMLInputElement>("snippet-trigger").value = "";
-    $<HTMLInputElement>("snippet-expansion").value = "";
+    if (editingSnippetId) {
+      await invoke("snippets_update", {
+        snippetId: editingSnippetId,
+        trigger,
+        expansion,
+      });
+      cancelEditSnippet();
+    } else {
+      await invoke("snippets_add", { trigger, expansion });
+      $<HTMLInputElement>("snippet-trigger").value = "";
+      $<HTMLInputElement>("snippet-expansion").value = "";
+    }
     await loadSnippetsSurface();
   } catch (e) {
-    if (errorEl) {
-      errorEl.textContent = String(e);
-      errorEl.hidden = false;
-    }
-    console.error("snippets_add:", e);
+    showSnippetError(String(e));
+    console.error("snippet mutate:", e);
+  }
+}
+
+$("snippet-add-btn").addEventListener("click", () => {
+  void addOrSaveSnippet();
+});
+$("snippet-cancel-btn").addEventListener("click", cancelEditSnippet);
+$("snippet-trigger").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    void addOrSaveSnippet();
+  }
+  if (e.key === "Escape") {
+    e.preventDefault();
+    cancelEditSnippet();
+  }
+});
+$("snippet-expansion").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    void addOrSaveSnippet();
+  }
+  if (e.key === "Escape") {
+    e.preventDefault();
+    cancelEditSnippet();
   }
 });
 

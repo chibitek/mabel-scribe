@@ -110,6 +110,35 @@ pub fn snippets_add_local(
     Ok(items)
 }
 
+pub fn snippets_update_local(
+    app_dir: &PathBuf,
+    snippet_id: String,
+    trigger: String,
+    expansion: String,
+) -> Result<Vec<Snippet>, String> {
+    let trigger = trigger.trim().to_string();
+    let expansion = expansion.trim().to_string();
+    if trigger.is_empty() || expansion.is_empty() {
+        return Err("Snippet needs a trigger and expansion".into());
+    }
+    let mut items: Vec<Snippet> = snippets_read(app_dir);
+    let idx = items
+        .iter()
+        .position(|s| s.id == snippet_id)
+        .ok_or_else(|| "Snippet not found".to_string())?;
+    if items
+        .iter()
+        .enumerate()
+        .any(|(i, s)| i != idx && s.trigger.eq_ignore_ascii_case(&trigger))
+    {
+        return Err("That trigger already exists".into());
+    }
+    items[idx].trigger = trigger;
+    items[idx].expansion = expansion;
+    write_json(app_dir, "snippets.json", &items)?;
+    Ok(items)
+}
+
 pub fn snippets_remove_local(app_dir: &PathBuf, snippet_id: String) -> Result<Vec<Snippet>, String> {
     let mut items: Vec<Snippet> = snippets_read(app_dir);
     let before = items.len();
@@ -205,6 +234,15 @@ mod tests {
         assert_eq!(items[0].trigger, "sig");
         assert_eq!(snippets_read(&dir).len(), 1);
         assert!(snippets_add_local(&dir, "SIG".into(), "Dup".into()).is_err());
+        let edited = snippets_update_local(
+            &dir,
+            items[0].id.clone(),
+            "signature".into(),
+            "Best regards".into(),
+        )
+        .unwrap();
+        assert_eq!(edited[0].trigger, "signature");
+        assert!(snippets_update_local(&dir, "missing".into(), "x".into(), "y".into()).is_err());
         let left = snippets_remove_local(&dir, items[0].id.clone()).unwrap();
         assert!(left.is_empty());
     }

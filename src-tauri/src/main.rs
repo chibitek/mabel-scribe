@@ -198,6 +198,16 @@ fn snippets_add(
 }
 
 #[tauri::command]
+fn snippets_update(
+    state: State<AppState>,
+    snippet_id: String,
+    trigger: String,
+    expansion: String,
+) -> Result<Vec<pro_features::Snippet>, String> {
+    mabel_lib::snippets::update(&state.app_dir, snippet_id, trigger, expansion)
+}
+
+#[tauri::command]
 fn snippets_remove(state: State<AppState>, snippet_id: String) -> Result<Vec<pro_features::Snippet>, String> {
     mabel_lib::snippets::remove(&state.app_dir, snippet_id)
 }
@@ -1057,6 +1067,7 @@ fn main() {
             dictionary_promote,
             snippets_get,
             snippets_add,
+            snippets_update,
             snippets_remove,
             snippets_share,
             snippets_promote,

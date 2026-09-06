@@ -24,7 +24,7 @@ use crate::storekit;
 pub const ENFORCER_BOUND: &str = "Pro-gated + Stiki session; local-first; no cloud sync; no team share; no Nexus/SIEM write; no HIPAA/BAA; Scratchpad/Insights local-only default; fail closed if ACL missing";
 
 /// Product LOCK Snippets v1 + Sign-on. Tests fail if the surface drifts.
-pub const PRODUCT_LOCK: &str = "Name: Snippets; Pro surface requires StoreKit Pro AND Stiki session; Free locked + Activate Pro / Sign in with Stiki; personal trigger → expansion during dictation; Settings → Engine + menu-bar Snippets…; default empty; add/remove on device; local-first; not Nexus; not cloud sync v1; distinct from Dictionary, Polish, and Clipboard History; non-goals: shared team snippets, cloud write, HIPAA";
+pub const PRODUCT_LOCK: &str = "Name: Snippets; Pro surface requires StoreKit Pro AND Stiki session; Free locked + Activate Pro / Sign in with Stiki; trigger phrase → replacement during cleanup/dictation paste; Settings + sidebar/nav; default empty; add/edit/delete on device; local-first; not Nexus; not cloud sync v1; distinct from Dictionary, Polish, and Clipboard History; non-goals: shared team snippets, cloud write, HIPAA";
 
 /// Held. A later MCS must flip this only with Stiki/folder-style ACL.
 pub const STIKI_FOLDER_ACL_SHIPPED: bool = false;
@@ -91,6 +91,16 @@ pub fn require_list(app_dir: &PathBuf) -> Result<Vec<Snippet>, String> {
 pub fn add(app_dir: &PathBuf, trigger: String, expansion: String) -> Result<Vec<Snippet>, String> {
     require_surface()?;
     pro_features::snippets_add_local(app_dir, trigger, expansion)
+}
+
+pub fn update(
+    app_dir: &PathBuf,
+    snippet_id: String,
+    trigger: String,
+    expansion: String,
+) -> Result<Vec<Snippet>, String> {
+    require_surface()?;
+    pro_features::snippets_update_local(app_dir, snippet_id, trigger, expansion)
 }
 
 pub fn remove(app_dir: &PathBuf, snippet_id: String) -> Result<Vec<Snippet>, String> {
@@ -191,6 +201,7 @@ mod tests {
         let _ = std::fs::create_dir_all(&dir);
         assert!(require_list(&dir).is_err());
         assert!(add(&dir, "sig".into(), "Best".into()).is_err());
+        assert!(update(&dir, "1".into(), "sig".into(), "Best".into()).is_err());
         assert!(remove(&dir, "missing".into()).is_err());
     }
 
@@ -399,7 +410,9 @@ mod tests {
 
         let ts = include_str!("../../src/main.ts");
         assert!(ts.contains("snippets_add"));
+        assert!(ts.contains("snippets_update"));
         assert!(ts.contains("snippets_remove"));
+        assert!(ts.contains("beginEditSnippet"));
         assert!(ts.contains("openPlans()"));
         assert!(!ts.contains("https://chibiteklabs"));
         assert!(
@@ -410,6 +423,8 @@ mod tests {
         let commands = include_str!("main.rs");
         assert!(commands.contains("snippets::apply_expansions") || rec_or_stream_applies());
         assert!(commands.contains("snippets_add"));
+        assert!(commands.contains("snippets_update"));
+        assert!(commands.contains("snippets_remove"));
         assert!(commands.contains("share_cloud_or_team"));
         assert!(commands.contains("promote_to_company_memory"));
         assert!(include_str!("snippets.rs").contains("require_share_acl"));
@@ -453,6 +468,38 @@ mod tests {
     }
 
     #[test]
+    fn local_store_add_edit_delete() {
+        let dir = std::env::temp_dir().join(format!(
+            "mabel-snip-crud-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map(|d| d.as_nanos())
+                .unwrap_or(0)
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let items = crate::pro_features::snippets_add_local(
+            &dir,
+            "sig".into(),
+            "Best".into(),
+        )
+        .unwrap();
+        assert_eq!(items.len(), 1);
+        let edited = crate::pro_features::snippets_update_local(
+            &dir,
+            items[0].id.clone(),
+            "signature".into(),
+            "Best regards".into(),
+        )
+        .unwrap();
+        assert_eq!(edited[0].trigger, "signature");
+        assert_eq!(edited[0].expansion, "Best regards");
+        let left = crate::pro_features::snippets_remove_local(&dir, items[0].id.clone()).unwrap();
+        assert!(left.is_empty());
+    }
+
+    #[test]
     fn expansions_apply_during_dictation_without_inventing() {
         let snippets = vec![
             sample("insert my calendar link", "https://cal.example/erick"),
@@ -492,7 +539,10 @@ mod tests {
         assert!(PRODUCT_LOCK.contains("Name: Snippets"));
         assert!(PRODUCT_LOCK.contains("StoreKit Pro AND Stiki session"));
         assert!(PRODUCT_LOCK.contains("Activate Pro / Sign in with Stiki"));
-        assert!(PRODUCT_LOCK.contains("Settings → Engine"));
+        assert!(PRODUCT_LOCK.contains("trigger phrase → replacement"));
+        assert!(PRODUCT_LOCK.contains("cleanup/dictation paste"));
+        assert!(PRODUCT_LOCK.contains("Settings + sidebar/nav"));
+        assert!(PRODUCT_LOCK.contains("add/edit/delete"));
         assert!(PRODUCT_LOCK.contains("distinct from Dictionary, Polish, and Clipboard History"));
         assert!(PRODUCT_LOCK.contains("HIPAA"));
 
@@ -502,11 +552,19 @@ mod tests {
         assert!(html.contains("view-title\">Snippets"));
         assert!(html.contains("id=\"snippets-activate\""));
         assert!(html.contains("id=\"snippets-open\""));
+        assert!(html.contains("id=\"snippet-cancel-btn\""));
         assert!(html.contains("id=\"dictionary-activate\""));
         assert!(html.contains("id=\"polish-activate\""));
         assert!(ts.contains("openPlans()"));
+        assert!(ts.contains("snippets_update"));
+        assert!(ts.contains("beginEditSnippet"));
         assert!(rec.contains("apply_expansions"));
         assert!(include_str!("streaming.rs").contains("apply_expansions"));
+        assert!(include_str!("cleanup.rs").contains("cleanup_text"));
+        assert!(
+            rec.contains("cleanup_text") && rec.contains("apply_expansions"),
+            "BREAKS IF: expansions not applied during cleanup/dictation paste"
+        );
 
         for hay in [html, ts] {
             assert!(!hay.contains("HIPAA"), "BREAKS IF: HIPAA claim copy");

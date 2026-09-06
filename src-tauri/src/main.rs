@@ -285,14 +285,50 @@ fn reconcile_groq_keychain(state: State<AppState>) -> bool {
 
 #[tauri::command]
 fn save_settings(app: tauri::AppHandle, state: State<AppState>, settings: Settings) -> Result<(), String> {
-    let prev_clip = state.settings.lock().unwrap().clipboard_history_enabled;
+    let mut settings = settings;
+    settings.polish_mode = mabel_lib::polish::normalize_mode(&settings.polish_mode);
+    // No silent Pro path: live Polish without entitlement is an error, not a clamp.
+    if mabel_lib::polish::is_live(&settings.polish_mode) {
+        settings.polish_mode = mabel_lib::polish::require_mode_allowed(&settings.polish_mode)?;
+        settings.cleanup_mode = "llm".into();
+    }
+    let (prev_clip, prev_polish) = {
+        let held = state.settings.lock().unwrap();
+        (held.clipboard_history_enabled, held.polish_mode.clone())
+    };
     settings.save(&state.app_dir)?;
     *state.settings.lock().unwrap() = settings.clone();
     if settings.clipboard_history_enabled != prev_clip {
         state.clipboard.set_enabled(settings.clipboard_history_enabled)?;
         let _ = app.emit("clipboard-history-updated", ());
     }
+    if settings.polish_mode != prev_polish {
+        let _ = app.emit("polish-changed", &settings.polish_mode);
+        clipboard_ui::refresh_tray(&app);
+    }
     Ok(())
+}
+
+#[tauri::command]
+fn polish_set(app: tauri::AppHandle, state: State<AppState>, mode: String) -> Result<String, String> {
+    // Enforcer BOUND: Polish only. Do not write the clipboard opt-in or a Nexus store.
+    let mode = mabel_lib::polish::require_mode_allowed(&mode)?;
+    {
+        let mut held = state.settings.lock().unwrap();
+        held.polish_mode = mode.clone();
+        if mabel_lib::polish::is_live(&mode) {
+            held.cleanup_mode = "llm".into();
+        }
+        held.save(&state.app_dir)?;
+    }
+    let _ = app.emit("polish-changed", &mode);
+    clipboard_ui::refresh_tray(&app);
+    Ok(mode)
+}
+
+#[tauri::command]
+fn refresh_status_item(app: tauri::AppHandle) {
+    clipboard_ui::refresh_tray(&app);
 }
 
 #[tauri::command]
@@ -811,6 +847,7 @@ fn main() {
     let settings_handle = Arc::new(Mutex::new(settings.clone()));
     let initial_show_in_dock = settings.show_in_dock;
     let initial_cleanup_mode = settings.cleanup_mode.clone();
+    let initial_polish_mode = settings.polish_mode.clone();
     let initial_llm_model = settings.llm_model.clone();
     let initial_companion_enabled = settings.companion_enabled;
     let clipboard = clipboard_history::Service::new(app_dir.clone(), settings.clipboard_history_enabled);
@@ -845,6 +882,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_settings,
             save_settings,
+            polish_set,
+            refresh_status_item,
             list_microphones,
             get_recording_state,
             check_model_downloaded,
@@ -1009,11 +1048,11 @@ fn main() {
                 }
             });
 
-            // If the user has LLM cleanup configured and the model is on disk,
-            // warm the server now so the first dictation doesn't block on a
-            // 1–3s cold start. Best effort only — failure here just means the
-            // first cleanup pays the load cost (or falls back to rules).
-            if initial_cleanup_mode == "llm" {
+            // Warm Gemma only when Product Polish is live (Pro + not Off).
+            // Best effort — failure means the first polish pays the load cost
+            // or falls back to rules (never invent).
+            let _ = initial_cleanup_mode;
+            if mabel_lib::polish::is_live(&mabel_lib::polish::effective_mode(&initial_polish_mode)) {
                 if let Ok(name) = mabel_lib::llm::model_filename(&initial_llm_model) {
                     let model_path = app_dir.join(&name);
                     if model_path.exists() {

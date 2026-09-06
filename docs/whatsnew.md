@@ -5,6 +5,7 @@ The in-app first-launch popup reads from this file. Every Mabel release MUST add
 ## v1.4.0 (2026-09-06)
 
 ### New
+- Polish (Pro): toggle default Off, modes Off / Casual / Professional / Polite. Free is locked with an in-app upsell. After ASR, local Gemma autocorrects and lightly rewords — never invents facts, never expands meaning, never leaves this Mac. Not Nexus or company memory; Coach cannot rewrite dictation. Settings → Engine and the menu-bar Polish submenu. Upgrade stays in Settings → Plans.
 - Mabel Pro is an App Store subscription: monthly and yearly, each with a 30-day free trial. Prices come from the App Store.
 - Activate Pro, Restore Purchases, and Manage Subscriptions live in Settings → Plans and Billing. There is no website upgrade.
 - Pro unlocks teams (organization, seats, local invites) plus snippets, style, transforms, and scratchpad. Free stays personal-only.

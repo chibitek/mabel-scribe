@@ -7,6 +7,7 @@ pub mod transcribe_local;
 pub mod transcribe_native;
 pub mod transcribe_groq;
 pub mod cleanup;
+pub mod polish;
 pub mod llm;
 pub mod companion;
 pub mod paste;

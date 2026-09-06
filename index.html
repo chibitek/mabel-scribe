@@ -712,18 +712,34 @@
               </div>
               <div class="row">
                 <div class="row-text">
-                  <div class="row-label">Cleanup</div>
-                  <div class="row-hint">Rules: fast, no model needed. AI cleanup runs Gemma 4 E4B on-device via the bundled llama-server runtime.</div>
+                  <div class="row-label">Polish</div>
+                  <div class="row-hint">Off by default. Pro only. After dictation, local Gemma autocorrects and lightly rewords what you said. Never invents facts or expands meaning. Stays on this Mac &mdash; not Nexus, not company memory. Coach cannot rewrite your dictation. Same control: menu bar → Polish.</div>
                 </div>
-                <select id="cleanup-mode-select" aria-label="Cleanup mode">
-                  <option value="rules">Rules only</option>
-                  <option value="llm">AI cleanup (local)</option>
+                <button type="button" id="polish-toggle" class="switch pro-unlock hidden" role="switch" aria-checked="false" aria-label="Polish">
+                  <span class="switch-thumb"></span>
+                </button>
+                <button type="button" class="btn-secondary pro-lock pro-activate" id="polish-activate">Activate Pro</button>
+              </div>
+              <div class="row hidden" id="polish-mode-row">
+                <div class="row-text">
+                  <div class="row-label">Polish mode</div>
+                  <div class="row-hint">Off, Casual, Professional, or Polite. Autocorrect and light reword only.</div>
+                </div>
+                <select id="polish-mode-select" aria-label="Polish mode">
+                  <option value="off">Off</option>
+                  <option value="casual">Casual</option>
+                  <option value="professional">Professional</option>
+                  <option value="polite">Polite</option>
                 </select>
               </div>
+              <select id="cleanup-mode-select" class="hidden" aria-hidden="true" tabindex="-1">
+                <option value="rules">Rules only</option>
+                <option value="llm">AI cleanup (local)</option>
+              </select>
               <div class="row hidden" id="llm-settings">
                 <div class="row-text">
-                  <div class="row-label">AI cleanup model</div>
-                  <div class="row-hint">Gemma 4 E4B runs fully on-device. ~5 GB one-time download.</div>
+                  <div class="row-label">Polish model</div>
+                  <div class="row-hint">Gemma 4 E4B runs fully on-device via the bundled llama-server. ~5 GB one-time download. Cleanup only &mdash; never invents.</div>
                 </div>
                 <div class="model-row">
                   <select id="llm-model-select" aria-label="LLM model">

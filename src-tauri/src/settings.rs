@@ -41,6 +41,13 @@ pub struct Settings {
     /// "light" or "standard" — only consulted when cleanup_mode == "llm".
     #[serde(rename = "llmModel", default = "default_llm_model")]
     pub llm_model: String,
+    /// Product Polish: "off" | "casual" | "professional" | "polite".
+    /// Default off. Live modes are Pro-only and drive the local Gemma path.
+    /// Distinct from `clipboardHistoryEnabled` — do not merge those toggles.
+    /// Local only — not Nexus / company memory. Coach cannot rewrite
+    /// dictation via this setting. Do not merge with a future Nexus polish toggle.
+    #[serde(rename = "polishMode", default = "crate::polish::default_mode")]
+    pub polish_mode: String,
     /// Desktop companion (animated cat) toggle. Default off so we don't surprise
     /// users on update.
     #[serde(rename = "companionEnabled", default)]
@@ -115,6 +122,8 @@ struct DiskSettings {
     cleanup_mode: String,
     #[serde(rename = "llmModel", default = "default_llm_model")]
     llm_model: String,
+    #[serde(rename = "polishMode", default = "crate::polish::default_mode")]
+    polish_mode: String,
     #[serde(rename = "companionEnabled", default)]
     companion_enabled: bool,
     #[serde(rename = "companionSize", default = "default_companion_size")]
@@ -150,6 +159,7 @@ impl From<&Settings> for DiskSettings {
             press_enter_command: s.press_enter_command,
             cleanup_mode: s.cleanup_mode.clone(),
             llm_model: s.llm_model.clone(),
+            polish_mode: s.polish_mode.clone(),
             companion_enabled: s.companion_enabled,
             companion_size: s.companion_size.clone(),
             companion_frequency: s.companion_frequency.clone(),
@@ -180,6 +190,7 @@ impl Default for Settings {
             press_enter_command: false,
             cleanup_mode: default_cleanup_mode(),
             llm_model: default_llm_model(),
+            polish_mode: crate::polish::default_mode(),
             companion_enabled: false,
             companion_size: default_companion_size(),
             companion_frequency: default_companion_frequency(),
@@ -231,6 +242,7 @@ impl Settings {
                         press_enter_command: d.press_enter_command,
                         cleanup_mode: d.cleanup_mode,
                         llm_model: d.llm_model,
+                        polish_mode: crate::polish::normalize_mode(&d.polish_mode),
                         companion_enabled: d.companion_enabled,
                         companion_size: d.companion_size,
                         companion_frequency: d.companion_frequency,
@@ -335,6 +347,28 @@ mod tests {
             !settings.clipboard_history_enabled,
             "clipboard history is opt-in and must default off"
         );
+        assert_eq!(
+            settings.polish_mode, "off",
+            "BREAKS IF: default ON"
+        );
+        assert_ne!(
+            settings.polish_mode.as_str(),
+            if settings.clipboard_history_enabled { "on" } else { "clipboard" },
+            "clipboardHistoryEnabled is not Polish"
+        );
+    }
+
+    #[test]
+    fn missing_polish_mode_field_defaults_off() {
+        let json = r#"{
+            "microphone": "default",
+            "engine": "local",
+            "whisperModel": "large-v3",
+            "recordingMode": "toggle",
+            "hotkey": "CmdOrCtrl+D"
+        }"#;
+        let parsed: DiskSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(parsed.polish_mode, "off");
     }
 
     #[test]

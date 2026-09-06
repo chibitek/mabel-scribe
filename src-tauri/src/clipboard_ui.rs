@@ -1,4 +1,4 @@
-//! Menu-bar extra and history window for Mac clipboard history.
+//! Menu-bar extra: clipboard history + Polish + Settings.
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -9,21 +9,130 @@ use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 use tauri::Emitter;
 
 use mabel_lib::clipboard_history::Service;
+use mabel_lib::polish;
 
 static POLLER_STARTED: AtomicBool = AtomicBool::new(false);
 
 #[cfg(target_os = "macos")]
-pub fn install_tray(app: &AppHandle) -> Result<(), String> {
-    use tauri::menu::{Menu, MenuItem};
-    use tauri::tray::TrayIconBuilder;
+fn current_polish_mode(app: &AppHandle) -> String {
+    app.try_state::<crate::AppState>()
+        .map(|s| polish::effective_mode(&s.settings.lock().unwrap().polish_mode))
+        .unwrap_or_else(polish::default_mode)
+}
 
+#[cfg(target_os = "macos")]
+fn build_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, String> {
+    use tauri::menu::{CheckMenuItem, Menu, MenuItem, Submenu};
+
+    let mode = current_polish_mode(app);
+    let entitled = mabel_lib::storekit::current_entitlement().entitled;
     let history = MenuItem::with_id(app, "clipboard-history", "Clipboard History…", true, None::<&str>)
         .map_err(|e| e.to_string())?;
+    let polish_off = CheckMenuItem::with_id(
+        app,
+        "polish-off",
+        "Off",
+        true,
+        mode == polish::MODE_OFF,
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    // Live modes stay visible so Free sees the surface, but they are locked
+    // until Pro. Click still upsells via require_pro → Plans.
+    let polish_casual = CheckMenuItem::with_id(
+        app,
+        "polish-casual",
+        "Casual",
+        entitled,
+        entitled && mode == polish::MODE_CASUAL,
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let polish_professional = CheckMenuItem::with_id(
+        app,
+        "polish-professional",
+        "Professional",
+        entitled,
+        entitled && mode == polish::MODE_PROFESSIONAL,
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let polish_polite = CheckMenuItem::with_id(
+        app,
+        "polish-polite",
+        "Polite",
+        entitled,
+        entitled && mode == polish::MODE_POLITE,
+        None::<&str>,
+    )
+    .map_err(|e| e.to_string())?;
+    let polish_menu = Submenu::with_id_and_items(
+        app,
+        "polish",
+        "Polish",
+        true,
+        &[
+            &polish_off,
+            &polish_casual,
+            &polish_professional,
+            &polish_polite,
+        ],
+    )
+    .map_err(|e| e.to_string())?;
     let settings = MenuItem::with_id(app, "settings", "Settings…", true, None::<&str>)
         .map_err(|e| e.to_string())?;
     let quit = MenuItem::with_id(app, "quit", "Quit Mabel", true, None::<&str>)
         .map_err(|e| e.to_string())?;
-    let menu = Menu::with_items(app, &[&history, &settings, &quit]).map_err(|e| e.to_string())?;
+    Menu::with_items(app, &[&history, &polish_menu, &settings, &quit]).map_err(|e| e.to_string())
+}
+
+pub fn refresh_tray(app: &AppHandle) {
+    #[cfg(target_os = "macos")]
+    if let Some(tray) = app.tray_by_id("mabel-status") {
+        if let Ok(menu) = build_menu(app) {
+            let _ = tray.set_menu(Some(menu));
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = app;
+}
+
+#[cfg(target_os = "macos")]
+fn apply_polish_from_tray(app: &AppHandle, mode: &str) {
+    match persist_polish(app, mode) {
+        Ok(mode) => {
+            let _ = app.emit("polish-changed", &mode);
+            refresh_tray(app);
+        }
+        Err(_) => {
+            // Free cannot enable — Settings → Plans, never a website.
+            show_main_window(app);
+            let _ = app.emit("open-plans", ());
+        }
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn persist_polish(app: &AppHandle, mode: &str) -> Result<String, String> {
+    // Enforcer BOUND: Polish only. Do not write the clipboard opt-in or a Nexus store.
+    let mode = polish::require_mode_allowed(mode)?;
+    let Some(state) = app.try_state::<crate::AppState>() else {
+        return Err("app state unavailable".into());
+    };
+    let mut held = state.settings.lock().unwrap();
+    held.polish_mode = mode.clone();
+    if polish::is_live(&mode) {
+        held.cleanup_mode = "llm".into();
+    }
+    held.save(&state.app_dir)?;
+    Ok(mode)
+}
+
+#[cfg(target_os = "macos")]
+pub fn install_tray(app: &AppHandle) -> Result<(), String> {
+    use tauri::tray::TrayIconBuilder;
+
+    let menu = build_menu(app)?;
 
     let mut builder = TrayIconBuilder::with_id("mabel-status")
         .menu(&menu)
@@ -34,6 +143,10 @@ pub fn install_tray(app: &AppHandle) -> Result<(), String> {
                     eprintln!("[Mabel] open clipboard history: {e}");
                 }
             }
+            "polish-off" => apply_polish_from_tray(app, polish::MODE_OFF),
+            "polish-casual" => apply_polish_from_tray(app, polish::MODE_CASUAL),
+            "polish-professional" => apply_polish_from_tray(app, polish::MODE_PROFESSIONAL),
+            "polish-polite" => apply_polish_from_tray(app, polish::MODE_POLITE),
             "settings" => show_main_window(app),
             "quit" => app.exit(0),
             _ => {}

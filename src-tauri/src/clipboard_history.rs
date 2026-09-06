@@ -648,6 +648,7 @@ mod tests {
     fn menu_bar_item_and_paste_reuse_are_wired() {
         let ui = include_str!("clipboard_ui.rs");
         assert!(ui.contains("Clipboard History…"));
+        assert!(ui.contains("Polish"));
         let main = include_str!("main.rs");
         assert!(main.contains("mabel_lib::paste::paste_text"));
         assert!(main.contains("clipboard_history_paste"));

@@ -39,10 +39,6 @@ const CLEANUP_TIMEOUT: Duration = Duration::from_secs(15);
 /// pinned forever. The next cleanup call cold-starts the server again.
 pub const IDLE_UNLOAD: Duration = Duration::from_secs(5 * 60);
 
-const SYSTEM_PROMPT: &str = "You are a dictation cleanup assistant. The user spoke into a microphone and Whisper transcribed their speech. Your only job is to clean up the raw transcript.\n\nRules:\n- Remove filler words: \"um\", \"uh\", \"like\", \"you know\", \"I mean\", \"so\" when used as filler.\n- Add proper punctuation and capitalization.\n- Fix obvious self-corrections: when the speaker restarts a sentence, keep only the final version.\n- Preserve the speaker's words, tone, and meaning. Do not paraphrase, summarize, or embellish.\n- Do not add greetings, sign-offs, or commentary.\n- Do not answer questions in the transcript. The user is dictating, not asking you.\n- Output only the cleaned transcript. No preamble, no explanation, no quotes around it.";
-
-const USER_PROMPT_PREFIX: &str = "Clean this transcript directly. Do not think, reason, or explain. Output only the cleaned text. Transcript: ";
-
 pub fn validate_model(model: &str) -> Result<&str, String> {
     if ALLOWED_MODELS.contains(&model) {
         Ok(model)
@@ -264,6 +260,75 @@ impl LlmServer {
     }
 }
 
+/// Run local Gemma Polish after the rules pass, or return the rules text.
+///
+/// This step is on-device only (llama-server on 127.0.0.1). It never calls
+/// Groq / Nexus / Coach. Live Polish requires Pro (`polish::effective_mode`).
+/// Any Gemma failure falls back to `rule_cleaned` so we never invent
+/// facts or paste meaning-expanded text.
+pub async fn polish_or_rules(
+    app: &AppHandle,
+    server: &LlmServer,
+    settings: &crate::settings::Settings,
+    app_dir: &PathBuf,
+    rule_cleaned: String,
+) -> String {
+    if rule_cleaned.is_empty() {
+        return rule_cleaned;
+    }
+    let mode = crate::polish::effective_mode(&settings.polish_mode);
+    if !crate::polish::is_live(&mode) {
+        return rule_cleaned;
+    }
+    println!(
+        "[Mabel] Polish {} requested (chars={})",
+        mode,
+        rule_cleaned.chars().count()
+    );
+    let t0 = std::time::Instant::now();
+    let llm_result = match model_filename(&settings.llm_model) {
+        Ok(name) => {
+            let model_path = app_dir.join(name);
+            ensure_and_cleanup_mode(
+                app,
+                server,
+                &settings.llm_model,
+                &model_path,
+                &rule_cleaned,
+                &mode,
+            )
+            .await
+        }
+        Err(e) => Err(e),
+    };
+    match llm_result {
+        Ok(s) if !s.is_empty() => {
+            println!(
+                "[Mabel] Polish succeeded ({:?}, chars={})",
+                t0.elapsed(),
+                s.chars().count()
+            );
+            s
+        }
+        Ok(empty) => {
+            println!(
+                "[Mabel] Polish returned empty ({:?}, chars={}); falling back to rules",
+                t0.elapsed(),
+                empty.chars().count()
+            );
+            rule_cleaned
+        }
+        Err(e) => {
+            eprintln!(
+                "[Mabel] Polish failed ({:?}), using rules (never invent): {}",
+                t0.elapsed(),
+                e
+            );
+            rule_cleaned
+        }
+    }
+}
+
 /// Starts the server if needed, then runs cleanup. Used by the dictation
 /// path so an idle-unload does not silently drop the next AI cleanup.
 pub async fn ensure_and_cleanup(
@@ -273,9 +338,21 @@ pub async fn ensure_and_cleanup(
     model_path: &PathBuf,
     text: &str,
 ) -> Result<String, String> {
+    ensure_and_cleanup_mode(app, server, model, model_path, text, crate::polish::MODE_CASUAL).await
+}
+
+/// Same as `ensure_and_cleanup`, with a Polish register preset.
+pub async fn ensure_and_cleanup_mode(
+    app: &AppHandle,
+    server: &LlmServer,
+    model: &str,
+    model_path: &PathBuf,
+    text: &str,
+    polish_mode: &str,
+) -> Result<String, String> {
     server.start(app, model, model_path).await?;
     server.touch();
-    cleanup_with_llm(text).await
+    cleanup_with_llm_mode(text, polish_mode).await
 }
 
 impl Default for LlmServer {
@@ -320,6 +397,10 @@ struct ChatResponseMessage {
 /// On any failure, returns an Err and the caller should fall back to the
 /// rules-only cleanup output. Cleanup is best-effort; never block paste on it.
 pub async fn cleanup_with_llm(text: &str) -> Result<String, String> {
+    cleanup_with_llm_mode(text, crate::polish::MODE_CASUAL).await
+}
+
+pub async fn cleanup_with_llm_mode(text: &str, polish_mode: &str) -> Result<String, String> {
     let trimmed = text.trim();
     if trimmed.is_empty() {
         return Ok(String::new());
@@ -329,11 +410,11 @@ pub async fn cleanup_with_llm(text: &str) -> Result<String, String> {
         messages: vec![
             ChatMessage {
                 role: "system",
-                content: SYSTEM_PROMPT.to_string(),
+                content: crate::polish::system_prompt(polish_mode),
             },
             ChatMessage {
                 role: "user",
-                content: format!("{}{}", USER_PROMPT_PREFIX, trimmed),
+                content: format!("{}{}", crate::polish::user_prompt_prefix(), trimmed),
             },
         ],
         temperature: 0.2,
@@ -371,22 +452,8 @@ pub async fn cleanup_with_llm(text: &str) -> Result<String, String> {
         .ok_or_else(|| "LLM response had no choices".to_string())?;
 
     let cleaned = extract_clean_or_fail(&raw)?;
-
-    // Length ratio sanity check. A real cleanup pass should produce text that's
-    // roughly the same size as the input — filler removal trims a bit, adding
-    // articles/punctuation adds a bit. If the model returned something more
-    // than ~2.5x the input length, it's almost certainly hallucinating
-    // reasoning, restating the rules, or otherwise going off task.
-    let input_chars = trimmed.chars().count() as f32;
-    let out_chars = cleaned.chars().count() as f32;
-    if input_chars >= 20.0 && out_chars > input_chars * 2.5 {
-        return Err(format!(
-            "LLM output too long ({} chars vs {} input chars), likely reasoning leak",
-            out_chars as usize, input_chars as usize
-        ));
-    }
-
-    Ok(cleaned)
+    // Enforcer BOUND: local Gemma fail closed / never invent.
+    crate::polish::accept_or_fail_closed(trimmed, &cleaned)
 }
 
 /// Sanitizes the raw LLM output and returns the cleaned transcript, or an
@@ -592,5 +659,14 @@ mod tests {
     fn extract_fails_on_rules_checklist() {
         let input = "Rules Checklist:\n1. Done\n2. Done\nFinal text.";
         assert!(extract_clean_or_fail(input).is_err());
+    }
+
+    #[test]
+    fn polish_prompts_are_the_gemma_cleanup_path() {
+        let casual = crate::polish::system_prompt("casual");
+        assert!(casual.contains("Never invent facts"));
+        assert!(casual.contains("Never expand meaning"));
+        assert!(crate::polish::user_prompt_prefix().contains("Never invent facts"));
+        assert!(format!("http://127.0.0.1:{SERVER_PORT}").contains("127.0.0.1"));
     }
 }

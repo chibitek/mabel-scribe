@@ -10,6 +10,9 @@
 		B2C20001B2C10201 /* MabelIOSApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10101 /* MabelIOSApp.swift */; };
 		B2C20001B2C10202 /* HostRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10102 /* HostRootView.swift */; };
 		B2C20001B2C10203 /* HostDictatePlayground.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10103 /* HostDictatePlayground.swift */; };
+		B2C20001B2C10204 /* SettingsRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10104 /* SettingsRootView.swift */; };
+		B2C20001B2C10205 /* SettingsPanes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10118 /* SettingsPanes.swift */; };
+		B2C20001B2C10218 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10116 /* SettingsStore.swift */; };
 		B2C20001B2C10210 /* IOSIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10110 /* IOSIdentity.swift */; };
 		B2C20001B2C10211 /* DictatePermissionGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10111 /* DictatePermissionGate.swift */; };
 		B2C20001B2C10212 /* OnDeviceSpeechEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10112 /* OnDeviceSpeechEngine.swift */; };
@@ -26,6 +29,7 @@
 		B2C20001B2C10225 /* SpeechSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10113 /* SpeechSession.swift */; };
 		B2C20001B2C10226 /* CatChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10114 /* CatChrome.swift */; };
 		B2C20001B2C10229 /* EnforcerBound.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10115 /* EnforcerBound.swift */; };
+		B2C20001B2C10231 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10116 /* SettingsStore.swift */; };
 		B2C20001B2C10227 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10124 /* PrivacyInfo.xcprivacy */; };
 		B2C20001B2C10228 /* MabelKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10021 /* MabelKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
@@ -60,6 +64,8 @@
 		B2C20001B2C10101 /* MabelIOSApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MabelIOSApp.swift; sourceTree = "<group>"; };
 		B2C20001B2C10102 /* HostRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostRootView.swift; sourceTree = "<group>"; };
 		B2C20001B2C10103 /* HostDictatePlayground.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HostDictatePlayground.swift; sourceTree = "<group>"; };
+		B2C20001B2C10104 /* SettingsRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsRootView.swift; sourceTree = "<group>"; };
+		B2C20001B2C10118 /* SettingsPanes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsPanes.swift; sourceTree = "<group>"; };
 		B2C20001B2C10105 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		B2C20001B2C10106 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B2C20001B2C10107 /* MabelIOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MabelIOS.entitlements; sourceTree = "<group>"; };
@@ -70,6 +76,7 @@
 		B2C20001B2C10113 /* SpeechSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechSession.swift; sourceTree = "<group>"; };
 		B2C20001B2C10114 /* CatChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatChrome.swift; sourceTree = "<group>"; };
 		B2C20001B2C10115 /* EnforcerBound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnforcerBound.swift; sourceTree = "<group>"; };
+		B2C20001B2C10116 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		B2C20001B2C10120 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
 		B2C20001B2C10121 /* KeyboardRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardRootView.swift; sourceTree = "<group>"; };
 		B2C20001B2C10122 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -136,6 +143,7 @@
 				B2C20001B2C10113 /* SpeechSession.swift */,
 				B2C20001B2C10114 /* CatChrome.swift */,
 				B2C20001B2C10115 /* EnforcerBound.swift */,
+				B2C20001B2C10116 /* SettingsStore.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -157,6 +165,8 @@
 			children = (
 				B2C20001B2C10102 /* HostRootView.swift */,
 				B2C20001B2C10103 /* HostDictatePlayground.swift */,
+				B2C20001B2C10104 /* SettingsRootView.swift */,
+				B2C20001B2C10118 /* SettingsPanes.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -265,6 +275,9 @@
 				B2C20001B2C10201 /* MabelIOSApp.swift in Sources */,
 				B2C20001B2C10202 /* HostRootView.swift in Sources */,
 				B2C20001B2C10203 /* HostDictatePlayground.swift in Sources */,
+				B2C20001B2C10204 /* SettingsRootView.swift in Sources */,
+				B2C20001B2C10205 /* SettingsPanes.swift in Sources */,
+				B2C20001B2C10218 /* SettingsStore.swift in Sources */,
 				B2C20001B2C10210 /* IOSIdentity.swift in Sources */,
 				B2C20001B2C10211 /* DictatePermissionGate.swift in Sources */,
 				B2C20001B2C10212 /* OnDeviceSpeechEngine.swift in Sources */,
@@ -286,6 +299,7 @@
 				B2C20001B2C10225 /* SpeechSession.swift in Sources */,
 				B2C20001B2C10226 /* CatChrome.swift in Sources */,
 				B2C20001B2C10229 /* EnforcerBound.swift in Sources */,
+				B2C20001B2C10231 /* SettingsStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -13,6 +13,8 @@ enum EnforcerBound {
     static let forbiddenBrands = ["Flow", "Wispr"]
     static let shipOrder = ["Keyboard", "Polish", "Dictionary", "Scratchpad", "Languages"]
     static let thisTip = "Keyboard"
+    /// Host Settings IA. Scaffold only. Free dictate does not use these panes.
+    static let settingsPanes = ["Account", "General", "Keyboard", "Notifications", "Data & privacy"]
 
     static var shipOrderLine: String {
         shipOrder.joined(separator: " → ")

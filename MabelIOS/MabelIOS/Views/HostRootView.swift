@@ -22,6 +22,17 @@ struct HostRootView: View {
             .background(IOSPalette.cream.ignoresSafeArea())
             .navigationTitle(IOSIdentity.displayName)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink {
+                        SettingsRootView()
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .foregroundStyle(IOSPalette.roseDeep)
+                    }
+                    .accessibilityLabel("Settings")
+                }
+            }
         }
         .tint(IOSPalette.roseDeep)
         .onAppear {
@@ -81,7 +92,7 @@ struct HostRootView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(IOSPalette.roseDeep)
 
-                Button("Open Settings") {
+                Button("iOS Settings") {
                     openSystemSettings()
                 }
                 .buttonStyle(.bordered)

@@ -30,14 +30,15 @@ Ship order (do not skip or reorder): **Keyboard → Polish → Dictionary → Sc
 - **Mabel cat UI only.** No Flow brand. No Wispr clone.
 - **Free dictate:** no account, no Stiki, no StoreKit. Tap the orb → speak → tap to stop → text inserts.
 - **Keyboard is not a silent spy.** Explicit orb start. Fail closed without Microphone (and Speech / Full Access). Lifecycle hooks never start the mic. `viewWillDisappear` tears it down. No ambient / always-on listen.
-- **No HIPAA / BAA claim.**
-- Later ships (Polish, Dictionary, Scratchpad, Languages) plus Connectors / Notetaker / Pro IAP stay out of this tip.
+- **No HIPAA / BAA UI.** Data & privacy uses **local-only privacy mode** copy only.
+- Host **Settings** scaffold: Account (Stiki + Pro, dual gate), General, Keyboard, Notifications, Data & privacy. Free dictate does not use Account.
+- Later ships (Polish, Dictionary, Scratchpad, Languages) plus Connectors / Notetaker stay out of this tip.
 
 **BREAKS IF:** Flow brand; keyboard spy / ambient always-on listen; Free dictate requires Stiki; keyboard audio without permission.
 
 ## What v0.1.0 does
 
-- Host app shell with Mabel cat chrome (cream / rose / portrait). Setup steps to enable the keyboard and Full Access.
+- Host app shell with Mabel cat chrome (cream / rose / portrait). Setup steps to enable the keyboard and Full Access. Settings gear opens the five-pane IA.
 - Host playground: same on-device dictate path, used to grant permissions.
 - Custom keyboard (`UIInputViewController`) with the orb, live preview, globe / delete / space / return.
 - On-device `SFSpeechRecognizer` (`requiresOnDeviceRecognition = true`). No Apple network-speech fallback. No whisper.cpp / Parakeet / WhisperKit.
@@ -130,8 +131,8 @@ MabelIOS/
   scripts/validate-ios-keyboard-scaffold.sh
   scripts/xcodebuild-ios.sh
   MabelIOS.xcodeproj/
-  Shared/                          Gate + EnforcerBound + on-device speech
-  MabelIOS/                        Host app shell (cat UI)
+  Shared/                          Gate + EnforcerBound + SettingsStore + speech
+  MabelIOS/                        Host app shell + Settings IA (cat UI)
   MabelKeyboard/                   Custom keyboard extension
 ```
 

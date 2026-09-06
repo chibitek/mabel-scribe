@@ -29,8 +29,14 @@ enum IOSPalette {
 enum IOSPrivacy {
     static let blurb = """
     Free dictation needs no account and no Stiki. Tap to listen, tap to stop. \
-    The microphone is off unless you start it. Audio is transcribed on this \
-    iPhone with Apple Speech. Mabel does not claim HIPAA or BAA coverage.
+    Local-only privacy mode: the microphone is off unless you start it. \
+    Audio is transcribed on this iPhone with Apple Speech.
+    """
+
+    static let localOnlyMode = """
+    Local-only privacy mode. Transcripts stay on this iPhone. Improve models \
+    is off unless you turn it on. Cloud storage is unavailable in v1 — \
+    Scratchpad stays local-first.
     """
 
     static let micUsage = """

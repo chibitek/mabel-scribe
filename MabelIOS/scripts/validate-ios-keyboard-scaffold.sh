@@ -33,6 +33,9 @@ need_file "$IOS/Shared/OnDeviceSpeechEngine.swift"
 need_file "$IOS/Shared/SpeechSession.swift"
 need_file "$IOS/Shared/CatChrome.swift"
 need_file "$IOS/Shared/EnforcerBound.swift"
+need_file "$IOS/Shared/SettingsStore.swift"
+need_file "$IOS/MabelIOS/Views/SettingsRootView.swift"
+need_file "$IOS/MabelIOS/Views/SettingsPanes.swift"
 need_file "$IOS/MabelKeyboard/KeyboardViewController.swift"
 need_file "$IOS/MabelKeyboard/KeyboardRootView.swift"
 need_file "$IOS/MabelKeyboard/Info.plist"
@@ -125,7 +128,7 @@ done
 LEAK="$(mktemp)"
 if grep -R -n -E 'StoreKit|Stiki|HIPAA|BAA|whisper\.cpp|WhisperKit|FluidAudio|Parakeet|tauri|com\.mabel\.app|com\.mabel\.vision' \
   --include='*.swift' "$IOS/MabelIOS" "$IOS/MabelKeyboard" "$IOS/Shared" \
-  | grep -v -i -E 'macBundleID|spatialBundleID|macASC|do not|not tauri|no whisper|stiki|hipaa|no storekit|no account|not mochii|not mac|BREAKS IF|forbidden' \
+  | grep -v -i -E 'macBundleID|spatialBundleID|macASC|do not|not tauri|no whisper|stiki|hipaa|no storekit|no account|not mochii|not mac|BREAKS IF|forbidden|dual gate|when ASC|not required|local-only' \
   >"$LEAK" || true
 then
   :
@@ -142,10 +145,11 @@ rm -f "$LEAK"
 if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let forbiddenBrands = \["Flow", "Wispr"\]' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let shipOrder = \["Keyboard", "Polish", "Dictionary", "Scratchpad", "Languages"\]' "$IOS/Shared/EnforcerBound.swift" \
-  && grep -q 'static let thisTip = "Keyboard"' "$IOS/Shared/EnforcerBound.swift"; then
-  ok "EnforcerBound locks Mabel brand, forbids Flow/Wispr, ship order Keyboard→Polish→Dictionary→Scratchpad→Languages"
+  && grep -q 'static let thisTip = "Keyboard"' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let settingsPanes = \["Account", "General", "Keyboard", "Notifications", "Data & privacy"\]' "$IOS/Shared/EnforcerBound.swift"; then
+  ok "EnforcerBound locks Mabel brand, forbids Flow/Wispr, ship order, Settings IA"
 else
-  bad "EnforcerBound missing displayBrand/forbiddenBrands/shipOrder/thisTip"
+  bad "EnforcerBound missing displayBrand/forbiddenBrands/shipOrder/thisTip/settingsPanes"
 fi
 
 if grep -q 'INFOPLIST_KEY_CFBundleDisplayName = Mabel' "$PBX" \
@@ -244,6 +248,61 @@ if "context == .host && lastGate == .undeterminedOpenHost" not in session:
     failed = True
 else:
     print("  PASS  permission prompt is host-only; keyboard never prompts")
+
+# Settings IA scaffold (host shell). Free dictate still ignores Account.
+settings_root = open(os.path.join(root, "MabelIOS/Views/SettingsRootView.swift")).read()
+settings_panes = open(os.path.join(root, "MabelIOS/Views/SettingsPanes.swift")).read()
+settings_store = open(os.path.join(root, "Shared/SettingsStore.swift")).read()
+for required in (
+    "AccountSettingsPane",
+    "GeneralSettingsPane",
+    "KeyboardSettingsPane",
+    "NotificationsSettingsPane",
+    "PrivacySettingsPane",
+    "Continue with Apple",
+    "Continue with Google",
+    "Continue with Microsoft",
+    "Have a code?",
+    "QWERTY layout",
+    "Live Activities",
+    "Improve models",
+    "Local-only privacy mode",
+):
+    blob = settings_root + settings_panes
+    if required not in blob:
+        print(f"  FAIL  Settings IA missing {required}")
+        failed = True
+if "stikiSignedIn && storeKitEntitled" not in settings_store:
+    print("  FAIL  Pro dual gate must require Stiki AND purchase")
+    failed = True
+else:
+    print("  PASS  Pro dual gate is Stiki AND purchase")
+if "var improveModels = false" not in settings_store:
+    print("  FAIL  Improve models must default OFF")
+    failed = True
+else:
+    print("  PASS  Improve models defaults OFF")
+if "cloudStorage = false" not in settings_store:
+    print("  FAIL  Cloud storage must stay off / unavailable v1")
+    failed = True
+else:
+    print("  PASS  Cloud storage off / unavailable v1")
+if re.search(r'^import StoreKit', settings_panes + settings_store + settings_root, re.M):
+    print("  FAIL  Settings must not import StoreKit this tip")
+    failed = True
+else:
+    print("  PASS  Settings does not import StoreKit")
+ui_blob = settings_panes + open(os.path.join(root, "Shared/IOSIdentity.swift")).read()
+for i, line in enumerate(ui_blob.splitlines(), 1):
+    stripped = line.strip()
+    if stripped.startswith("//") or stripped.startswith("///"):
+        continue
+    if re.search(r'\b(HIPAA|BAA)\b', stripped):
+        print(f"  FAIL  HIPAA/BAA UI copy is forbidden: {stripped}")
+        failed = True
+        break
+else:
+    print("  PASS  no HIPAA/BAA UI copy (local-only privacy mode)")
 
 # Free dictate must not require Stiki
 gate = open(os.path.join(root, "Shared/DictatePermissionGate.swift")).read()

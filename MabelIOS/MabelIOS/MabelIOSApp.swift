@@ -5,11 +5,13 @@ import SwiftUI
 @main
 struct MabelIOSApp: App {
     @State private var session = SpeechSession()
+    @State private var settings = SettingsStore()
 
     var body: some Scene {
         WindowGroup {
             HostRootView()
                 .environment(session)
+                .environment(settings)
         }
     }
 }

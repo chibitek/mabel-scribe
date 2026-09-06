@@ -29,6 +29,8 @@ final class SettingsStore {
     var improveModels = EnforcerBound.improveModelsDefaultOn
     /// v1 unavailable. Always false — cloud ON is a hard break.
     private(set) var cloudStorage = EnforcerBound.cloudStorageAvailableV1
+    /// v1 unavailable. Local Apple Speech only — dictation cloud ON is a hard break.
+    private(set) var dictationCloud = EnforcerBound.dictationCloudAvailableV1
     var autoDelete = false
     /// Ready switch only. Does not start the microphone.
     var masterOn = true
@@ -64,6 +66,7 @@ final class SettingsStore {
         masterOn = self.defaults.object(forKey: Key.masterOn) as? Bool ?? true
         // Ignore any stored true. Cloud ON v1 / silent cloud is a hard break.
         cloudStorage = EnforcerBound.cloudStorageAvailableV1
+        dictationCloud = EnforcerBound.dictationCloudAvailableV1
     }
 
     /// Cloud storage cannot be enabled in v1. Local-first toggles only.
@@ -71,6 +74,13 @@ final class SettingsStore {
         _ = wanted
         cloudStorage = EnforcerBound.cloudStorageAvailableV1
         defaults.set(EnforcerBound.cloudStorageAvailableV1, forKey: Key.cloudStorage)
+    }
+
+    /// Dictation cloud cannot be enabled in v1. Local engines only.
+    func requestDictationCloud(_ wanted: Bool) {
+        _ = wanted
+        dictationCloud = EnforcerBound.dictationCloudAvailableV1
+        defaults.set(EnforcerBound.dictationCloudAvailableV1, forKey: Key.dictationCloud)
     }
 
     func persist() {
@@ -90,12 +100,15 @@ final class SettingsStore {
         defaults.set(masterOn, forKey: Key.masterOn)
         defaults.set(EnforcerBound.cloudStorageAvailableV1, forKey: Key.cloudStorage)
         cloudStorage = EnforcerBound.cloudStorageAvailableV1
+        defaults.set(EnforcerBound.dictationCloudAvailableV1, forKey: Key.dictationCloud)
+        dictationCloud = EnforcerBound.dictationCloudAvailableV1
     }
 
     private enum Key {
         static let improveModels = "settings.improveModels"
         static let autoDelete = "settings.autoDelete"
         static let cloudStorage = "settings.cloudStorage"
+        static let dictationCloud = "settings.dictationCloud"
         static let haptics = "settings.haptics"
         static let lowData = "settings.lowData"
         static let autoOpenNote = "settings.autoOpenNote"

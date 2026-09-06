@@ -128,13 +128,18 @@ struct NotificationsSettingsPane: View {
 struct PrivacySettingsPane: View {
     var body: some View {
         SettingsStoreForm { store in
-            Section("Local-only privacy mode") {
+            Section(EnforcerBound.privacySurfaceName) {
                 Text(IOSPrivacy.localOnlyMode)
                     .font(.footnote)
                     .foregroundStyle(IOSPalette.mist)
             }
             Section {
                 Toggle("Improve models", isOn: bind(store, \.improveModels))
+                Toggle("Dictation cloud", isOn: Binding(
+                    get: { EnforcerBound.dictationCloudAvailableV1 },
+                    set: { store.requestDictationCloud($0) }
+                ))
+                .disabled(EnforcerBound.dictationCloudAvailableV1 == false)
                 Toggle("Cloud storage", isOn: Binding(
                     get: { EnforcerBound.cloudStorageAvailableV1 },
                     set: { store.requestCloudStorage($0) }
@@ -142,7 +147,7 @@ struct PrivacySettingsPane: View {
                 .disabled(EnforcerBound.cloudStorageAvailableV1 == false)
                 Toggle("Auto-delete transcripts", isOn: bind(store, \.autoDelete))
             } footer: {
-                Text("Improve models is off unless you turn it on. Cloud storage is unavailable in v1. Scratchpad stays local-first.")
+                Text("Improve models is off unless you turn it on. Dictation cloud and cloud storage are unavailable in v1 — local engines only. Scratchpad stays local-first.")
                     .foregroundStyle(IOSPalette.mist)
             }
         }

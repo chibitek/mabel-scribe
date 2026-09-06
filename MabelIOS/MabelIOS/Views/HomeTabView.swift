@@ -149,7 +149,7 @@ struct HomeTabView: View {
             Text("Activity")
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(IOSPalette.ink)
-            Text("No activity yet. Counts stay on this iPhone — local-only privacy mode.")
+            Text("No activity yet. Counts stay on this iPhone — \(EnforcerBound.privacySurfaceName).")
                 .font(.footnote)
                 .foregroundStyle(IOSPalette.mist)
         }

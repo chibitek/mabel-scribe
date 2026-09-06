@@ -152,9 +152,12 @@ if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift"
   && grep -q 'static let cloudStorageAvailableV1 = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let improveModelsDefaultOn = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let silentCloudAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let privacySurfaceName = "Local-only privacy mode"' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let dictationCloudAvailableV1 = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let hipaaBAAFollowUpParked = true' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let homeTabs = \["Home", "Dictionary", "Snippets", "Style", "Scratchpad"\]' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let freeHomeTabs = \["Home"\]' "$IOS/Shared/EnforcerBound.swift"; then
-  ok "EnforcerBound locks Mabel brand, ship order, Settings IA, Home IA, Data & privacy"
+  ok "EnforcerBound locks Mabel brand, ship order, Settings IA, Home IA, Local-only privacy mode"
 else
   bad "EnforcerBound missing brand/shipOrder/settings/home/cloud locks"
 fi
@@ -273,7 +276,7 @@ for required in (
     "QWERTY layout",
     "Live Activities",
     "Improve models",
-    "Local-only privacy mode",
+    "Dictation cloud",
 ):
     blob = settings_root + settings_panes
     if required not in blob:
@@ -306,6 +309,48 @@ if "disabled(EnforcerBound.cloudStorageAvailableV1 == false)" not in settings_pa
     failed = True
 else:
     print("  PASS  Cloud storage toggle disabled in v1")
+if "static let privacySurfaceName = \"Local-only privacy mode\"" not in enforcer:
+    print("  FAIL  privacy surface name must stay Local-only privacy mode")
+    failed = True
+else:
+    print("  PASS  privacy surface is Local-only privacy mode")
+if "static let dictationCloudAvailableV1 = false" not in enforcer:
+    print("  FAIL  dictation cloud must stay unavailable v1")
+    failed = True
+else:
+    print("  PASS  dictation cloud unavailable v1")
+if "static let hipaaBAAFollowUpParked = true" not in enforcer:
+    print("  FAIL  HIPAA/BAA follow-up must stay parked (no claim)")
+    failed = True
+else:
+    print("  PASS  HIPAA/BAA follow-up parked")
+if "request.requiresOnDeviceRecognition = EnforcerBound.dictationCloudAvailableV1 == false" not in engine:
+    print("  FAIL  speech engine must bind requiresOnDeviceRecognition to dictation-cloud lock")
+    failed = True
+elif re.search(r'requiresOnDeviceRecognition\s*=\s*false', engine):
+    print("  FAIL  requiresOnDeviceRecognition must not be hardcoded false")
+    failed = True
+else:
+    print("  PASS  dictation stays on-device (local engines only)")
+if "requestDictationCloud" not in settings_store \
+        or "dictationCloud = EnforcerBound.dictationCloudAvailableV1" not in settings_store:
+    print("  FAIL  dictation cloud must stay clamped off / unavailable v1")
+    failed = True
+else:
+    print("  PASS  dictation cloud clamped off")
+if re.search(r'dictationCloud\s*=\s*true', settings_store + settings_panes):
+    print("  FAIL  dictation cloud ON iOS v1")
+    failed = True
+if "disabled(EnforcerBound.dictationCloudAvailableV1 == false)" not in settings_panes:
+    print("  FAIL  Dictation cloud toggle must stay disabled in v1")
+    failed = True
+else:
+    print("  PASS  Dictation cloud toggle disabled in v1")
+if "EnforcerBound.privacySurfaceName" not in settings_panes:
+    print("  FAIL  Settings privacy section must use Local-only privacy mode surface name")
+    failed = True
+else:
+    print("  PASS  Settings uses Local-only privacy mode surface name")
 # Silent cloud: no upload / iCloud / CloudKit in the iOS tree
 silent = re.compile(r'URLSession|uploadTask|CKContainer|CKRecord|NSUbiquitous|iCloud|CloudKit|silent upload', re.I)
 silent_ok = re.compile(r'not in icloud|unavailable|no silent', re.I)
@@ -333,21 +378,29 @@ if re.search(r'^import StoreKit', settings_panes + settings_store + settings_roo
 else:
     print("  PASS  Settings does not import StoreKit")
 claim_hit = False
+deny = re.compile(
+    r'NO HIPAA|no HIPAA|never.{0,4}HIPAA|HIPAA.{0,24}parked|parked.{0,24}HIPAA|'
+    r'hipaaBAAFollowUpParked|BREAKS IF|Does not claim HIPAA|including.{0,8}HIPAA',
+    re.I,
+)
 for dirpath, _, files in os.walk(root):
-    if "xcodeproj" in dirpath:
+    if "xcodeproj" in dirpath or "DerivedData" in dirpath:
         continue
     for name in files:
-        if not name.endswith(".swift"):
-            continue
         path = os.path.join(dirpath, name)
-        for line in open(path):
-            stripped = line.strip()
-            if stripped.startswith("//") or stripped.startswith("///") or stripped.startswith("*"):
-                continue
-            if re.search(r'\b(HIPAA|BAA|Wispr BAA)\b', stripped) and "BREAKS IF" not in stripped:
-                print(f"  FAIL  HIPAA/BAA/Wispr BAA claim {path}: {stripped}")
-                failed = True
-                claim_hit = True
+        if name.endswith((".swift", ".md", ".plist", ".pbxproj", ".xcprivacy")):
+            for i, line in enumerate(open(path), 1):
+                stripped = line.strip()
+                is_comment = stripped.startswith("//") or stripped.startswith("///") or stripped.startswith("*") or stripped.startswith("<!--")
+                if "HIPAA compliant" in stripped and not deny.search(stripped):
+                    print(f"  FAIL  never claim HIPAA compliant {path}:{i}: {stripped}")
+                    failed = True
+                    claim_hit = True
+                if name.endswith(".swift") and not is_comment:
+                    if re.search(r'\b(HIPAA|BAA|Wispr BAA)\b', stripped) and not deny.search(stripped):
+                        print(f"  FAIL  HIPAA/BAA/Wispr BAA claim {path}:{i}: {stripped}")
+                        failed = True
+                        claim_hit = True
 if not claim_hit:
     print("  PASS  no HIPAA/BAA/Wispr BAA UI claim (local-only privacy mode)")
 

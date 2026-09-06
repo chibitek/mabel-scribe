@@ -27,16 +27,18 @@ enum IOSPalette {
 }
 
 enum IOSPrivacy {
+    static let surfaceName = EnforcerBound.privacySurfaceName
+
     static let blurb = """
     Free dictation needs no account and no Stiki. Tap to listen, tap to stop. \
-    Local-only privacy mode: the microphone is off unless you start it. \
-    Audio is transcribed on this iPhone with Apple Speech.
+    \(EnforcerBound.privacySurfaceName): the microphone is off unless you start it. \
+    Audio is transcribed on-device on this iPhone with Apple Speech.
     """
 
     static let localOnlyMode = """
-    Local-only privacy mode. Transcripts stay on this iPhone. Improve models \
-    is off unless you turn it on. Cloud storage is unavailable in v1 — \
-    Scratchpad stays local-first.
+    \(EnforcerBound.privacySurfaceName). Transcripts stay on this iPhone. \
+    Improve models is off unless you turn it on. Dictation cloud is \
+    unavailable in v1 — local engines only. Scratchpad stays local-first.
     """
 
     static let micUsage = """

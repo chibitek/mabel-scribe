@@ -67,7 +67,7 @@ final class OnDeviceSpeechEngine: @unchecked Sendable {
 
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
-        request.requiresOnDeviceRecognition = true
+        request.requiresOnDeviceRecognition = EnforcerBound.dictationCloudAvailableV1 == false
         if #available(iOS 16.0, *) {
             request.addsPunctuation = true
         }

@@ -653,6 +653,7 @@ mod tests {
         assert!(dict.contains("no Nexus/SIEM write"));
         assert!(dict.contains("no auto-promote"));
         assert!(dict.contains("no HIPAA/BAA"));
+        assert!(dict.contains("Scratchpad/Insights local-only default"));
     }
 
     #[cfg(unix)]

@@ -4,7 +4,8 @@
 //! - Pro-gated (Free locked + Activate Pro → Plans; no website)
 //! - No cloud sync, no team/company share, no Nexus/SIEM write
 //! - Private terms must not auto-promote to company memory
-//! - No HIPAA/BAA claim copy
+//! - No HIPAA/BAA claim copy (until Enforcer+Legal yes)
+//! - Scratchpad / Insights stay local-only by default; do not claim HIPAA/BAA
 //! - Distinct from Polish modes and Clipboard History
 //!
 //! BREAKS IF: cloud/team share ships / auto-promote / Nexus/SIEM write / HIPAA/BAA copy
@@ -12,7 +13,7 @@
 use crate::storekit;
 
 /// Named Enforcer BOUND. Tests fail if this is violated.
-pub const ENFORCER_BOUND: &str = "Pro-gated; local-first; no cloud sync; no team share; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA";
+pub const ENFORCER_BOUND: &str = "Pro-gated; local-first; no cloud sync; no team share; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA; Scratchpad/Insights local-only default";
 
 const SHARE_BLOCKED: &str =
     "Cloud and team dictionary share is not available. Dictionary stays on this Mac.";
@@ -225,6 +226,7 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("no Nexus/SIEM write"));
         assert!(ENFORCER_BOUND.contains("no auto-promote"));
         assert!(ENFORCER_BOUND.contains("no HIPAA/BAA"));
+        assert!(ENFORCER_BOUND.contains("Scratchpad/Insights local-only default"));
 
         let html = include_str!("../../index.html");
         let nav = html
@@ -349,6 +351,52 @@ mod tests {
         let tray = include_str!("clipboard_ui.rs");
         assert!(tray.contains("Dictionary"));
         assert!(tray.contains("open-dictionary"));
+    }
+
+    #[test]
+    fn scratchpad_and_insights_stay_local_without_hipaa_copy() {
+        let html = include_str!("../../index.html");
+        let insights = html
+            .split("data-view=\"insights\"")
+            .nth(2)
+            .or_else(|| html.split("data-view=\"insights\"").last())
+            .expect("insights view");
+        let insights = insights.split("<section").next().unwrap();
+        assert!(
+            insights.contains("Local-only"),
+            "BREAKS IF: Insights not local-only default"
+        );
+        assert!(
+            !insights.contains("HIPAA")
+                && !insights.contains("HIPAA/BAA")
+                && !insights.contains("Business Associate"),
+            "BREAKS IF: HIPAA/BAA copy on Insights"
+        );
+
+        let pad = html
+            .split("data-view=\"scratchpad\"")
+            .nth(2)
+            .or_else(|| html.split("data-view=\"scratchpad\"").last())
+            .expect("scratchpad view");
+        let pad = pad.split("<section").next().unwrap();
+        assert!(
+            pad.contains("Local only") || pad.contains("local-only") || pad.contains("this Mac"),
+            "BREAKS IF: Scratchpad not local-only default"
+        );
+        assert!(
+            !pad.contains("HIPAA")
+                && !pad.contains("HIPAA/BAA")
+                && !pad.contains("Business Associate"),
+            "BREAKS IF: HIPAA/BAA copy on Scratchpad"
+        );
+
+        let stats = include_str!("stats.rs");
+        assert!(stats.contains("Local-only"));
+        assert!(stats.contains("ever leaves the device"));
+        assert!(!stats.contains("HIPAA"));
+        let pro = include_str!("pro_features.rs");
+        assert!(pro.contains("scratchpad.txt"));
+        assert!(!pro.contains("HIPAA"));
     }
 
     #[test]

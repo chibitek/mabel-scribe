@@ -668,6 +668,7 @@ mod tests {
         );
         assert!(connectors.contains("enforcer_bound_insights_v1_suite_b6530197"));
         assert!(connectors.contains("Insights NOT MCP source/sink v1"));
+        assert!(connectors.contains("Insights v1 CONFIRMED local-only"));
         let stiki = include_str!("stiki.rs");
         assert!(stiki.contains("SESSION_FILE"));
         assert!(stiki.contains("sign_in"));
@@ -759,6 +760,8 @@ mod tests {
         assert!(ins.contains("local-only stats / usage insights on this Mac"));
         assert!(ins.contains("dictation counts, streaks, time-saved style"));
         assert!(ins.contains("Insights NOT MCP source/sink v1"));
+        assert!(ins.contains("Insights v1 CONFIRMED local-only"));
+        assert!(ins.contains("no cloud/team/Nexus/Mochii auto-push"));
         assert!(ins.contains("no cloud sync"));
         assert!(ins.contains("no team/company dashboards"));
         assert!(ins.contains("no Nexus/SIEM write"));

@@ -2,10 +2,11 @@
 //!
 //! GREEN: StoreKit Pro + Stiki dual gate; local-only stats / usage insights
 //! on this Mac (dictation counts, streaks, time-saved style); Insights NOT
-//! MCP source/sink v1; no cloud sync; no team/company dashboards; no
-//! Nexus/SIEM write; no third-party analytics vendor; no HIPAA/BAA;
-//! distinct Scratchpad/Dictionary/Snippets/Style/Transforms/Polish/Clipboard;
-//! Free dictate no Stiki; sign-out locks Insights until Stiki again.
+//! MCP source/sink v1; Insights v1 CONFIRMED local-only; no cloud/team/Nexus/Mochii
+//! auto-push; no cloud sync; no team/company dashboards; no Nexus/SIEM write;
+//! no third-party analytics vendor; no HIPAA/BAA; distinct Scratchpad/Dictionary/
+//! Snippets/Style/Transforms/Polish/Clipboard; Free dictate no Stiki;
+//! sign-out locks Insights until Stiki again.
 //!
 //! BREAKS IF: Insights without dual gate
 //! BREAKS IF: cloud analytics
@@ -27,7 +28,7 @@ use crate::storekit;
 pub const ENFORCER_SUITE: &str = "b6530197";
 
 /// Named Enforcer BOUND. `enforcer_bound_insights_v1_suite_*` tests fold this.
-pub const ENFORCER_BOUND: &str = "CONFIRMED Suite b6530197; StoreKit Pro + Stiki dual gate; local-only stats / usage insights on this Mac; dictation counts, streaks, time-saved style; Insights NOT MCP source/sink v1; no cloud sync; no team/company dashboards; no Nexus/SIEM write; no third-party analytics vendor; no HIPAA/BAA; distinct Scratchpad/Dictionary/Snippets/Style/Transforms/Polish/Clipboard; Free dictate no Stiki; sign-out locks Insights";
+pub const ENFORCER_BOUND: &str = "CONFIRMED Suite b6530197; StoreKit Pro + Stiki dual gate; local-only stats / usage insights on this Mac; dictation counts, streaks, time-saved style; Insights NOT MCP source/sink v1; Insights v1 CONFIRMED local-only; no cloud/team/Nexus/Mochii auto-push; no cloud sync; no team/company dashboards; no Nexus/SIEM write; no third-party analytics vendor; no HIPAA/BAA; distinct Scratchpad/Dictionary/Snippets/Style/Transforms/Polish/Clipboard; Free dictate no Stiki; sign-out locks Insights";
 
 /// Product LOCK Insights v1 + Sign-on. Tests fail if the surface drifts.
 pub const PRODUCT_LOCK: &str = "Name: Insights; Pro catalog #6 LAST after Scratchpad (Dictionary → Snippets → Style → Transforms → Scratchpad → Insights); Pro surface requires StoreKit Pro AND Stiki session; Free locked + Activate Pro / Sign in with Stiki; local-only stats / usage insights on this Mac (dictation counts, streaks, time-saved style); Settings + sidebar/nav + menu bar; local-first; not Nexus; not Mochii; not MCP source/sink v1; not cloud sync v1; no team/company dashboards; no third-party analytics vendor; distinct from Scratchpad (notes), Dictionary (spelling), Snippets (trigger→expansion), Style (Formal|Casual|Very casual register), Transforms (Email|Bullet points|Make shorter|Make clearer), Polish (Off|Casual|Professional|Polite Gemma tone rewrite), and Clipboard History; non-goals: MCP source/sink, cloud write, cross-device sync, Nexus/SIEM write, HIPAA, Notetaker";
@@ -368,6 +369,8 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("local-only stats / usage insights on this Mac"));
         assert!(ENFORCER_BOUND.contains("dictation counts, streaks, time-saved style"));
         assert!(ENFORCER_BOUND.contains("Insights NOT MCP source/sink v1"));
+        assert!(ENFORCER_BOUND.contains("Insights v1 CONFIRMED local-only"));
+        assert!(ENFORCER_BOUND.contains("no cloud/team/Nexus/Mochii auto-push"));
         assert!(ENFORCER_BOUND.contains("no cloud sync"));
         assert!(ENFORCER_BOUND.contains("no team/company dashboards"));
         assert!(ENFORCER_BOUND.contains("no Nexus/SIEM write"));
@@ -383,8 +386,11 @@ mod tests {
         assert_eq!(ENFORCER_SUITE, "b6530197");
         assert!(ENFORCER_BOUND.contains("CONFIRMED Suite b6530197"));
         assert!(ENFORCER_BOUND.contains("StoreKit Pro + Stiki dual gate"));
+        assert!(ENFORCER_BOUND.contains("local-only"));
         assert!(ENFORCER_BOUND.contains("local-only stats / usage insights on this Mac"));
         assert!(ENFORCER_BOUND.contains("Insights NOT MCP source/sink v1"));
+        assert!(ENFORCER_BOUND.contains("Insights v1 CONFIRMED local-only"));
+        assert!(ENFORCER_BOUND.contains("no cloud/team/Nexus/Mochii auto-push"));
         assert!(ENFORCER_BOUND.contains("no cloud sync"));
         assert!(ENFORCER_BOUND.contains("no team/company dashboards"));
         assert!(ENFORCER_BOUND.contains("no Nexus/SIEM write"));
@@ -465,6 +471,8 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("StoreKit Pro + Stiki dual gate"));
         assert!(ENFORCER_BOUND.contains("local-only stats / usage insights on this Mac"));
         assert!(ENFORCER_BOUND.contains("Insights NOT MCP source/sink v1"));
+        assert!(ENFORCER_BOUND.contains("Insights v1 CONFIRMED local-only"));
+        assert!(ENFORCER_BOUND.contains("no cloud/team/Nexus/Mochii auto-push"));
         assert!(ENFORCER_BOUND.contains("no team/company dashboards"));
         assert!(ENFORCER_BOUND.contains("no third-party analytics vendor"));
         assert!(ENFORCER_BOUND.contains("sign-out locks Insights"));

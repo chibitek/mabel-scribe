@@ -678,7 +678,8 @@ modelSelect.addEventListener("change", async () => { await checkModelStatus(); s
 languageSelect.addEventListener("change", async () => { await checkModelStatus(); saveSettings(); });
 
 // Pro dictionary editor. Terms stay in local config and feed the existing
-// whisper.cpp --prompt hook plus local Gemma spelling hints. Free is locked.
+// whisper.cpp --prompt hook plus local Gemma spelling hints. Locked unless
+// StoreKit Pro AND a Stiki session. Free dictation does not use this gate.
 const dictInput = $<HTMLInputElement>("dict-input");
 const dictAddBtn = $<HTMLButtonElement>("dict-add-btn");
 const dictCancelBtn = $<HTMLButtonElement>("dict-cancel-btn");
@@ -736,8 +737,8 @@ function renderDictionary() {
 }
 
 function beginEditTerm(word: string) {
-  if (!currentEntitlement.entitled) {
-    openPlans();
+  if (!dictionarySurfaceReady()) {
+    if (!currentEntitlement.entitled) openPlans();
     return;
   }
   editingTerm = word;
@@ -760,8 +761,8 @@ function cancelEditTerm() {
 }
 
 async function addOrSaveDictionaryEntry() {
-  if (!currentEntitlement.entitled) {
-    openPlans();
+  if (!dictionarySurfaceReady()) {
+    if (!currentEntitlement.entitled) openPlans();
     return;
   }
   const raw = dictInput.value.trim();
@@ -784,8 +785,8 @@ async function addOrSaveDictionaryEntry() {
 }
 
 async function removeDictionaryEntry(word: string) {
-  if (!currentEntitlement.entitled) {
-    openPlans();
+  if (!dictionarySurfaceReady()) {
+    if (!currentEntitlement.entitled) openPlans();
     return;
   }
   showDictError("");
@@ -802,6 +803,13 @@ async function removeDictionaryEntry(word: string) {
 }
 
 $("dictionary-open").addEventListener("click", openDictionary);
+$("dictionary-activate").addEventListener("click", openPlans);
+$("dictionary-stiki").addEventListener("click", () => {
+  void signInWithStiki();
+});
+$("dict-pane-stiki").addEventListener("click", () => {
+  void signInWithStiki();
+});
 
 dictAddBtn.addEventListener("click", () => {
   void addOrSaveDictionaryEntry();
@@ -1337,6 +1345,43 @@ let currentEntitlement: Entitlement = {
 
 let currentStiki: StikiSession = { live: false };
 
+function dictionarySurfaceReady() {
+  return proSurfacesUnlocked();
+}
+
+async function signInWithStiki() {
+  // Re-read the fail-closed session file. Do not mock-grant sign-on.
+  await refreshStikiSession();
+  applyEntitlement(currentEntitlement);
+}
+
+function applyDictionaryGate() {
+  const ready = dictionarySurfaceReady();
+  const entitled = !!currentEntitlement.entitled;
+  const signedIn = !!currentStiki.live;
+
+  document.querySelectorAll<HTMLElement>("[data-dict-gate='lock']").forEach((el) => {
+    el.classList.toggle("hidden", ready);
+  });
+  document.querySelectorAll<HTMLElement>("[data-dict-gate='unlock']").forEach((el) => {
+    el.classList.toggle("hidden", !ready);
+  });
+
+  $("dictionary-open").classList.toggle("hidden", !ready);
+  $("dictionary-activate").classList.toggle("hidden", entitled);
+  $("dictionary-stiki").classList.toggle("hidden", signedIn);
+  $("dict-pane-activate").classList.toggle("hidden", entitled);
+  $("dict-pane-stiki").classList.toggle("hidden", signedIn);
+
+  const dictNav = document.querySelector<HTMLElement>('.nav-item[data-view="dictionary"]');
+  if (dictNav) {
+    dictNav.classList.toggle("locked", !ready);
+    dictNav.toggleAttribute("data-pro", true);
+    const lock = dictNav.querySelector<HTMLElement>(".lock-pill");
+    if (lock) lock.style.display = ready ? "none" : "";
+  }
+}
+
 function planLabel(ent: Entitlement): string {
   if (!ent.entitled) return "Free";
   if (ent.isTrial || ent.status === "trial") return "Trial";
@@ -1381,8 +1426,15 @@ function applyEntitlement(ent: Entitlement) {
     if (lock) (lock as HTMLElement).style.display = unlocked ? "none" : "";
   });
 
-  document.querySelectorAll(".pro-lock").forEach((el) => el.classList.toggle("hidden", unlocked));
-  document.querySelectorAll(".pro-unlock").forEach((el) => el.classList.toggle("hidden", !unlocked));
+  document.querySelectorAll(".pro-lock").forEach((el) => {
+    if ((el as HTMLElement).dataset.dictGate) return;
+    el.classList.toggle("hidden", unlocked);
+  });
+  document.querySelectorAll(".pro-unlock").forEach((el) => {
+    if ((el as HTMLElement).dataset.dictGate) return;
+    el.classList.toggle("hidden", !unlocked);
+  });
+  applyDictionaryGate();
 
   const accountHint = document.getElementById("account-plan-hint");
   const accountPill = document.getElementById("account-plan-pill");
@@ -1614,11 +1666,15 @@ function row(html: string, onRemove: () => void) {
   return el;
 }
 
-async function loadProSurfaces() {
-  if (!proSurfacesUnlocked()) return;
-
+async function loadDictionarySurface() {
+  if (!dictionarySurfaceReady()) return;
   const terms = await invoke<string[]>("dictionary_get");
   applyDictionary(terms);
+}
+
+async function loadProSurfaces() {
+  if (!proSurfacesUnlocked()) return;
+  await loadDictionarySurface();
 
   const snippets = await invoke<Snippet[]>("snippets_get");
   const snippetList = document.getElementById("snippet-list");

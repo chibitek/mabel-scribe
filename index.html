@@ -213,8 +213,8 @@
 
         <section class="view" data-view="dictionary">
           <header class="view-header"><h1 class="view-title">Dictionary</h1><p class="view-sub">Names, jargon, and shop talk Mabel should spell your way. She keeps this list on this Mac &mdash; no cloud, no sharing.</p></header>
-          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro so Mabel can remember your personal terms locally, like a house cat who never forgets the names that matter.</p><button type="button" class="btn-primary pro-activate">Activate Pro</button></div>
-          <div class="pro-unlock hidden">
+          <div class="card locked-card pro-lock" data-dict-gate="lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and sign in with Stiki so Mabel can remember your personal terms locally, like a house cat who never forgets the names that matter.</p><div class="locked-actions"><button type="button" class="btn-primary pro-activate" id="dict-pane-activate">Activate Pro</button><button type="button" class="btn-secondary" id="dict-pane-stiki">Sign in with Stiki</button></div></div>
+          <div class="pro-unlock hidden" data-dict-gate="unlock">
             <div class="card pane-card">
               <div class="row">
                 <div class="row-text">
@@ -728,10 +728,13 @@
               <div class="row">
                 <div class="row-text">
                   <div class="row-label">Dictionary</div>
-                  <div class="row-hint">Pro. Personal terms, jargon, and spelling replacements during dictation. Local on this Mac &mdash; not Polish, not Clipboard History, not a team list. Menu bar → Dictionary…</div>
+                  <div class="row-hint">Pro + Stiki. Personal terms, jargon, and spelling replacements during dictation. Local on this Mac &mdash; not Polish, not Clipboard History, not a team list. Menu bar → Dictionary…</div>
                 </div>
-                <button type="button" class="btn-secondary pro-unlock hidden" id="dictionary-open">Open Dictionary</button>
-                <button type="button" class="btn-secondary pro-lock pro-activate" id="dictionary-activate">Activate Pro</button>
+                <div class="row-actions">
+                  <button type="button" class="btn-secondary hidden" id="dictionary-open">Open Dictionary</button>
+                  <button type="button" class="btn-secondary" id="dictionary-activate">Activate Pro</button>
+                  <button type="button" class="btn-secondary" id="dictionary-stiki">Sign in with Stiki</button>
+                </div>
               </div>
               <div class="row">
                 <div class="row-text">

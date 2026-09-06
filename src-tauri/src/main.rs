@@ -367,8 +367,8 @@ fn save_settings(app: tauri::AppHandle, state: State<AppState>, settings: Settin
             held.dictionary.clone(),
         )
     };
-    // Dictionary mutations are Pro-only. Other settings still save for Free.
-    if storekit::current_entitlement().entitled {
+    // Dictionary mutations need Pro AND Stiki. Other settings still save for Free.
+    if mabel_lib::dictionary::surface_ready() {
         settings.dictionary = mabel_lib::dictionary::normalize_terms(&settings.dictionary);
     } else {
         settings.dictionary = prev_dictionary;

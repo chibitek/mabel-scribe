@@ -1,25 +1,29 @@
-//! Product **Dictionary** — Enforcer BOUND (suite b6530197).
+//! Product **Dictionary** — Enforcer BOUND (suite b6530197) + Sign-on RE-LOCK.
 //!
 //! - Local personal terms / jargon / spelling replacements only
-//! - Pro-gated (Free locked + Activate Pro → Plans; no website)
+//! - Pro surface: StoreKit Pro entitlement AND Stiki session
+//! - Free locked + Activate Pro / Sign in with Stiki (same pattern; no website)
 //! - No cloud sync, no team/company share, no Nexus/SIEM write
 //! - Private terms must not auto-promote to company memory
 //! - No HIPAA/BAA claim copy (until Enforcer+Legal yes)
 //! - Scratchpad / Insights stay local-only by default; do not claim HIPAA/BAA
 //! - Distinct from Polish modes and Clipboard History
+//! - Free dictation must not require Stiki
 //!
+//! BREAKS IF: Dictionary usable without Stiki
 //! BREAKS IF: cloud/team share ships without separate ACL Make It So
 //! BREAKS IF: private Dictionary auto-promotes to company memory
 //! HELD: cloud sync + team share until MCS with Stiki/folder-style ACL;
 //! fail closed if ACL missing.
 
+use crate::stiki_session;
 use crate::storekit;
 
 /// Named Enforcer BOUND. Tests fail if this is violated.
-pub const ENFORCER_BOUND: &str = "Pro-gated; local-first; no cloud sync; no team share; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA; Scratchpad/Insights local-only default; fail closed if ACL missing";
+pub const ENFORCER_BOUND: &str = "Pro-gated + Stiki session; local-first; no cloud sync; no team share; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA; Scratchpad/Insights local-only default; fail closed if ACL missing";
 
-/// Product LOCK Dictionary v1. Tests fail if the surface drifts.
-pub const PRODUCT_LOCK: &str = "Name: Dictionary; Pro only; Free locked + Activate Pro → Plans; personal terms/jargon/replacements during dictation; Settings → Engine + menu-bar Dictionary…; default empty; add/edit/delete on device; local-first; not Nexus; not cloud sync v1; distinct from Polish and Clipboard History; non-goals: shared team dictionary, Wispr import, Notetaker, HIPAA";
+/// Product LOCK Dictionary v1 + Sign-on. Tests fail if the surface drifts.
+pub const PRODUCT_LOCK: &str = "Name: Dictionary; Pro surface requires StoreKit Pro AND Stiki session; Free locked + Activate Pro / Sign in with Stiki; personal terms/jargon/replacements during dictation; Settings → Engine + menu-bar Dictionary…; default empty; add/edit/delete on device; local-first; not Nexus; not cloud sync v1; distinct from Polish and Clipboard History; non-goals: shared team dictionary, Wispr import, Notetaker, HIPAA";
 
 /// Held. A later MCS must flip this only with Stiki/folder-style ACL.
 pub const STIKI_FOLDER_ACL_SHIPPED: bool = false;
@@ -52,17 +56,48 @@ pub fn normalize_terms(stored: &[String]) -> Vec<String> {
     out
 }
 
-/// Runtime gate: Free / lapsed / stub entitlement → no terms in ASR or cleanup.
-pub fn effective_terms(stored: &[String]) -> Vec<String> {
-    if storekit::current_entitlement().entitled {
+/// Both gates. Pro without Stiki stays locked. Stiki without Pro stays locked.
+pub fn surface_ready() -> bool {
+    storekit::pro_surfaces_unlocked()
+}
+
+pub fn require_surface_with(entitled: bool, signed_in: bool) -> Result<(), String> {
+    if !entitled {
+        return Err(
+            "Mabel Pro requires an active App Store subscription (the 30-day trial counts)."
+                .into(),
+        );
+    }
+    if !signed_in {
+        return Err(stiki_session::NEED_SESSION.into());
+    }
+    Ok(())
+}
+
+pub fn require_surface() -> Result<(), String> {
+    storekit::require_pro()?;
+    Ok(())
+}
+
+/// Runtime gate: Free / no Stiki / lapsed → no terms in ASR or cleanup.
+pub fn effective_terms_with(stored: &[String], entitled: bool, signed_in: bool) -> Vec<String> {
+    if entitled && signed_in {
         normalize_terms(stored)
     } else {
         Vec::new()
     }
 }
 
+pub fn effective_terms(stored: &[String]) -> Vec<String> {
+    effective_terms_with(
+        stored,
+        storekit::current_entitlement().entitled,
+        stiki_session::is_live(),
+    )
+}
+
 pub fn require_list(stored: &[String]) -> Result<Vec<String>, String> {
-    storekit::require_pro()?;
+    require_surface()?;
     Ok(normalize_terms(stored))
 }
 
@@ -130,17 +165,17 @@ fn apply_remove(stored: &mut Vec<String>, term: &str) -> Result<Vec<String>, Str
 }
 
 pub fn add_terms(stored: &mut Vec<String>, raw: &str) -> Result<Vec<String>, String> {
-    storekit::require_pro()?;
+    require_surface()?;
     apply_add(stored, raw)
 }
 
 pub fn update_term(stored: &mut Vec<String>, from: &str, to: &str) -> Result<Vec<String>, String> {
-    storekit::require_pro()?;
+    require_surface()?;
     apply_update(stored, from, to)
 }
 
 pub fn remove_term(stored: &mut Vec<String>, term: &str) -> Result<Vec<String>, String> {
-    storekit::require_pro()?;
+    require_surface()?;
     apply_remove(stored, term)
 }
 
@@ -246,6 +281,83 @@ mod tests {
     }
 
     #[test]
+    fn breaks_if_dictionary_usable_without_stiki() {
+        assert!(
+            require_surface_with(true, false).is_err(),
+            "BREAKS IF: Dictionary usable without Stiki"
+        );
+        assert!(
+            effective_terms_with(&["Chibitek".into()], true, false).is_empty(),
+            "BREAKS IF: dictation replacements without Stiki"
+        );
+        assert_eq!(
+            apply_replacements("chibitek", &["Chibitek".into()]),
+            "chibitek",
+            "BREAKS IF: replacements apply without Stiki session"
+        );
+        assert!(require_surface_with(false, true).is_err());
+        assert!(require_surface_with(true, true).is_ok());
+        assert_eq!(
+            effective_terms_with(&["Chibitek".into()], true, true),
+            vec!["Chibitek".to_string()]
+        );
+
+        let html = include_str!("../../index.html");
+        let ts = include_str!("../../src/main.ts");
+        assert!(
+            html.contains("Sign in with Stiki"),
+            "BREAKS IF: Sign in with Stiki CTA missing"
+        );
+        assert!(
+            ts.contains("dictionarySurfaceReady"),
+            "BREAKS IF: frontend Stiki+Pro gate missing"
+        );
+        let load_dict = ts
+            .split("async function loadDictionarySurface")
+            .nth(1)
+            .expect("loadDictionarySurface");
+        let load_dict = load_dict.split("async function ").next().unwrap();
+        assert!(load_dict.contains("dictionarySurfaceReady"));
+        assert!(load_dict.contains("dictionary_get"));
+        let load_pro = ts
+            .split("async function loadProSurfaces")
+            .nth(1)
+            .expect("loadProSurfaces");
+        let load_pro = load_pro.split("async function ").next().unwrap();
+        assert!(
+            !load_pro.contains("dictionary_get"),
+            "BREAKS IF: Dictionary fetched without Stiki gate"
+        );
+        assert!(!surface_ready(), "Linux / unsigned-out must stay locked");
+    }
+
+    #[test]
+    fn free_dictation_does_not_require_stiki() {
+        let rec = include_str!("recorder.rs");
+        let streaming = include_str!("streaming.rs");
+        let local = include_str!("transcribe_local.rs");
+        let native = include_str!("transcribe_native.rs");
+        let commands = include_str!("main.rs");
+        let toggle = commands
+            .split("async fn do_toggle_recording")
+            .nth(1)
+            .or_else(|| commands.split("async fn toggle_recording").nth(1))
+            .expect("toggle_recording");
+        let toggle = toggle.split("#[tauri::command]").next().unwrap();
+        assert!(
+            !toggle.contains("stiki::require_session") && !toggle.contains("require_surface"),
+            "BREAKS IF: Free dictation requires Stiki"
+        );
+        for hay in [rec, streaming, local, native] {
+            assert!(
+                !hay.contains("stiki::require_session") && !hay.contains("require_surface"),
+                "BREAKS IF: Free dictation requires Stiki"
+            );
+        }
+        assert!(rec.contains("apply_replacements"));
+    }
+
+    #[test]
     fn normalize_drops_blanks_and_duplicates() {
         let terms = normalize_terms(&[
             "  ".into(),
@@ -325,7 +437,7 @@ mod tests {
 
     #[test]
     fn enforcer_bound_breaks_if_free_cloud_nexus_or_web_upgrade() {
-        assert!(ENFORCER_BOUND.contains("Pro-gated"));
+        assert!(ENFORCER_BOUND.contains("Pro-gated + Stiki session"));
         assert!(ENFORCER_BOUND.contains("local-first"));
         assert!(ENFORCER_BOUND.contains("no cloud sync"));
         assert!(ENFORCER_BOUND.contains("no team share"));
@@ -376,6 +488,10 @@ mod tests {
         let dict_view = dict_view.split("<section").next().unwrap();
         assert!(dict_view.contains("pro-lock"), "BREAKS IF: Free not locked");
         assert!(dict_view.contains("pro-activate"), "BREAKS IF: no Plans upsell");
+        assert!(
+            dict_view.contains("Sign in with Stiki"),
+            "BREAKS IF: Sign in with Stiki missing on locked Dictionary"
+        );
         assert!(
             !dict_view.contains("chibiteklabs.com"),
             "BREAKS IF: web upgrade"
@@ -528,7 +644,8 @@ mod tests {
     #[test]
     fn product_lock_v1_non_goals_and_surface() {
         assert!(PRODUCT_LOCK.contains("Name: Dictionary"));
-        assert!(PRODUCT_LOCK.contains("Pro only"));
+        assert!(PRODUCT_LOCK.contains("StoreKit Pro AND Stiki session"));
+        assert!(PRODUCT_LOCK.contains("Activate Pro / Sign in with Stiki"));
         assert!(PRODUCT_LOCK.contains("Settings → Engine"));
         assert!(PRODUCT_LOCK.contains("distinct from Polish and Clipboard History"));
         assert!(PRODUCT_LOCK.contains("Wispr import"));

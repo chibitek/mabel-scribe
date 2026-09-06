@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Clipboard History</title>
+    <link rel="stylesheet" href="./clipboard-history.css" />
+  </head>
+  <body>
+    <header class="bar" data-tauri-drag-region>
+      <div class="bar-text">
+        <h1>Clipboard History</h1>
+        <p id="cap-hint">Local only. Off by default.</p>
+      </div>
+      <button type="button" id="enabled-toggle" class="switch" role="switch" aria-checked="false" aria-label="Clipboard History">
+        <span class="switch-thumb"></span>
+      </button>
+    </header>
+
+    <div id="off-state" class="empty">
+      <p>History is off. Mabel does not read the pasteboard until you opt in. This is local-only and is not an always-on clipboard spy.</p>
+    </div>
+
+    <div id="on-state" class="hidden">
+      <div id="list" class="list"></div>
+      <div id="empty-state" class="empty hidden">
+        <p>No text copies yet. Concealed pasteboard items and obvious secrets are dropped. Slots are local only.</p>
+      </div>
+    </div>
+
+    <footer class="foot">
+      <button type="button" id="clear-btn" class="btn-secondary">Clear history</button>
+    </footer>
+
+    <script type="module" src="./clipboard-history.ts"></script>
+  </body>
+</html>

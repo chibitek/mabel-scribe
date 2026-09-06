@@ -2,12 +2,13 @@
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
-use tauri::{Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt as AutostartManagerExt, MacosLauncher};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutEvent, ShortcutState};
 
 use mabel_lib::audio;
+use mabel_lib::clipboard_history;
 use mabel_lib::dictation_error;
 use mabel_lib::downloader;
 use mabel_lib::llm::LlmServer;
@@ -22,6 +23,8 @@ use mabel_lib::teams;
 use mabel_lib::transcribe_local;
 use mabel_lib::transcribe_native;
 
+mod clipboard_ui;
+
 struct AppState {
     recorder: Recorder,
     // Wrapped in Arc so background tasks (the companion scheduler) can hold a
@@ -30,6 +33,7 @@ struct AppState {
     app_dir: PathBuf,
     stats: Arc<StatsStore>,
     llm_server: Arc<LlmServer>,
+    clipboard: Arc<clipboard_history::Service>,
 }
 
 #[derive(serde::Serialize)]
@@ -280,10 +284,57 @@ fn reconcile_groq_keychain(state: State<AppState>) -> bool {
 }
 
 #[tauri::command]
-fn save_settings(state: State<AppState>, settings: Settings) -> Result<(), String> {
+fn save_settings(app: tauri::AppHandle, state: State<AppState>, settings: Settings) -> Result<(), String> {
+    let prev_clip = state.settings.lock().unwrap().clipboard_history_enabled;
     settings.save(&state.app_dir)?;
-    *state.settings.lock().unwrap() = settings;
+    *state.settings.lock().unwrap() = settings.clone();
+    if settings.clipboard_history_enabled != prev_clip {
+        state.clipboard.set_enabled(settings.clipboard_history_enabled)?;
+        let _ = app.emit("clipboard-history-updated", ());
+    }
     Ok(())
+}
+
+#[tauri::command]
+fn clipboard_history_list(state: State<AppState>) -> Result<clipboard_history::HistoryList, String> {
+    state.clipboard.list()
+}
+
+#[tauri::command]
+fn clipboard_history_set_enabled(
+    app: tauri::AppHandle,
+    state: State<AppState>,
+    enabled: bool,
+) -> Result<clipboard_history::HistoryList, String> {
+    {
+        let mut held = state.settings.lock().unwrap();
+        held.clipboard_history_enabled = enabled;
+        held.save(&state.app_dir)?;
+    }
+    state.clipboard.set_enabled(enabled)?;
+    let _ = app.emit("clipboard-history-updated", ());
+    state.clipboard.list()
+}
+
+#[tauri::command]
+fn clipboard_history_clear(state: State<AppState>) -> Result<clipboard_history::HistoryList, String> {
+    state.clipboard.wipe()?;
+    state.clipboard.list()
+}
+
+#[tauri::command]
+fn clipboard_history_paste(app: tauri::AppHandle, state: State<AppState>, id: String) -> Result<(), String> {
+    let text = state.clipboard.item_text(&id)?;
+    clipboard_ui::hide_history_window(&app);
+    // Give the previously focused app a beat to become key again so
+    // System Events / CGEvent Cmd+V lands there, not in our panel.
+    std::thread::sleep(std::time::Duration::from_millis(160));
+    mabel_lib::paste::paste_text(&text)
+}
+
+#[tauri::command]
+fn show_clipboard_history(app: tauri::AppHandle) -> Result<(), String> {
+    clipboard_ui::show_history_window(&app)
 }
 
 #[tauri::command]
@@ -762,6 +813,7 @@ fn main() {
     let initial_cleanup_mode = settings.cleanup_mode.clone();
     let initial_llm_model = settings.llm_model.clone();
     let initial_companion_enabled = settings.companion_enabled;
+    let clipboard = clipboard_history::Service::new(app_dir.clone(), settings.clipboard_history_enabled);
 
     tauri::Builder::default()
         // Single-instance MUST be the first plugin registered. When a second
@@ -788,6 +840,7 @@ fn main() {
             app_dir: app_dir.clone(),
             stats,
             llm_server: llm_server.clone(),
+            clipboard: clipboard.clone(),
         })
         .invoke_handler(tauri::generate_handler![
             get_settings,
@@ -839,6 +892,11 @@ fn main() {
             transforms_save,
             scratchpad_get,
             scratchpad_save,
+            clipboard_history_list,
+            clipboard_history_set_enabled,
+            clipboard_history_clear,
+            clipboard_history_paste,
+            show_clipboard_history,
         ])
         .setup(move |app| {
             storekit::attach(app.handle().clone());
@@ -977,6 +1035,11 @@ fn main() {
             // scheduler itself respects companion_enabled.
             let _ = initial_companion_enabled; // kept for symmetry / future use
             mabel_lib::companion::spawn_scheduler(handle.clone(), settings_handle.clone());
+
+            if let Err(e) = clipboard_ui::install_tray(&handle) {
+                eprintln!("[Mabel] status item failed: {e}");
+            }
+            clipboard_ui::spawn_poller(handle.clone(), clipboard.clone());
 
             Ok(())
         })

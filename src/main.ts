@@ -28,6 +28,7 @@ interface Settings {
   lastSeenVersion: string;
   whisperLanguage: string;
   dictionary: string[];
+  clipboardHistoryEnabled: boolean;
 }
 
 interface VersionInfo {
@@ -374,6 +375,7 @@ async function loadSettings() {
   applyCompanionUi();
   setSwitch(soundsToggle, currentSettings.dictationSounds);
   setSwitch(pressEnterToggle, currentSettings.pressEnterCommand);
+  setSwitch(clipboardHistoryToggle, !!currentSettings.clipboardHistoryEnabled);
 
   const formatted = formatHotkey(currentSettings.hotkey);
   hotkeyText.textContent = formatted;
@@ -785,6 +787,9 @@ const companionSizeSelect = $<HTMLSelectElement>("companion-size-select");
 const companionFrequencySelect = $<HTMLSelectElement>("companion-frequency-select");
 const companionVisitSelect = $<HTMLSelectElement>("companion-visit-select");
 const companionTestBtn = $<HTMLButtonElement>("companion-test-btn");
+const clipboardHistoryToggle = $<HTMLButtonElement>("clipboard-history-toggle");
+const clipboardHistoryClear = $<HTMLButtonElement>("clipboard-history-clear");
+const clipboardHistoryOpen = $<HTMLButtonElement>("clipboard-history-open");
 
 function applyCompanionUi() {
   const on = companionToggle.getAttribute("aria-checked") === "true";
@@ -857,6 +862,37 @@ for (const sel of [companionSizeSelect, companionFrequencySelect, companionVisit
 companionTestBtn.addEventListener("click", () => {
   invoke("companion_visit_now").catch((e) => console.error("companion test:", e));
 });
+
+clipboardHistoryToggle.addEventListener("click", async () => {
+  const next = clipboardHistoryToggle.getAttribute("aria-checked") !== "true";
+  setSwitch(clipboardHistoryToggle, next);
+  currentSettings.clipboardHistoryEnabled = next;
+  try {
+    await invoke("clipboard_history_set_enabled", { enabled: next });
+  } catch (e) {
+    console.error("clipboard_history_set_enabled:", e);
+    setSwitch(clipboardHistoryToggle, !next);
+    currentSettings.clipboardHistoryEnabled = !next;
+  }
+});
+
+clipboardHistoryClear.addEventListener("click", () => {
+  invoke("clipboard_history_clear").catch((e) => console.error("clipboard_history_clear:", e));
+});
+
+clipboardHistoryOpen.addEventListener("click", () => {
+  invoke("show_clipboard_history").catch((e) => console.error("show_clipboard_history:", e));
+});
+
+listen("clipboard-history-updated", async () => {
+  try {
+    const list = await invoke<{ enabled: boolean }>("clipboard_history_list");
+    currentSettings.clipboardHistoryEnabled = list.enabled;
+    setSwitch(clipboardHistoryToggle, list.enabled);
+  } catch (e) {
+    console.error("clipboard-history-updated:", e);
+  }
+}).catch((e) => console.error("listen clipboard-history-updated:", e));
 
 function formatHotkey(accelerator: string): string {
   return accelerator.replace("CmdOrCtrl", "Cmd");

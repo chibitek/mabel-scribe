@@ -8,12 +8,13 @@
 //! Snippets/Style/Transforms/Polish/Clipboard; Free dictate no Stiki;
 //! sign-out locks Insights until Stiki again.
 //!
-//! BREAKS IF: Insights without dual gate
+//! BREAKS IF: without dual gate
 //! BREAKS IF: cloud analytics
 //! BREAKS IF: cross-device sync
 //! BREAKS IF: Nexus write
 //! BREAKS IF: Free dictate gated
 //! BREAKS IF: HIPAA
+//! BREAKS IF: Insights without dual gate
 //! BREAKS IF: Insights MCP source/sink v1
 //! BREAKS IF: sign-out leaves Insights unlocked
 //! HELD: cloud sync + team/company dashboards until MCS with Stiki/folder-style
@@ -28,10 +29,13 @@ use crate::storekit;
 pub const ENFORCER_SUITE: &str = "b6530197";
 
 /// Named Enforcer BOUND. `enforcer_bound_insights_v1_suite_*` tests fold this.
-pub const ENFORCER_BOUND: &str = "CONFIRMED Suite b6530197; StoreKit Pro + Stiki dual gate; local-only stats / usage insights on this Mac; dictation counts, streaks, time-saved style; Insights NOT MCP source/sink v1; Insights v1 CONFIRMED local-only; no cloud/team/Nexus/Mochii auto-push; no cloud sync; no team/company dashboards; no Nexus/SIEM write; no third-party analytics vendor; no HIPAA/BAA; distinct Scratchpad/Dictionary/Snippets/Style/Transforms/Polish/Clipboard; Free dictate no Stiki; sign-out locks Insights";
+pub const ENFORCER_BOUND: &str = "CONFIRMED Suite b6530197; StoreKit Pro + Stiki dual gate; local-only stats / usage insights on this Mac; dictation counts, streaks, time-saved style; Insights NOT MCP source/sink v1; Insights v1 CONFIRMED local-only; no cloud/team/Nexus/Mochii auto-push; no cloud sync; no team/company dashboards; no Nexus/SIEM write; no third-party analytics vendor; no HIPAA/BAA; distinct Scratchpad/Dictionary/Snippets/Style/Transforms/Polish/Clipboard; Free dictate no Stiki; sign-out locks Insights; BREAKS IF: without dual gate; cloud analytics; cross-device sync; Nexus write; Free dictate gated; HIPAA";
 
 /// Product LOCK Insights v1 + Sign-on. Tests fail if the surface drifts.
-pub const PRODUCT_LOCK: &str = "Name: Insights; Pro catalog #6 LAST after Scratchpad (Dictionary → Snippets → Style → Transforms → Scratchpad → Insights); Pro surface requires StoreKit Pro AND Stiki session; Free locked + Activate Pro / Sign in with Stiki; local-only stats / usage insights on this Mac (dictation counts, streaks, time-saved style); Settings + sidebar/nav + menu bar; local-first; not Nexus; not Mochii; not MCP source/sink v1; not cloud sync v1; no team/company dashboards; no third-party analytics vendor; distinct from Scratchpad (notes), Dictionary (spelling), Snippets (trigger→expansion), Style (Formal|Casual|Very casual register), Transforms (Email|Bullet points|Make shorter|Make clearer), Polish (Off|Casual|Professional|Polite Gemma tone rewrite), and Clipboard History; non-goals: MCP source/sink, cloud write, cross-device sync, Nexus/SIEM write, HIPAA, Notetaker";
+pub const PRODUCT_LOCK: &str = "Name: Insights; Pro catalog #6 LAST after Scratchpad (Dictionary → Snippets → Style → Transforms → Scratchpad → Insights); Pro surface requires StoreKit Pro AND Stiki session; Free locked + Activate Pro / Sign in with Stiki; local-only stats / usage insights on this Mac (dictation counts, streaks, time-saved style); Settings + sidebar/nav + menu bar; local-first; not Nexus; not Mochii; not MCP source/sink v1; not cloud sync v1; no team/company dashboards; no third-party analytics vendor; distinct from Scratchpad (notes), Dictionary (spelling), Snippets (trigger→expansion), Style (Formal|Casual|Very casual register), Transforms (Email|Bullet points|Make shorter|Make clearer), Polish (Off|Casual|Professional|Polite Gemma tone rewrite), and Clipboard History; non-goals: MCP source/sink, cloud write, cross-device sync, Nexus/SIEM write, HIPAA, Notetaker; BREAKS IF: without dual gate; cloud analytics; cross-device sync; Nexus write; Free dictate gated; HIPAA";
+
+/// Product LOCK + Enforcer BOUND dual-clear. Named suite tests fold this.
+pub const BREAKS_IF: &str = "BREAKS IF: without dual gate; cloud analytics; cross-device sync; Nexus write; Free dictate gated; HIPAA";
 
 /// Held. A later MCS must flip this only with Stiki/folder-style ACL.
 pub const STIKI_FOLDER_ACL_SHIPPED: bool = false;
@@ -131,7 +135,7 @@ pub fn export_to_captures(summary: &str) -> Result<(), String> {
     connectors::export_insights_to_captures(summary)
 }
 
-/// BREAKS IF: a third-party analytics vendor ships.
+/// BREAKS IF: cloud analytics / a third-party analytics vendor ships.
 pub fn send_to_vendor(_summary: &str) -> Result<(), String> {
     Err(VENDOR_BLOCKED.into())
 }
@@ -379,6 +383,34 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("distinct Scratchpad/Dictionary/Snippets/Style/Transforms/Polish/Clipboard"));
         assert!(ENFORCER_BOUND.contains("Free dictate no Stiki"));
         assert!(ENFORCER_BOUND.contains("sign-out locks Insights"));
+        assert_product_and_enforcer_breaks_if();
+    }
+
+    fn assert_product_and_enforcer_breaks_if() {
+        assert_eq!(
+            BREAKS_IF,
+            "BREAKS IF: without dual gate; cloud analytics; cross-device sync; Nexus write; Free dictate gated; HIPAA"
+        );
+        for hay in [BREAKS_IF, ENFORCER_BOUND, PRODUCT_LOCK] {
+            assert!(hay.contains("BREAKS IF: without dual gate"), "BREAKS IF: without dual gate");
+            assert!(hay.contains("cloud analytics"), "BREAKS IF: cloud analytics");
+            assert!(hay.contains("cross-device sync"), "BREAKS IF: cross-device sync");
+            assert!(hay.contains("Nexus write"), "BREAKS IF: Nexus write");
+            assert!(hay.contains("Free dictate gated"), "BREAKS IF: Free dictate gated");
+            assert!(hay.contains("HIPAA"), "BREAKS IF: HIPAA");
+        }
+        let src = include_str!("insights.rs");
+        assert!(src.contains("BREAKS IF: without dual gate"));
+        assert!(src.contains("BREAKS IF: cloud analytics"));
+        assert!(src.contains("BREAKS IF: cross-device sync"));
+        assert!(src.contains("BREAKS IF: Nexus write"));
+        assert!(src.contains("BREAKS IF: Free dictate gated"));
+        assert!(src.contains("BREAKS IF: HIPAA"));
+        assert!(
+            include_str!("../../docs/features-and-bugs.md").contains(
+                "BREAKS IF: without dual gate; cloud analytics; cross-device sync; Nexus write; Free dictate gated; HIPAA"
+            )
+        );
     }
 
     #[test]
@@ -398,6 +430,7 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("sign-out locks Insights"));
         assert!(ENFORCER_BOUND.contains("no HIPAA/BAA"));
         assert!(ENFORCER_BOUND.contains("Free dictate no Stiki"));
+        assert_product_and_enforcer_breaks_if();
 
         assert!(
             require_surface_with(true, false).is_err(),
@@ -478,6 +511,7 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("sign-out locks Insights"));
         assert!(ENFORCER_BOUND.contains("no HIPAA/BAA"));
         assert!(ENFORCER_BOUND.contains("Free dictate no Stiki"));
+        assert_product_and_enforcer_breaks_if();
 
         let html = include_str!("../../index.html");
         let nav = html
@@ -748,7 +782,36 @@ mod tests {
     }
 
     #[test]
+    fn breaks_if_cloud_analytics() {
+        assert!(send_to_vendor("counts").is_err(), "BREAKS IF: cloud analytics");
+        assert!(share_cloud_or_team().is_err(), "BREAKS IF: cloud analytics");
+        assert!(BREAKS_IF.contains("cloud analytics"), "BREAKS IF: cloud analytics");
+    }
+
+    #[test]
+    fn breaks_if_cross_device_sync() {
+        assert!(share_cloud_or_team().is_err(), "BREAKS IF: cross-device sync");
+        assert!(export_to_captures("counts").is_err(), "BREAKS IF: cross-device sync");
+        let ins_prod = include_str!("insights.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .expect("insights prod");
+        let stats_prod = include_str!("stats.rs")
+            .split("#[cfg(test)]")
+            .next()
+            .expect("stats prod");
+        for hay in [ins_prod, stats_prod] {
+            let low = hay.to_ascii_lowercase();
+            assert!(!low.contains("icloud"), "BREAKS IF: cross-device sync");
+            assert!(!low.contains("cloudkit"), "BREAKS IF: cross-device sync");
+            assert!(!low.contains("ubiquitous"), "BREAKS IF: cross-device sync");
+        }
+        assert!(BREAKS_IF.contains("cross-device sync"), "BREAKS IF: cross-device sync");
+    }
+
+    #[test]
     fn breaks_if_third_party_analytics_vendor() {
+        assert!(send_to_vendor("counts").is_err(), "BREAKS IF: cloud analytics");
         assert!(send_to_vendor("counts").is_err(), "BREAKS IF: third-party analytics vendor");
         let ins_prod = include_str!("insights.rs")
             .split("#[cfg(test)]")
@@ -791,6 +854,7 @@ mod tests {
         assert!(PRODUCT_LOCK.contains("Off|Casual|Professional|Polite"));
         assert!(PRODUCT_LOCK.contains("HIPAA"));
         assert!(PRODUCT_LOCK.contains("Notetaker"));
+        assert_product_and_enforcer_breaks_if();
 
         let html = include_str!("../../index.html");
         let ts = include_str!("../../src/main.ts");

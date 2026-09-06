@@ -714,6 +714,12 @@ mod tests {
         assert!(include_str!("insights.rs").contains("Insights NOT MCP source/sink v1"));
         assert!(include_str!("insights.rs").contains("Insights v1 CONFIRMED local-only"));
         assert!(include_str!("insights.rs").contains("no cloud/team/Nexus/Mochii auto-push"));
+        assert!(include_str!("insights.rs").contains("BREAKS IF: without dual gate"));
+        assert!(include_str!("insights.rs").contains("BREAKS IF: cloud analytics"));
+        assert!(include_str!("insights.rs").contains("BREAKS IF: cross-device sync"));
+        assert!(include_str!("insights.rs").contains("BREAKS IF: Nexus write"));
+        assert!(include_str!("insights.rs").contains("BREAKS IF: Free dictate gated"));
+        assert!(include_str!("insights.rs").contains("BREAKS IF: HIPAA"));
         assert!(SIGN_ON_BOUND.contains("not Connectors-only"));
         assert!(SIGN_ON_BOUND.contains("StoreKit ≠ Stiki"));
         assert!(SIGN_ON_BOUND.contains("neither substitutes"));

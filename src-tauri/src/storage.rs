@@ -772,6 +772,12 @@ mod tests {
         assert!(ins.contains("Free dictate no Stiki"));
         assert!(ins.contains("fail-closed"));
         assert!(ins.contains("enforcer_bound_insights_v1_suite_b6530197"));
+        assert!(ins.contains("BREAKS IF: without dual gate"));
+        assert!(ins.contains("BREAKS IF: cloud analytics"));
+        assert!(ins.contains("BREAKS IF: cross-device sync"));
+        assert!(ins.contains("BREAKS IF: Nexus write"));
+        assert!(ins.contains("BREAKS IF: Free dictate gated"));
+        assert!(ins.contains("BREAKS IF: HIPAA"));
     }
 
     #[cfg(unix)]

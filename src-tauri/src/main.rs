@@ -311,6 +311,7 @@ fn save_settings(app: tauri::AppHandle, state: State<AppState>, settings: Settin
 
 #[tauri::command]
 fn polish_set(app: tauri::AppHandle, state: State<AppState>, mode: String) -> Result<String, String> {
+    // Enforcer BOUND: Polish only. Do not write the clipboard opt-in or a Nexus store.
     let mode = mabel_lib::polish::require_mode_allowed(&mode)?;
     {
         let mut held = state.settings.lock().unwrap();

@@ -114,6 +114,7 @@ fn apply_polish_from_tray(app: &AppHandle, mode: &str) {
 
 #[cfg(target_os = "macos")]
 fn persist_polish(app: &AppHandle, mode: &str) -> Result<String, String> {
+    // Enforcer BOUND: Polish only. Do not write the clipboard opt-in or a Nexus store.
     let mode = polish::require_mode_allowed(mode)?;
     let Some(state) = app.try_state::<crate::AppState>() else {
         return Err("app state unavailable".into());

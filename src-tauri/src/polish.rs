@@ -1,19 +1,22 @@
-//! Product **Polish** — Enforcer / Product LOCK.
+//! Product **Polish** — Enforcer BOUND (fold hard).
 //!
-//! - Surface: Polish. Pro only. Free is locked / upsell (Settings → Plans).
-//!   No silent Pro path: live modes fail `require_pro` at persist and
-//!   fail-close to Off at runtime without a live StoreKit entitlement.
-//! - Toggle on/off. Default OFF.
-//! - Modes: Off | Casual | Professional | Polite.
-//! - Runs after ASR on the existing local Gemma / llama-runtime path.
-//! - Autocorrect + light reword only. Never invent facts. Never expand
-//!   meaning. Never send this step off-device (loopback llama-server only).
-//! - Local only. Not Nexus. Not company memory. Coach cannot rewrite
-//!   user dictation via this path. Distinct from any future Nexus polish
-//!   toggle — do not merge those settings.
-//! - Keep cat UI / companion energy. No website upgrade.
+//! - default OFF
+//! - local Gemma fail closed (loopback llama-server; Err → rules, never
+//!   paste contaminated model text)
+//! - never invent
+//! - not Nexus write
+//! - distinct from clipboard toggles (`clipboardHistoryEnabled` ≠ Polish)
+//!
+//! BREAKS IF: default ON / cloud / invent / Nexus write
+//!
+//! Product LOCK still applies: Pro only, modes Off|Casual|Professional|Polite,
+//! after ASR, autocorrect + light reword, cat UI, no website upgrade.
 
 use crate::storekit;
+
+/// Named Enforcer BOUND. `enforcer_bound_*` tests fail if this is violated.
+pub const ENFORCER_BOUND: &str =
+    "default OFF; local Gemma fail closed; never invent; not Nexus write; clipboardHistoryEnabled != Polish";
 
 pub const MODE_OFF: &str = "off";
 pub const MODE_CASUAL: &str = "casual";
@@ -89,6 +92,27 @@ pub fn system_prompt(mode: &str) -> String {
         _ => CASUAL_REGISTER,
     };
     format!("{NEVER_INVENT}\n\n{register}")
+}
+
+/// Fail closed on invented / expanded Gemma output.
+///
+/// Caller treats Err as "use the rules pass" — never paste the model text.
+pub fn accept_or_fail_closed(input: &str, output: &str) -> Result<String, String> {
+    let cleaned = output.trim();
+    if cleaned.is_empty() {
+        return Err("Polish output empty after sanitization (fail closed)".into());
+    }
+    let input_chars = input.trim().chars().count() as f32;
+    let out_chars = cleaned.chars().count() as f32;
+    // A real autocorrect / light reword stays near input length. >2.5x on a
+    // 20+ char utterance is invention, reasoning leak, or meaning expansion.
+    if input_chars >= 20.0 && out_chars > input_chars * 2.5 {
+        return Err(format!(
+            "Polish output too long ({} chars vs {} input chars), fail closed (never invent)",
+            out_chars as usize, input_chars as usize
+        ));
+    }
+    Ok(cleaned.to_string())
 }
 
 /// Menu / Settings labels. Keep cat energy without turning this into a website.
@@ -219,6 +243,105 @@ mod tests {
         let stream = include_str!("streaming.rs");
         assert!(stream.contains("effective_mode"));
         assert!(stream.contains("cleanup_with_llm_mode"));
+    }
+
+    #[test]
+    fn invented_expansion_fails_closed() {
+        let ok = accept_or_fail_closed("Hello there friend.", "Hello there, friend.");
+        assert_eq!(ok.unwrap(), "Hello there, friend.");
+        let long = "x".repeat(200);
+        assert!(
+            accept_or_fail_closed("hello world this is spoken text", &long).is_err(),
+            "BREAKS IF: invent (expanded output accepted)"
+        );
+        assert!(accept_or_fail_closed("hello", "   ").is_err());
+    }
+
+    #[test]
+    fn enforcer_bound_breaks_if_default_on_cloud_invent_or_nexus_write() {
+        assert!(ENFORCER_BOUND.contains("default OFF"));
+        assert!(ENFORCER_BOUND.contains("never invent"));
+        assert!(ENFORCER_BOUND.contains("not Nexus write"));
+        assert!(ENFORCER_BOUND.contains("clipboardHistoryEnabled != Polish"));
+
+        // BREAKS IF: default ON
+        assert_eq!(default_mode(), MODE_OFF, "BREAKS IF: default ON");
+        assert!(!is_live(&default_mode()), "BREAKS IF: default ON");
+        let settings = crate::settings::Settings::default();
+        assert_eq!(settings.polish_mode, MODE_OFF, "BREAKS IF: default ON");
+        assert!(
+            !settings.clipboard_history_enabled,
+            "clipboard stays independently off"
+        );
+        let html = include_str!("../../index.html");
+        let toggle = html
+            .split("id=\"polish-toggle\"")
+            .nth(1)
+            .expect("polish toggle");
+        let toggle = toggle.split("</button>").next().unwrap();
+        assert!(
+            toggle.contains("aria-checked=\"false\""),
+            "BREAKS IF: default ON"
+        );
+
+        // BREAKS IF: cloud
+        let llm = include_str!("llm.rs");
+        assert!(llm.contains("http://127.0.0.1:{}/v1/chat/completions"));
+        let polish_fn = llm.split("pub async fn polish_or_rules").nth(1).unwrap();
+        let polish_fn = polish_fn.split("pub async fn ensure_and_cleanup").next().unwrap();
+        assert!(!polish_fn.contains("groq"), "BREAKS IF: cloud");
+        assert!(!polish_fn.contains("api.groq.com"), "BREAKS IF: cloud");
+        assert!(
+            !polish_fn.contains("https://"),
+            "BREAKS IF: cloud"
+        );
+
+        // BREAKS IF: invent
+        for mode in [MODE_CASUAL, MODE_PROFESSIONAL, MODE_POLITE] {
+            let prompt = system_prompt(mode);
+            assert!(prompt.contains("Never invent facts"), "BREAKS IF: invent");
+            assert!(prompt.contains("Never expand meaning"), "BREAKS IF: invent");
+        }
+        assert!(llm.contains("accept_or_fail_closed"), "BREAKS IF: invent");
+
+        // BREAKS IF: Nexus write
+        let main = include_str!("main.rs");
+        let polish_set = main.split("fn polish_set").nth(1).unwrap();
+        let polish_set = polish_set.split("fn refresh_status_item").next().unwrap();
+        assert!(polish_set.contains("polish_mode"));
+        assert!(
+            !polish_set.contains("clipboard_history"),
+            "BREAKS IF: clipboard toggle merged with Polish"
+        );
+        assert!(
+            !polish_set.contains("clipboardHistory"),
+            "BREAKS IF: clipboard toggle merged with Polish"
+        );
+        let nexus_write = format!("{}{}", "nexus", "_write");
+        assert!(!polish_set.contains(&nexus_write), "BREAKS IF: Nexus write");
+        assert!(!main.contains(&nexus_write), "BREAKS IF: Nexus write");
+        assert!(!llm.contains(&nexus_write), "BREAKS IF: Nexus write");
+    }
+
+    #[test]
+    fn enforcer_bound_clipboard_toggle_is_not_polish() {
+        let settings_src = include_str!("settings.rs");
+        assert!(settings_src.contains("clipboardHistoryEnabled"));
+        assert!(settings_src.contains("polishMode"));
+        assert!(settings_src.contains("Distinct from `clipboardHistoryEnabled`"));
+        assert_ne!(
+            "clipboardHistoryEnabled", "polishMode",
+            "BREAKS IF: clipboardHistoryEnabled == Polish"
+        );
+        let html = include_str!("../../index.html");
+        assert!(html.contains("id=\"polish-toggle\""));
+        assert!(html.contains("id=\"clipboard-history-toggle\""));
+        assert_ne!("polish-toggle", "clipboard-history-toggle");
+        let ts = include_str!("../../src/main.ts");
+        let persist = ts.split("async function persistPolishMode").nth(1).unwrap();
+        let persist = persist.split("polishToggle.addEventListener").next().unwrap();
+        assert!(!persist.contains("clipboardHistoryEnabled"));
+        assert!(!persist.contains("clipboard_history"));
     }
 
     #[test]

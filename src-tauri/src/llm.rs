@@ -452,22 +452,8 @@ pub async fn cleanup_with_llm_mode(text: &str, polish_mode: &str) -> Result<Stri
         .ok_or_else(|| "LLM response had no choices".to_string())?;
 
     let cleaned = extract_clean_or_fail(&raw)?;
-
-    // Length ratio sanity check. A real cleanup pass should produce text that's
-    // roughly the same size as the input — filler removal trims a bit, adding
-    // articles/punctuation adds a bit. If the model returned something more
-    // than ~2.5x the input length, it's almost certainly hallucinating
-    // reasoning, restating the rules, or otherwise going off task.
-    let input_chars = trimmed.chars().count() as f32;
-    let out_chars = cleaned.chars().count() as f32;
-    if input_chars >= 20.0 && out_chars > input_chars * 2.5 {
-        return Err(format!(
-            "LLM output too long ({} chars vs {} input chars), likely reasoning leak",
-            out_chars as usize, input_chars as usize
-        ));
-    }
-
-    Ok(cleaned)
+    // Enforcer BOUND: local Gemma fail closed / never invent.
+    crate::polish::accept_or_fail_closed(trimmed, &cleaned)
 }
 
 /// Sanitizes the raw LLM output and returns the cleaned transcript, or an

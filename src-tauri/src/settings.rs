@@ -43,6 +43,7 @@ pub struct Settings {
     pub llm_model: String,
     /// Product Polish: "off" | "casual" | "professional" | "polite".
     /// Default off. Live modes are Pro-only and drive the local Gemma path.
+    /// Distinct from `clipboardHistoryEnabled` — do not merge those toggles.
     /// Local only — not Nexus / company memory. Coach cannot rewrite
     /// dictation via this setting. Do not merge with a future Nexus polish toggle.
     #[serde(rename = "polishMode", default = "crate::polish::default_mode")]
@@ -348,7 +349,12 @@ mod tests {
         );
         assert_eq!(
             settings.polish_mode, "off",
-            "Polish must default Off"
+            "BREAKS IF: default ON"
+        );
+        assert_ne!(
+            settings.polish_mode.as_str(),
+            if settings.clipboard_history_enabled { "on" } else { "clipboard" },
+            "clipboardHistoryEnabled is not Polish"
         );
     }
 

@@ -104,6 +104,14 @@ pub fn open_accessibility_settings() {
         .spawn();
 }
 
+/// Open System Settings to the Microphone privacy pane. Used when TCC is
+/// denied so the user can flip the Mabel toggle without hunting for it.
+pub fn open_microphone_settings() {
+    let _ = std::process::Command::new("open")
+        .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")
+        .spawn();
+}
+
 /// Play a short macOS system sound. Spawns afplay so the call doesn't block
 /// the recording state machine. Errors are intentionally swallowed; sound is
 /// cosmetic.

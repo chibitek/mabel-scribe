@@ -10,8 +10,10 @@
 
   Phase B default (in-process Parakeet / WhisperKit) does not need
   disable-library-validation or allow-unsigned-executable-memory.
-  The app is still NOT claimed MAS-ready: WebKit JIT, llama-server,
-  sandbox paste, and store signing are unfinished. Do not upload.
+  temporary-exception.apple-events for com.apple.systemevents is required
+  so sandboxed paste (osascript → System Events) is not silently blocked.
+  CIO must keep device.audio-input on the signed TF binary — dropping it
+  makes TCC deny the mic with no prompt and a silent capture.
   Bundle id stays com.mabel.app. Price: free. Category: Productivity.
 -->
 <plist version="1.0">
@@ -24,6 +26,10 @@
     <true/>
     <key>com.apple.security.automation.apple-events</key>
     <true/>
+    <key>com.apple.security.temporary-exception.apple-events</key>
+    <array>
+        <string>com.apple.systemevents</string>
+    </array>
     <key>com.apple.security.files.user-selected.read-write</key>
     <true/>
 </dict>

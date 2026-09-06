@@ -77,6 +77,19 @@ fn main() {
     println!("cargo:rerun-if-changed=../.git/HEAD");
     println!("cargo:rerun-if-changed=../.git/index");
 
+    compile_mic_permission();
     try_link_native_asr();
     tauri_build::build()
+}
+
+fn compile_mic_permission() {
+    println!("cargo:rerun-if-changed=src/mic_permission.m");
+    if std::env::var("CARGO_CFG_TARGET_OS").ok().as_deref() != Some("macos") {
+        return;
+    }
+    cc::Build::new()
+        .file("src/mic_permission.m")
+        .compile("mabel_mic_permission");
+    println!("cargo:rustc-link-lib=framework=AVFoundation");
+    println!("cargo:rustc-link-lib=framework=Foundation");
 }

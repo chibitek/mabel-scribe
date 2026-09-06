@@ -29,6 +29,7 @@ body {
 .pill[data-state="ready"] { opacity: 0; transform: translateY(-6px); pointer-events: none; }
 .pill[data-state="recording"] { opacity: 1; transform: translateY(0); }
 .pill[data-state="transcribing"] { opacity: 1; transform: translateY(0); background: #F0E5CC; color: #8C6B2F; }
+.pill[data-state="error"] { opacity: 1; transform: translateY(0); background: #F3D0C8; color: #9A3B32; }
 
 .label {
   font-size: 13px;
@@ -65,3 +66,4 @@ svg.matrix { display: block; }
 .stop-btn:hover { background: rgba(184, 90, 58, 0.12); }
 .stop-btn svg { width: 11px; height: 11px; }
 .pill[data-state="transcribing"] .stop-btn { opacity: 0.4; pointer-events: none; }
+.pill[data-state="error"] .stop-btn { display: none; }

@@ -7,6 +7,7 @@ use tauri_plugin_autostart::{ManagerExt as AutostartManagerExt, MacosLauncher};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutEvent, ShortcutState};
 
 use mabel_lib::audio;
+use mabel_lib::dictation_error;
 use mabel_lib::downloader;
 use mabel_lib::llm::LlmServer;
 use mabel_lib::recorder::{Recorder, RecordingState};
@@ -423,7 +424,10 @@ fn build_shortcut_handler(
                                 };
                                 match state.recorder.start_recording(&handle, &mic, &settings, &state.app_dir) {
                                     Ok(_) => println!("[Mabel] Recording started"),
-                                    Err(e) => eprintln!("[Mabel] Start recording error: {}", e),
+                                    Err(e) => {
+                                        eprintln!("[Mabel] Start recording error: {}", e.message);
+                                        dictation_error::emit(&handle, &e);
+                                    }
                                 }
                             }
                         }
@@ -482,7 +486,13 @@ async fn do_toggle_recording(
                 "[Mabel] Starting recording (mic={}, engine={}, local={}, model={}, lang={})",
                 mic, settings.engine, settings.local_engine, settings.whisper_model, settings.whisper_language
             );
-            state.recorder.start_recording(app, &mic, &settings, &state.app_dir)?;
+            if let Err(err) = state
+                .recorder
+                .start_recording(app, &mic, &settings, &state.app_dir)
+            {
+                dictation_error::emit(app, &err);
+                return Err(err.message);
+            }
             mabel_lib::debug_log::append(&state.app_dir, "recording started successfully");
             println!("[Mabel] Recording started successfully");
             Ok("recording".to_string())

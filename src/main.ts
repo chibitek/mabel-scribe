@@ -841,12 +841,20 @@ listen<string>("recording-state", (event) => {
   lastRecordingState = state;
 });
 
-listen<string>("transcription-error", (event) => {
-  const msg = event.payload || "Unknown transcription error";
+listen<string | { title?: string; message?: string }>("transcription-error", (event) => {
+  const payload = event.payload;
+  const title =
+    payload && typeof payload === "object" && payload.title
+      ? payload.title
+      : "Transcription failed";
+  const msg =
+    typeof payload === "string"
+      ? payload
+      : payload?.message || "Unknown transcription error";
   statusDot.className = "status-dot";
-  statusText.textContent = "Transcription failed";
-  console.error("transcription-error:", msg);
-  alert(`Transcription failed: ${msg}`);
+  statusText.textContent = title;
+  console.error("transcription-error:", title, msg);
+  alert(`${title}: ${msg}`);
 });
 
 listen<DownloadProgress>("download-progress", (event) => {

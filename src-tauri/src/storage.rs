@@ -650,6 +650,11 @@ mod tests {
         assert!(connectors.contains("Sign in with Stiki before MCP"));
         assert!(connectors.contains("SIGN_ON_BOUND"));
         assert!(connectors.contains("b6530197"));
+        assert!(
+            connectors.contains("Transforms requires Stiki + StoreKit"),
+            "BREAKS IF: Transforms not folded into Sign-on BOUND"
+        );
+        assert!(connectors.contains("enforcer_bound_transforms_v1_suite_b6530197"));
         let stiki = include_str!("stiki.rs");
         assert!(stiki.contains("SESSION_FILE"));
         assert!(stiki.contains("sign_in"));
@@ -704,7 +709,9 @@ mod tests {
         assert!(xf.contains("never invent facts"));
         assert!(xf.contains("local-only"));
         assert!(xf.contains("sign-out locks Transforms"));
+        assert!(xf.contains("distinct Style/Polish"));
         assert!(xf.contains("distinct Style/Polish/Snippets/Dictionary/Clipboard"));
+        assert!(xf.contains("no cloud sync"));
         assert!(xf.contains("no Nexus/SIEM write"));
         assert!(xf.contains("no auto-promote"));
         assert!(xf.contains("no HIPAA/BAA"));

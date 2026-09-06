@@ -38,7 +38,7 @@ use crate::stiki;
 use crate::storekit;
 
 /// Named Enforcer BOUND. `enforcer_bound_*` tests fail if this is violated.
-pub const ENFORCER_BOUND: &str = "explicit user connect Mochii+Nexus MCP only; Sign in with Stiki before MCP; Stiki KYC + Suite ACL fail closed; Scratchpad NOT MCP source/sink v1; no silent ASR/Polish/Scratchpad/history/clipboard auto-push; no default always-on; no cookie auto-reconnect; no HIPAA/BAA; no silent Stiki bootstrap; cross-market Stiki session is identity only; SSO ≠ MCP connected; Stiki required for ALL Pro unlocks; not Connectors-only; StoreKit ≠ Stiki; Dictionary and Insights require Stiki + StoreKit; Style requires Stiki + StoreKit; Free dictation no Stiki; Clipboard Free 25 no Stiki";
+pub const ENFORCER_BOUND: &str = "explicit user connect Mochii+Nexus MCP only; Sign in with Stiki before MCP; Stiki KYC + Suite ACL fail closed; Scratchpad NOT MCP source/sink v1; no silent ASR/Polish/Scratchpad/history/clipboard auto-push; no default always-on; no cookie auto-reconnect; no HIPAA/BAA; no silent Stiki bootstrap; cross-market Stiki session is identity only; SSO ≠ MCP connected; Stiki required for ALL Pro unlocks; not Connectors-only; StoreKit ≠ Stiki; Dictionary and Insights require Stiki + StoreKit; Style requires Stiki + StoreKit; Transforms requires Stiki + StoreKit; Free dictation no Stiki; Clipboard Free 25 no Stiki";
 
 /// Suite id for the canonical Sign-on BOUND tip.
 pub const SIGN_ON_SUITE: &str = "b6530197";
@@ -536,6 +536,7 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("StoreKit ≠ Stiki"));
         assert!(ENFORCER_BOUND.contains("Dictionary and Insights require Stiki + StoreKit"));
         assert!(ENFORCER_BOUND.contains("Style requires Stiki + StoreKit"));
+        assert!(ENFORCER_BOUND.contains("Transforms requires Stiki + StoreKit"));
         assert!(ENFORCER_BOUND.contains("Free dictation no Stiki"));
         assert!(ENFORCER_BOUND.contains("Clipboard Free 25 no Stiki"));
 
@@ -661,6 +662,7 @@ mod tests {
         assert!(SIGN_ON_BOUND.contains("sign-out disconnects MCP immediately"));
         assert!(SIGN_ON_BOUND.contains("Stiki required for ALL Pro unlocks"));
         assert!(SIGN_ON_BOUND.contains("Snippets/Style"));
+        assert!(SIGN_ON_BOUND.contains("Style/Scratchpad Pro/Transforms"));
         assert!(SIGN_ON_BOUND.contains("not Connectors-only"));
         assert!(SIGN_ON_BOUND.contains("StoreKit ≠ Stiki"));
         assert!(SIGN_ON_BOUND.contains("neither substitutes"));
@@ -800,6 +802,17 @@ mod tests {
                 && include_str!("style.rs").contains("ENFORCER_SUITE")
                 && include_str!("style.rs").contains("b6530197"),
             "BREAKS IF: Style usable without Stiki"
+        );
+        assert!(
+            html.contains("data-view=\"transforms\"") && html.contains("data-xf-gate"),
+            "BREAKS IF: Transforms usable without Stiki"
+        );
+        assert!(
+            include_str!("transforms.rs").contains("stiki_session")
+                && include_str!("transforms.rs").contains("ENFORCER_SUITE")
+                && include_str!("transforms.rs").contains("b6530197")
+                && include_str!("transforms.rs").contains("enforcer_bound_transforms_v1_suite_b6530197"),
+            "BREAKS IF: Transforms usable without Stiki"
         );
 
         // BREAKS IF: Pro surface usable without Stiki

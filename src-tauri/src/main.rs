@@ -229,12 +229,29 @@ fn snippets_promote() -> Result<(), String> {
 
 #[tauri::command]
 fn style_get(state: State<AppState>) -> Result<pro_features::StylePrefs, String> {
-    pro_features::style_get(&state.app_dir)
+    mabel_lib::style::require_prefs(&state.app_dir)
 }
 
 #[tauri::command]
-fn style_save(state: State<AppState>, prefs: pro_features::StylePrefs) -> Result<pro_features::StylePrefs, String> {
-    pro_features::style_save(&state.app_dir, prefs)
+fn style_set(state: State<AppState>, mode: String) -> Result<pro_features::StylePrefs, String> {
+    mabel_lib::style::set_mode(&state.app_dir, mode)
+}
+
+#[tauri::command]
+fn style_clear(state: State<AppState>) -> Result<pro_features::StylePrefs, String> {
+    mabel_lib::style::clear(&state.app_dir)
+}
+
+#[tauri::command]
+fn style_share() -> Result<(), String> {
+    // HELD: fail closed if Stiki/folder-style ACL is missing.
+    mabel_lib::style::share_cloud_or_team()
+}
+
+#[tauri::command]
+fn style_promote() -> Result<(), String> {
+    // BREAKS IF: private style auto-promotes to company memory.
+    mabel_lib::style::promote_to_company_memory()
 }
 
 #[tauri::command]
@@ -1128,7 +1145,10 @@ fn main() {
             snippets_share,
             snippets_promote,
             style_get,
-            style_save,
+            style_set,
+            style_clear,
+            style_share,
+            style_promote,
             transforms_get,
             transforms_save,
             scratchpad_get,

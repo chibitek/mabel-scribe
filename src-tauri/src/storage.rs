@@ -677,6 +677,23 @@ mod tests {
         assert!(snip.contains("Free dictate no Stiki"));
         assert!(snip.contains("distinct from Polish/Clipboard/Dictionary stores"));
         assert!(snip.contains("fail-closed"));
+        let style = include_str!("style.rs");
+        assert!(style.contains("ENFORCER_BOUND"));
+        assert!(style.contains("b6530197"));
+        assert!(style.contains("StoreKit Pro + Stiki dual gate"));
+        assert!(style.contains("Formal|Casual|Very casual"));
+        assert!(style.contains("default OFF/unset"));
+        assert!(style.contains("local-only"));
+        assert!(style.contains("sign-out locks Style"));
+        assert!(style.contains("distinct Polish"));
+        assert!(style.contains("no freeform casing prefs"));
+        assert!(style.contains("no Nexus/SIEM write"));
+        assert!(style.contains("no auto-promote"));
+        assert!(style.contains("no HIPAA/BAA"));
+        assert!(style.contains("Free dictate no Stiki"));
+        assert!(style.contains("distinct from Polish/Dictionary/Snippets stores"));
+        assert!(style.contains("fail-closed"));
+        assert!(style.contains("enforcer_bound_style_v1_suite_b6530197"));
     }
 
     #[cfg(unix)]

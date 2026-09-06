@@ -205,7 +205,8 @@ async fn transcribe_and_paste(
             };
             let cleaned = if is_final {
                 let after_dict = crate::dictionary::apply_replacements(&cleaned, &settings.dictionary);
-                crate::snippets::apply_expansions_for_dir(&after_dict, &app_dir)
+                let after_snip = crate::snippets::apply_expansions_for_dir(&after_dict, &app_dir);
+                crate::style::apply_register_for_dir(&after_snip, &app_dir)
             } else {
                 cleaned
             };

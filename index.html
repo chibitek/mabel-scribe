@@ -44,7 +44,7 @@
             Snippets
             <span class="lock-pill">Pro</span>
           </a>
-          <a class="nav-item locked" data-view="style">
+          <a class="nav-item locked" data-view="style" data-pro>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4h8M5.5 4v9M10.5 4v9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
             Style
             <span class="lock-pill">Pro</span>
@@ -285,41 +285,36 @@
           </div>
         </section>
         <section class="view" data-view="style">
-          <header class="view-header"><h1 class="view-title">Style</h1><p class="view-sub">Tone and formatting preferences. Stored on this Mac.</p></header>
-          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and Sign in with Stiki to set tone, casing, and punctuation rules. Free dictation does not need an account.</p><button type="button" class="btn-primary pro-activate">Unlock Pro</button></div>
-          <div class="pro-unlock hidden">
+          <header class="view-header"><h1 class="view-title">Style</h1><p class="view-sub">Pick Formal, Casual, or Very casual. She applies that register on this Mac during cleanup &mdash; not Polish, not Dictionary, not Snippets.</p></header>
+          <div class="card locked-card pro-lock" data-style-gate="lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and sign in with Stiki so Mabel can keep your Formal, Casual, or Very casual register locally, like a house cat who already knows how proper you meant to sound. Free dictation does not need an account.</p><div class="locked-actions"><button type="button" class="btn-primary pro-activate" id="style-pane-activate">Activate Pro</button><button type="button" class="btn-secondary" id="style-pane-stiki">Sign in with Stiki</button></div></div>
+          <div class="pro-unlock hidden" data-style-gate="unlock">
             <div class="card pane-card">
               <div class="row">
                 <div class="row-text">
-                  <div class="row-label">Tone</div>
-                  <div class="row-hint">How cleaned dictation should read.</div>
+                  <div class="row-label">Register</div>
+                  <div class="row-hint">Formal, Casual, or Very casual. Default is unset until you pick. Clear puts it back. Distinct from Polish tone rewrite (Off, Casual, Professional, Polite).</div>
                 </div>
-                <select id="style-tone" aria-label="Tone">
-                  <option value="default">Default</option>
-                  <option value="formal">Formal</option>
-                  <option value="casual">Casual</option>
-                </select>
+                <div class="seg" role="group" aria-label="Style register">
+                  <button type="button" class="seg-btn" data-style-mode="formal" id="style-mode-formal">Formal</button>
+                  <button type="button" class="seg-btn" data-style-mode="casual" id="style-mode-casual">Casual</button>
+                  <button type="button" class="seg-btn" data-style-mode="very-casual" id="style-mode-very-casual">Very casual</button>
+                </div>
               </div>
               <div class="row">
                 <div class="row-text">
-                  <div class="row-label">Casing</div>
-                  <div class="row-hint">Capitalization after a dictation.</div>
+                  <div class="row-label">Clear</div>
+                  <div class="row-hint">Remove the picked register. Cleanup stays local rules only until you pick again.</div>
                 </div>
-                <select id="style-casing" aria-label="Casing">
-                  <option value="as-said">As said</option>
-                  <option value="sentence">Sentence case</option>
-                  <option value="title">Title case</option>
-                </select>
+                <button type="button" id="style-clear-btn" class="btn-secondary">Clear</button>
               </div>
+              <div id="style-error" class="dict-error" hidden></div>
+            </div>
+            <div class="card pane-card">
               <div class="row">
                 <div class="row-text">
-                  <div class="row-label">Punctuation</div>
-                  <div class="row-hint">How aggressively to punctuate.</div>
+                  <div class="row-label">Privacy</div>
+                  <div class="row-hint">Style lives on this Mac. It is not uploaded, not Nexus memory, and not shared with a team. Cloud and team share stay off.</div>
                 </div>
-                <select id="style-punctuation" aria-label="Punctuation">
-                  <option value="auto">Auto</option>
-                  <option value="minimal">Minimal</option>
-                </select>
               </div>
             </div>
           </div>
@@ -810,6 +805,17 @@
                   <button type="button" class="btn-secondary hidden" id="snippets-open">Open Snippets</button>
                   <button type="button" class="btn-secondary" id="snippets-activate">Activate Pro</button>
                   <button type="button" class="btn-secondary" id="snippets-stiki">Sign in with Stiki</button>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Style</div>
+                  <div class="row-hint">Pro + Stiki. Formal, Casual, or Very casual register during cleanup. Local on this Mac &mdash; not Polish, not Dictionary, not Snippets. Menu bar → Style…</div>
+                </div>
+                <div class="row-actions">
+                  <button type="button" class="btn-secondary hidden" id="style-open">Open Style</button>
+                  <button type="button" class="btn-secondary" id="style-activate">Activate Pro</button>
+                  <button type="button" class="btn-secondary" id="style-stiki">Sign in with Stiki</button>
                 </div>
               </div>
               <div class="row">

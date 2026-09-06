@@ -523,7 +523,7 @@ mod tests {
         let html = include_str!("../../index.html");
         let engine = html
             .split("data-pane=\"engine\"")
-            .nth(1)
+            .last()
             .expect("engine pane");
         let engine = engine.split("data-pane=").next().unwrap();
         assert!(engine.contains("row-label\">Snippets"));

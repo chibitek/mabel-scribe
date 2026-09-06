@@ -6,10 +6,13 @@ use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::{ManagerExt as AutostartManagerExt, MacosLauncher};
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutEvent, ShortcutState};
+use tauri_plugin_shell::ShellExt;
 
 use mabel_lib::audio;
 use mabel_lib::clipboard_history;
+use mabel_lib::connectors;
 use mabel_lib::dictation_error;
+use mabel_lib::stiki;
 use mabel_lib::downloader;
 use mabel_lib::llm::LlmServer;
 use mabel_lib::recorder::{Recorder, RecordingState};
@@ -254,7 +257,59 @@ fn scratchpad_get(state: State<AppState>) -> Result<String, String> {
 
 #[tauri::command]
 fn scratchpad_save(state: State<AppState>, text: String) -> Result<(), String> {
+    // v1: Scratchpad is local-only. Do not fan this out to Connectors / MCP.
     pro_features::scratchpad_save(&state.app_dir, text)
+}
+
+#[tauri::command]
+fn connectors_status(state: State<AppState>) -> connectors::ConnectorsStatus {
+    connectors::status(&state.app_dir)
+}
+
+#[tauri::command]
+fn connectors_connect(state: State<AppState>, id: String) -> Result<connectors::ConnectorsStatus, String> {
+    connectors::connect(&state.app_dir, &id)
+}
+
+#[tauri::command]
+fn connectors_disconnect(state: State<AppState>, id: String) -> Result<connectors::ConnectorsStatus, String> {
+    connectors::disconnect(&state.app_dir, &id)
+}
+
+#[tauri::command]
+fn stiki_session(state: State<AppState>) -> stiki::SessionView {
+    stiki::session_view(&state.app_dir)
+}
+
+#[tauri::command]
+async fn stiki_sign_in(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<stiki::SessionView, String> {
+    // Opens Stiki unified login (Apple / Google / Microsoft). Does not grant Pro.
+    // Session is written only after /api/me accepts a bearer. No cookie auto-reconnect.
+    let (port, listener) = stiki::bind_callback()?;
+    let return_url = format!("http://127.0.0.1:{port}/stiki/callback");
+    let url = stiki::login_url(&return_url);
+    app.shell()
+        .open(&url, None)
+        .map_err(|e| format!("Could not open Stiki sign-in: {e}"))?;
+    let raw = tokio::task::spawn_blocking(move || {
+        stiki::wait_for_callback(listener, std::time::Duration::from_secs(180))
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    let token = stiki::token_from_callback(&raw)?;
+    let identity = stiki::verify_bearer(&token).await?;
+    // Identity only. Cross-market Get Mochii session does not connect MCP.
+    connectors::accept_identity(&state.app_dir, &identity)?;
+    Ok(stiki::session_view(&state.app_dir))
+}
+
+#[tauri::command]
+fn stiki_sign_out(state: State<AppState>) -> Result<connectors::ConnectorsStatus, String> {
+    // Sign-out drops every MCP door. Local features stay on this Mac.
+    connectors::sign_out(&state.app_dir)
 }
 
 #[tauri::command]
@@ -277,8 +332,9 @@ fn get_version() -> VersionInfo {
 }
 
 #[tauri::command]
-fn get_stats(state: State<AppState>) -> StatsSummary {
-    state.stats.summary()
+fn get_stats(state: State<AppState>) -> Result<StatsSummary, String> {
+    mabel_lib::stiki::require_pro_unlock(&state.app_dir)?;
+    Ok(state.stats.summary())
 }
 
 #[tauri::command]
@@ -378,7 +434,8 @@ fn save_settings(app: tauri::AppHandle, state: State<AppState>, settings: Settin
     settings.polish_mode = mabel_lib::polish::normalize_mode(&settings.polish_mode);
     // No silent Pro path: live Polish without entitlement is an error, not a clamp.
     if mabel_lib::polish::is_live(&settings.polish_mode) {
-        settings.polish_mode = mabel_lib::polish::require_mode_allowed(&settings.polish_mode)?;
+        settings.polish_mode =
+            mabel_lib::polish::require_mode_allowed_at(Some(&state.app_dir), &settings.polish_mode)?;
         settings.cleanup_mode = "llm".into();
     }
     let (prev_clip, prev_polish, prev_dictionary) = {
@@ -414,7 +471,7 @@ fn polish_set(app: tauri::AppHandle, state: State<AppState>, mode: String) -> Re
     if let Some(err) = state.storage_status.settings_error.as_ref() {
         return Err(err.clone());
     }
-    let mode = mabel_lib::polish::require_mode_allowed(&mode)?;
+    let mode = mabel_lib::polish::require_mode_allowed_at(Some(&state.app_dir), &mode)?;
     {
         let mut held = state.settings.lock().unwrap();
         held.polish_mode = mode.clone();
@@ -1052,7 +1109,6 @@ fn main() {
             storekit::storekit_manage_subscriptions,
             storekit::storekit_redeem_offer_code,
             storekit::storekit_offer_codes_supported,
-            stiki_session::stiki_session,
             teams_get,
             teams_set_org,
             teams_add_seat,
@@ -1077,6 +1133,12 @@ fn main() {
             transforms_save,
             scratchpad_get,
             scratchpad_save,
+            connectors_status,
+            connectors_connect,
+            connectors_disconnect,
+            stiki_session,
+            stiki_sign_in,
+            stiki_sign_out,
             clipboard_history_list,
             clipboard_history_set_enabled,
             clipboard_history_clear,
@@ -1202,7 +1264,10 @@ fn main() {
             // Best effort — failure means the first polish pays the load cost
             // or falls back to rules (never invent).
             let _ = initial_cleanup_mode;
-            if mabel_lib::polish::is_live(&mabel_lib::polish::effective_mode(&initial_polish_mode)) {
+            if mabel_lib::polish::is_live(&mabel_lib::polish::effective_mode_at(
+                Some(&app_dir),
+                &initial_polish_mode,
+            )) {
                 if let Ok(name) = mabel_lib::llm::model_filename(&initial_llm_model) {
                     let model_path = app_dir.join(&name);
                     if model_path.exists() {

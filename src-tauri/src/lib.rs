@@ -8,6 +8,8 @@ pub mod transcribe_native;
 pub mod transcribe_groq;
 pub mod cleanup;
 pub mod polish;
+pub mod stiki;
+pub mod connectors;
 pub mod llm;
 pub mod companion;
 pub mod paste;

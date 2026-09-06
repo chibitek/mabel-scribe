@@ -68,6 +68,17 @@ pub fn current_session() -> Session {
     let Some(dir) = APP_DIR.get() else {
         return Session::none();
     };
+    if let Ok(s) = crate::stiki::require_session(dir) {
+        return Session {
+            live: true,
+            subject: if s.subject.is_empty() {
+                None
+            } else {
+                Some(s.subject)
+            },
+            expires_at: None,
+        };
+    }
     match fs::read_to_string(dir.join(SESSION_FILE)) {
         Ok(raw) => session_from_json(&raw),
         Err(_) => Session::none(),

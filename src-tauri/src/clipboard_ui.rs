@@ -16,7 +16,7 @@ static POLLER_STARTED: AtomicBool = AtomicBool::new(false);
 #[cfg(target_os = "macos")]
 fn current_polish_mode(app: &AppHandle) -> String {
     app.try_state::<crate::AppState>()
-        .map(|s| polish::effective_mode(&s.settings.lock().unwrap().polish_mode))
+        .map(|s| polish::effective_mode_at(Some(&s.app_dir), &s.settings.lock().unwrap().polish_mode))
         .unwrap_or_else(polish::default_mode)
 }
 
@@ -25,7 +25,10 @@ fn build_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, String> 
     use tauri::menu::{CheckMenuItem, Menu, MenuItem, Submenu};
 
     let mode = current_polish_mode(app);
-    let entitled = mabel_lib::storekit::pro_surfaces_unlocked();
+    let entitled = app
+        .try_state::<crate::AppState>()
+        .map(|s| mabel_lib::stiki::pro_unlocked(&s.app_dir))
+        .unwrap_or_else(mabel_lib::storekit::pro_surfaces_unlocked);
     let history = MenuItem::with_id(app, "clipboard-history", "Clipboard History…", true, None::<&str>)
         .map_err(|e| e.to_string())?;
     let polish_off = CheckMenuItem::with_id(
@@ -109,10 +112,13 @@ fn apply_polish_from_tray(app: &AppHandle, mode: &str) {
             let _ = app.emit("polish-changed", &mode);
             refresh_tray(app);
         }
-        Err(_) => {
-            // Free cannot enable — Settings → Plans, never a website.
+        Err(e) => {
             show_main_window(app);
-            let _ = app.emit("open-plans", ());
+            if e.contains("Sign in with Stiki") {
+                let _ = app.emit("open-account", ());
+            } else {
+                let _ = app.emit("open-plans", ());
+            }
         }
     }
 }
@@ -120,10 +126,10 @@ fn apply_polish_from_tray(app: &AppHandle, mode: &str) {
 #[cfg(target_os = "macos")]
 fn persist_polish(app: &AppHandle, mode: &str) -> Result<String, String> {
     // Enforcer BOUND: Polish only. Do not write the clipboard opt-in or a Nexus store.
-    let mode = polish::require_mode_allowed(mode)?;
     let Some(state) = app.try_state::<crate::AppState>() else {
         return Err("app state unavailable".into());
     };
+    let mode = polish::require_mode_allowed_at(Some(&state.app_dir), mode)?;
     let mut held = state.settings.lock().unwrap();
     held.polish_mode = mode.clone();
     if polish::is_live(&mode) {

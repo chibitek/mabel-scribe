@@ -34,7 +34,12 @@
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2.5h7l3 3v8H3v-11z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M10 2.5v3h3M5 9h6M5 11.5h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Transcribe file
           </a>
-          <a class="nav-item locked" data-view="dictionary">
+          <a class="nav-item locked" data-view="insights" data-pro>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 13h12M4 13V8M7.5 13V5M11 13V9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+            Insights
+            <span class="lock-pill">Pro</span>
+          </a>
+          <a class="nav-item locked" data-view="dictionary" data-pro>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3.5 3h9v11h-9V3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M8 3v11M5.5 6.5h1.2M5.5 9h1.2M9.3 6.5h1.2M9.3 9h1.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
             Dictionary
             <span class="lock-pill">Pro</span>
@@ -59,13 +64,14 @@
             Scratchpad
             <span class="lock-pill">Pro</span>
           </a>
-          <a class="nav-item" data-view="insights">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 13h12M4 13V8M7.5 13V5M11 13V9.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-            Insights
-          </a>
           <a class="nav-item locked" data-view="teams">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5.5" cy="6" r="2" stroke="currentColor" stroke-width="1.4"/><circle cx="10.5" cy="6" r="2" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 12.5c.4-2 2-3 3-3s2.6 1 3 3M8.5 12.5c.4-2 2-3 3-3s2.6 1 3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
             Teams
+            <span class="lock-pill">Pro</span>
+          </a>
+          <a class="nav-item locked" data-view="connectors">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 6.5L4.5 8a2.2 2.2 0 003.1 3.1L9 9.5M10 9.5L11.5 8A2.2 2.2 0 008.4 4.9L7 6.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Connectors
             <span class="lock-pill">Pro</span>
           </a>
         </nav>
@@ -171,7 +177,7 @@
                 Mabel Pro
               </div>
               <h2 class="pro-title">Smarter dictation, still on-device.</h2>
-              <p class="pro-body">Dictionary, snippets, style, transforms, scratchpad, and teams. Personal use stays free. Pro is an App Store subscription with a 30-day free trial — prices come from StoreKit, not a marketing site.</p>
+              <p class="pro-body">Dictionary, Insights, Polish, clipboard Pro, snippets, style, transforms, scratchpad, Teams, and Connectors (Mochii MCP + Nexus MCP). Dictation stays free. Pro is an App Store subscription with a 30-day free trial — prices come from StoreKit, not a marketing site. Sign in with Stiki to unlock Pro.</p>
             </div>
             <button type="button" class="btn-primary" id="cta-pro">Activate Pro</button>
           </div>
@@ -274,7 +280,7 @@
         </section>
         <section class="view" data-view="style">
           <header class="view-header"><h1 class="view-title">Style</h1><p class="view-sub">Tone and formatting preferences. Stored on this Mac.</p></header>
-          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro to set tone, casing, and punctuation rules.</p><button type="button" class="btn-primary pro-activate">Activate Pro</button></div>
+          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and Sign in with Stiki to set tone, casing, and punctuation rules. Free dictation does not need an account.</p><button type="button" class="btn-primary pro-activate">Unlock Pro</button></div>
           <div class="pro-unlock hidden">
             <div class="card pane-card">
               <div class="row">
@@ -314,7 +320,7 @@
         </section>
         <section class="view" data-view="transforms">
           <header class="view-header"><h1 class="view-title">Transforms</h1><p class="view-sub">On-device cleanup preferences. Audio still never leaves this Mac.</p></header>
-          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro for grammar, punctuation, and filler-word cleanup that runs locally.</p><button type="button" class="btn-primary pro-activate">Activate Pro</button></div>
+          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and Sign in with Stiki for grammar, punctuation, and filler-word cleanup that runs locally. Free dictation does not need an account.</p><button type="button" class="btn-primary pro-activate">Unlock Pro</button></div>
           <div class="pro-unlock hidden">
             <div class="card pane-card">
               <div class="row">
@@ -347,39 +353,41 @@
             <h1 class="view-title">Insights</h1>
             <p class="view-sub">Local-only counts of how you use Mabel. Never the words themselves.</p>
           </header>
+          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and Sign in with Stiki to see local Insights. Free dictation does not need an account.</p><button type="button" class="btn-primary pro-activate">Unlock Pro</button></div>
+          <div class="pro-unlock hidden">
+            <div class="insights-grid">
+              <div class="card stat-big">
+                <div class="stat-label">Words per minute</div>
+                <div class="stat-value" id="ins-wpm">0</div>
+                <div class="stat-unit">average</div>
+              </div>
+              <div class="card stat-big">
+                <div class="stat-label">Total words dictated</div>
+                <div class="stat-value" id="ins-total-words">0</div>
+                <div class="stat-unit">all time</div>
+              </div>
+              <div class="card stat-big">
+                <div class="stat-label">Total dictations</div>
+                <div class="stat-value" id="ins-total">0</div>
+                <div class="stat-unit">all time</div>
+              </div>
+            </div>
 
-          <div class="insights-grid">
-            <div class="card stat-big">
-              <div class="stat-label">Words per minute</div>
-              <div class="stat-value" id="ins-wpm">0</div>
-              <div class="stat-unit">average</div>
-            </div>
-            <div class="card stat-big">
-              <div class="stat-label">Total words dictated</div>
-              <div class="stat-value" id="ins-total-words">0</div>
-              <div class="stat-unit">all time</div>
-            </div>
-            <div class="card stat-big">
-              <div class="stat-label">Total dictations</div>
-              <div class="stat-value" id="ins-total">0</div>
-              <div class="stat-unit">all time</div>
-            </div>
-          </div>
-
-          <div class="card streak-card">
-            <div class="streak-head">
-              <h2 class="streak-title"><span id="ins-streak">0</span> day streak</h2>
-              <span class="streak-sub">Last 30 days</span>
-            </div>
-            <div class="streak-grid" id="streak-grid"></div>
-            <div class="streak-legend">
-              <span class="streak-legend-text">More</span>
-              <span class="streak-cell l4"></span>
-              <span class="streak-cell l3"></span>
-              <span class="streak-cell l2"></span>
-              <span class="streak-cell l1"></span>
-              <span class="streak-cell l0"></span>
-              <span class="streak-legend-text">Less</span>
+            <div class="card streak-card">
+              <div class="streak-head">
+                <h2 class="streak-title"><span id="ins-streak">0</span> day streak</h2>
+                <span class="streak-sub">Last 30 days</span>
+              </div>
+              <div class="streak-grid" id="streak-grid"></div>
+              <div class="streak-legend">
+                <span class="streak-legend-text">More</span>
+                <span class="streak-cell l4"></span>
+                <span class="streak-cell l3"></span>
+                <span class="streak-cell l2"></span>
+                <span class="streak-cell l1"></span>
+                <span class="streak-cell l0"></span>
+                <span class="streak-legend-text">Less</span>
+              </div>
             </div>
           </div>
           <div class="card pane-card">
@@ -496,14 +504,19 @@
           </div>
 
           <div class="card help-card">
+            <h2 class="help-h">Connectors</h2>
+            <p>Pro only. Sign in with Stiki in Settings → Account (Apple, Google, or Microsoft at auth.chibitek.com — same as Get Mochii). Pro surfaces need that session plus StoreKit. Free dictation works without an account. A cross-market Stiki session is identity only — not a connection. Then open <b>Mochii MCP</b> or <b>Nexus MCP</b> yourself — explicit Connect + ACL still required. SSO is never connected. Disconnect anytime. Sign-out drops both doors. Scratchpad stays on this Mac in v1 — it is not an MCP source or sink. Mabel will not auto-push and will not cookie-reconnect.</p>
+          </div>
+
+          <div class="card help-card">
             <h2 class="help-h">Mabel Pro</h2>
-            <p>Free is personal-only. Pro unlocks dictionary, snippets, style, transforms, scratchpad, and teams (org, seats, invites). Subscribe from Settings → Plans and Billing. The App Store shows the live price and the 30-day free trial. Restore Purchases, Manage Subscriptions, and Have a code? are in that same pane. Offer codes use Apple’s system sheet — Mabel never opens a marketing site to upgrade or redeem.</p>
+            <p>Free is personal-only: dictation and Clipboard Free 25 (if History is on). Pro unlocks Dictionary, Insights, Polish, clipboard Pro, snippets, style, transforms, scratchpad, Teams, and Connectors — after Activate Pro / StoreKit and Sign in with Stiki. Subscribe from Settings → Plans and Billing. The App Store shows the live price and the 30-day free trial. Restore Purchases, Manage Subscriptions, and Have a code? are in that same pane. Offer codes use Apple’s system sheet — Mabel never opens a marketing site to upgrade or redeem.</p>
           </div>
         </section>
 
         <section class="view" data-view="scratchpad">
           <header class="view-header"><h1 class="view-title">Scratchpad</h1><p class="view-sub">A quiet place to dump and edit transcripts. Local only.</p></header>
-          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro to keep a local-only scratchpad of your dictations.</p><button type="button" class="btn-primary pro-activate">Activate Pro</button></div>
+          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and Sign in with Stiki to keep a local-only scratchpad. Free dictation does not need an account.</p><button type="button" class="btn-primary pro-activate">Unlock Pro</button></div>
           <div class="pro-unlock hidden">
             <div class="card pane-card">
               <textarea id="scratchpad-text" class="scratchpad" placeholder="Scratch notes stay on this Mac." rows="14"></textarea>
@@ -512,15 +525,51 @@
           </div>
         </section>
 
+        <section class="view" data-view="connectors">
+          <header class="view-header"><h1 class="view-title">Connectors</h1><p class="view-sub">Two doors, both shut until you open them. Mochii MCP and Nexus MCP only. Scratchpad stays on this Mac.</p></header>
+          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and Sign in with Stiki, then connect Mochii MCP or Nexus MCP yourself. Free dictation does not need an account. SSO is not connected. Mabel will not auto-push.</p><button type="button" class="btn-primary pro-activate" id="connectors-activate">Unlock Pro</button></div>
+          <div class="pro-unlock hidden">
+            <p class="view-sub connectors-lead">Sign in with Stiki first (Apple, Google, or Microsoft at auth.chibitek.com). Pro needs that session plus StoreKit. A Get Mochii session is identity only — not a connection. Then connect a door yourself. Explicit Connect + ACL still required. SSO is never connected. Sign-out closes both doors. Free dictation does not need an account.</p>
+            <div id="connectors-error" class="row-hint connectors-error hidden"></div>
+            <div class="connector-grid">
+              <div class="card pane-card connector-card" id="connector-mochii" data-connector="mochii">
+                <div class="connector-eyebrow">MCP</div>
+                <h2 class="connector-name">Mochii MCP</h2>
+                <p class="connector-hint" id="connector-mochii-hint">Off. Connect Mochii MCP yourself. Mabel will not open this door for you.</p>
+                <div class="connector-actions">
+                  <button type="button" class="btn-primary connector-connect" data-id="mochii">Connect</button>
+                  <button type="button" class="btn-secondary connector-disconnect" data-id="mochii">Disconnect</button>
+                </div>
+              </div>
+              <div class="card pane-card connector-card" id="connector-nexus" data-connector="nexus">
+                <div class="connector-eyebrow">MCP</div>
+                <h2 class="connector-name">Nexus MCP</h2>
+                <p class="connector-hint" id="connector-nexus-hint">Off. Connect Nexus MCP yourself. Mabel will not open this door for you.</p>
+                <div class="connector-actions">
+                  <button type="button" class="btn-primary connector-connect" data-id="nexus">Connect</button>
+                  <button type="button" class="btn-secondary connector-disconnect" data-id="nexus">Disconnect</button>
+                </div>
+              </div>
+            </div>
+            <div class="card pane-card">
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">What stays closed</div>
+                  <div class="row-hint">Scratchpad stays on this Mac. Dictation, Polish, clipboard, and history never auto-push to Mochii or Nexus. No other connectors.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
         <section class="view" data-view="teams">
-          <header class="view-header"><h1 class="view-title">Teams</h1><p class="view-sub">Local org, seats, and invites on this Mac. Free stays personal-only.</p></header>
-          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro to create an organization, assign seats, and issue local invite codes.</p><button type="button" class="btn-primary pro-activate">Activate Pro</button></div>
+          <header class="view-header"><h1 class="view-title">Teams</h1><p class="view-sub">Local org, seats, and invites on this Mac. Org ACL needs Sign in with Stiki. Free stays personal-only.</p></header>
+          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and Sign in with Stiki to create an organization, assign seats, and issue local invite codes. Free dictation does not need an account.</p><button type="button" class="btn-primary pro-activate">Unlock Pro</button></div>
           <div class="pro-unlock hidden">
             <div class="card pane-card">
               <div class="row">
                 <div class="row-text">
                   <div class="row-label">Organization</div>
-                  <div class="row-hint">Name stored on this Mac. No cloud sync in this version.</div>
+                  <div class="row-hint">Name stored on this Mac. Saving org, seats, or invites needs a valid Stiki session. No cloud sync in this version.</div>
                 </div>
               </div>
               <div class="dict-input-row">
@@ -944,6 +993,7 @@
               <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">Audio is deleted after transcription</div><div class="row-hint">Recordings are written to a temp file, transcribed, and removed.</div></div></div>
               <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">Transcripts are never logged</div><div class="row-hint">Mabel never writes the text of your dictation to disk or sends it anywhere.</div></div></div>
               <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">No telemetry, no analytics</div><div class="row-hint">No usage tracking, no phoning home. Clipboard History never leaves this Mac.</div></div></div>
+              <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">Connectors never auto-push</div><div class="row-hint">Mochii MCP and Nexus MCP stay off until you connect each one. Scratchpad stays on this Mac. Dictation and Polish are not sent.</div></div></div>
               <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">Keys live in the OS Keychain</div><div class="row-hint">Your Groq key, if you provide one, is never written to a config file.</div></div></div>
               <div class="privacy-line"><span class="check">✓</span><div><div class="row-label">Local stats are counts only</div><div class="row-hint">Dictation counts and dates, never content.</div></div></div>
             </div>
@@ -977,7 +1027,17 @@
               <div class="row">
                 <div class="row-text">
                   <div class="row-label">Apple ID</div>
-                  <div class="row-hint">Purchases use the Mac App Store Apple ID. Mabel does not collect an account or send telemetry.</div>
+                  <div class="row-hint">Purchases use the Mac App Store Apple ID. Mabel does not collect an account or send telemetry. Pro is StoreKit only — not Stiki.</div>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Stiki</div>
+                  <div class="row-hint" id="stiki-session-hint">Signed out. Free dictation works without an account. Pro features need Sign in with Stiki (Apple, Google, or Microsoft at auth.chibitek.com — same as Get Mochii) and Activate Pro if you are not entitled. SSO is identity only — not connected.</div>
+                </div>
+                <div class="connector-actions">
+                  <button type="button" class="btn-primary" id="stiki-signin">Sign in with Stiki</button>
+                  <button type="button" class="btn-secondary" id="stiki-signout" disabled>Sign out</button>
                 </div>
               </div>
             </div>

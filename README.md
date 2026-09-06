@@ -313,6 +313,8 @@ src-tauri/
     transcribe_groq.rs     Groq HTTP client
     cleanup.rs             Whisper output post-processing
     polish.rs              Pro-only Polish (toggle + modes, local Gemma, never invent)
+    stiki.rs               Stiki session + KYC + Suite ACL (fail closed; not Pro)
+    connectors.rs          Pro-only Connectors (Mochii MCP + Nexus MCP, Sign in with Stiki first)
     paste.rs               Clipboard + osascript paste, Return keystroke
     overlay_macos.rs       NSPanel conversion for the overlay window
     system_ui.rs           Dock visibility, sounds, Accessibility request

@@ -186,7 +186,7 @@ async fn transcribe_and_paste(
             // LLM passes would add 300-500ms to every paste and break the
             // "live transcription" feel.
             let cleaned = if is_final {
-                let mode = crate::polish::effective_mode(&settings.polish_mode);
+                let mode = crate::polish::effective_mode_at(Some(&app_dir), &settings.polish_mode);
                 if crate::polish::is_live(&mode) {
                     let hint = crate::dictionary::cleanup_spelling_hint(&settings.dictionary);
                     match crate::llm::cleanup_with_llm_mode_and_hint(&rule_cleaned, &mode, &hint).await {

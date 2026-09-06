@@ -145,6 +145,10 @@ $("titlebar").addEventListener("mousedown", (e) => {
 // Sidebar nav (Home + locked Pro views)
 document.querySelectorAll<HTMLElement>(".nav-item").forEach((item) => {
   item.addEventListener("click", () => {
+    if (item.classList.contains("locked")) {
+      askProUnlock();
+      return;
+    }
     const view = item.dataset.view!;
     document.querySelectorAll(".nav-item").forEach((n) => n.classList.remove("active"));
     document.querySelectorAll<HTMLElement>(".view").forEach((s) => s.classList.remove("active"));
@@ -303,9 +307,20 @@ function openSnippets() {
   document.querySelector('.nav-item[data-view="snippets"]')?.classList.add("active");
   document.querySelector('.view[data-view="snippets"]')?.classList.add("active");
 }
+
+function openAccount(e?: Event) {
+  e?.preventDefault();
+  openSettingsPane("account");
+  refreshStikiSession().catch((err) => console.error("refreshStikiSession:", err));
+}
 $("open-pro").addEventListener("click", openPlans);
 $("cta-pro").addEventListener("click", openPlans);
-document.querySelectorAll(".pro-activate").forEach((b) => b.addEventListener("click", openPlans));
+document.querySelectorAll(".pro-activate").forEach((b) =>
+  b.addEventListener("click", (e) => {
+    e.preventDefault();
+    askProUnlock();
+  })
+);
 
 // Help button in sidebar footer → switch main view to help
 $("open-help").addEventListener("click", () => {
@@ -503,7 +518,22 @@ function fmt(n: number): string {
   return n.toLocaleString();
 }
 
+function resetStatsDisplay() {
+  if (statToday) statToday.textContent = "0";
+  if (statTotal) statTotal.textContent = "0";
+  if (statStreak) statStreak.textContent = "0";
+  if (insWpm) insWpm.textContent = "0";
+  if (insTotalWords) insTotalWords.textContent = "0";
+  if (insTotal) insTotal.textContent = "0";
+  if (insStreak) insStreak.textContent = "0";
+  if (streakGrid) streakGrid.innerHTML = "";
+}
+
 async function loadStats() {
+  if (!proUnlocked()) {
+    resetStatsDisplay();
+    return;
+  }
   try {
     const s = await invoke<StatsSummary>("get_stats");
     if (statToday) statToday.textContent = fmt(s.today);
@@ -875,7 +905,7 @@ async function persistPolishMode(next: string) {
   if (isLivePolish(next) && !proSurfacesUnlocked()) {
     currentSettings.polishMode = "off";
     applyPolishUi();
-    openPlans();
+    askProUnlock();
     return;
   }
   if (isLivePolish(next) && !llmRuntimeAvailable) {
@@ -893,7 +923,7 @@ async function persistPolishMode(next: string) {
     console.error("polish_set:", e);
     currentSettings.polishMode = "off";
     applyPolishUi();
-    if (isLivePolish(next)) openPlans();
+    if (isLivePolish(next)) askProUnlock(String(e));
     return;
   }
   if (isLivePolish(next) && llmRuntimeAvailable) {
@@ -904,7 +934,7 @@ async function persistPolishMode(next: string) {
 polishToggle.addEventListener("click", () => {
   if (!proSurfacesUnlocked()) {
     setSwitch(polishToggle, false);
-    openPlans();
+    askProUnlock();
     return;
   }
   const turningOn = polishToggle.getAttribute("aria-checked") !== "true";
@@ -1346,9 +1376,33 @@ interface TransformPrefs {
   punctuation: boolean;
 }
 
+interface ConnectorView {
+  id: string;
+  name: string;
+  kind: string;
+  connected: boolean;
+  live: boolean;
+  hint: string;
+}
+
+interface ConnectorsStatus {
+  entitled: boolean;
+  signedIn: boolean;
+  stikiHint: string;
+  stikiClientWired: boolean;
+  catalog: ConnectorView[];
+  scratchpadIsMcpSource: boolean;
+  scratchpadIsMcpSink: boolean;
+  defaultAlwaysOn: boolean;
+}
+
 interface StikiSession {
   live: boolean;
+  signedIn?: boolean;
   subject?: string | null;
+  scopes?: string[];
+  clientWired?: boolean;
+  hint?: string;
   expiresAt?: string | null;
 }
 
@@ -1361,6 +1415,10 @@ let currentEntitlement: Entitlement = {
 
 let currentStiki: StikiSession = { live: false };
 
+function stikiLive(session: StikiSession = currentStiki): boolean {
+  return !!(session.live || session.signedIn);
+}
+
 function dictionarySurfaceReady() {
   return proSurfacesUnlocked();
 }
@@ -1369,16 +1427,25 @@ function snippetsSurfaceReady() {
   return proSurfacesUnlocked();
 }
 
+function proUnlocked(): boolean {
+  return proSurfacesUnlocked();
+}
+
 async function signInWithStiki() {
-  // Re-read the fail-closed session file. Do not mock-grant sign-on.
-  await refreshStikiSession();
+  try {
+    const session = await invoke<StikiSession>("stiki_sign_in");
+    currentStiki = { ...session, live: stikiLive(session) };
+  } catch (e) {
+    console.error("stiki_sign_in:", e);
+    await refreshStikiSession();
+  }
   applyEntitlement(currentEntitlement);
 }
 
 function applyDictionaryGate() {
   const ready = dictionarySurfaceReady();
   const entitled = !!currentEntitlement.entitled;
-  const signedIn = !!currentStiki.live;
+  const signedIn = stikiLive();
 
   document.querySelectorAll<HTMLElement>("[data-dict-gate='lock']").forEach((el) => {
     el.classList.toggle("hidden", ready);
@@ -1405,7 +1472,7 @@ function applyDictionaryGate() {
 function applySnippetsGate() {
   const ready = snippetsSurfaceReady();
   const entitled = !!currentEntitlement.entitled;
-  const signedIn = !!currentStiki.live;
+  const signedIn = stikiLive();
 
   document.querySelectorAll<HTMLElement>("[data-snippet-gate='lock']").forEach((el) => {
     el.classList.toggle("hidden", ready);
@@ -1429,6 +1496,39 @@ function applySnippetsGate() {
   }
 }
 
+function askProUnlock(err?: string) {
+  if (err && String(err).includes("Sign in with Stiki")) {
+    openAccount();
+    return;
+  }
+  if (!currentEntitlement.entitled) openPlans();
+  else openAccount();
+}
+
+function applyProLocks() {
+  const unlocked = proSurfacesUnlocked();
+  document.querySelectorAll<HTMLElement>(".nav-item.locked, .nav-item[data-pro]").forEach((item) => {
+    const view = item.dataset.view;
+    if (!view || !["dictionary", "insights", "snippets", "style", "transforms", "scratchpad", "teams", "connectors"].includes(view)) return;
+    item.classList.toggle("locked", !unlocked);
+    item.toggleAttribute("data-pro", true);
+    const lock = item.querySelector(".lock-pill");
+    if (lock) (lock as HTMLElement).style.display = unlocked ? "none" : "";
+  });
+  document.querySelectorAll(".pro-lock").forEach((el) => {
+    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate) return;
+    el.classList.toggle("hidden", unlocked);
+  });
+  document.querySelectorAll(".pro-unlock").forEach((el) => {
+    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate) return;
+    el.classList.toggle("hidden", !unlocked);
+  });
+  applyDictionaryGate();
+  applySnippetsGate();
+  if (unlocked) loadStats();
+  else resetStatsDisplay();
+}
+
 function planLabel(ent: Entitlement): string {
   if (!ent.entitled) return "Free";
   if (ent.isTrial || ent.status === "trial") return "Trial";
@@ -1436,12 +1536,24 @@ function planLabel(ent: Entitlement): string {
 }
 
 function proSurfacesUnlocked(ent: Entitlement = currentEntitlement, stiki: StikiSession = currentStiki): boolean {
-  return !!ent.entitled && !!stiki.live;
+  return !!ent.entitled && stikiLive(stiki);
 }
 
 async function refreshStikiSession() {
   try {
-    currentStiki = await invoke<StikiSession>("stiki_session");
+    const session = await invoke<StikiSession>("stiki_session");
+    currentStiki = { ...session, live: stikiLive(session) };
+    const hint = document.getElementById("stiki-session-hint");
+    if (hint && session.hint) hint.textContent = session.hint;
+    const signIn = document.getElementById("stiki-signin") as HTMLButtonElement | null;
+    const signOut = document.getElementById("stiki-signout") as HTMLButtonElement | null;
+    if (signIn) signIn.disabled = stikiLive(session);
+    if (signOut) signOut.disabled = !stikiLive(session);
+    applyProLocks();
+    applyPolishUi();
+    if (proSurfacesUnlocked()) {
+      loadProSurfaces().catch((err) => console.error("loadProSurfaces:", err));
+    }
   } catch (e) {
     console.error("stiki_session:", e);
     currentStiki = { live: false };
@@ -1464,25 +1576,7 @@ function applyEntitlement(ent: Entitlement) {
   const openProText = Array.from(openPro.childNodes).find((n) => n.nodeType === Node.TEXT_NODE);
   if (openProText) openProText.textContent = entitled ? " Manage Pro" : " Activate Pro";
 
-  document.querySelectorAll<HTMLElement>(".nav-item.locked, .nav-item[data-pro]").forEach((item) => {
-    const view = item.dataset.view;
-    if (!view || !["dictionary", "snippets", "style", "transforms", "scratchpad", "teams"].includes(view)) return;
-    item.classList.toggle("locked", !unlocked);
-    item.toggleAttribute("data-pro", true);
-    const lock = item.querySelector(".lock-pill");
-    if (lock) (lock as HTMLElement).style.display = unlocked ? "none" : "";
-  });
-
-  document.querySelectorAll(".pro-lock").forEach((el) => {
-    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate) return;
-    el.classList.toggle("hidden", unlocked);
-  });
-  document.querySelectorAll(".pro-unlock").forEach((el) => {
-    if ((el as HTMLElement).dataset.dictGate || (el as HTMLElement).dataset.snippetGate) return;
-    el.classList.toggle("hidden", !unlocked);
-  });
-  applyDictionaryGate();
-  applySnippetsGate();
+  applyProLocks();
 
   const accountHint = document.getElementById("account-plan-hint");
   const accountPill = document.getElementById("account-plan-pill");
@@ -1493,14 +1587,14 @@ function applyEntitlement(ent: Entitlement) {
   }
   if (accountHint) {
     if (!entitled) {
-      accountHint.textContent = "Personal (Free). Teams and locked features need a verified App Store subscription and a Stiki sign-on.";
-    } else if (!currentStiki.live) {
-      accountHint.textContent = "App Store Pro is on this Mac. Sign on with Stiki to unlock Pro surfaces. StoreKit alone is not enough.";
+      accountHint.textContent = "Personal (Free). Dictation works without an account. Pro features need Activate Pro and Sign in with Stiki.";
+    } else if (!stikiLive()) {
+      accountHint.textContent = "App Store Pro is on this Mac. Sign in with Stiki to unlock Pro surfaces. StoreKit alone is not enough.";
     } else if (ent.isTrial) {
-      accountHint.textContent = `30-day trial is active${ent.expirationDate ? ` until ${ent.expirationDate}` : ""}.`;
+      accountHint.textContent = `30-day trial is active${ent.expirationDate ? ` until ${ent.expirationDate}` : ""}. Sign in with Stiki to unlock Pro surfaces.`;
     } else {
       const product = ent.productId === "com.mabel.app.pro.yearly" ? "Yearly" : "Monthly";
-      accountHint.textContent = `${product} Pro is active${ent.willAutoRenew ? " and renews automatically" : ""}.`;
+      accountHint.textContent = `${product} Pro is active${ent.willAutoRenew ? " and renews automatically" : ""}. Sign in with Stiki to unlock Pro surfaces.`;
     }
   }
 
@@ -1516,6 +1610,8 @@ function applyEntitlement(ent: Entitlement) {
     loadProSurfaces().catch((e) => console.error("loadProSurfaces:", e));
   }
   applyPolishUi();
+  refreshConnectors().catch((e) => console.error("refreshConnectors:", e));
+  refreshStikiSession().catch((e) => console.error("refreshStikiSession:", e));
   invoke("refresh_status_item").catch((e) => console.error("refresh_status_item:", e));
 }
 
@@ -1705,6 +1801,9 @@ listen("open-dictionary", () => {
 listen("open-snippets", () => {
   openSnippets();
 });
+listen("open-account", () => {
+  openAccount();
+});
 listen<string>("open-settings-pane", (event) => {
   openSettingsPane(event.payload || "engine");
 });
@@ -1832,9 +1931,134 @@ async function loadProSurfaces() {
   const pad = $<HTMLTextAreaElement>("scratchpad-text");
   pad.value = await invoke<string>("scratchpad_get");
 
-  const team = await invoke<TeamState>("teams_get");
-  renderTeams(team);
+  try {
+    const team = await invoke<TeamState>("teams_get");
+    renderTeams(team);
+  } catch (e) {
+    console.error("teams_get:", e);
+  }
+  await refreshConnectors();
 }
+
+async function refreshConnectors() {
+  const errorEl = document.getElementById("connectors-error");
+  try {
+    const status = await invoke<ConnectorsStatus>("connectors_status");
+    renderConnectors(status);
+    applyStikiFromConnectors(status);
+    if (errorEl) {
+      errorEl.textContent = "";
+      errorEl.classList.add("hidden");
+    }
+  } catch (e) {
+    console.error("connectors_status:", e);
+    if (errorEl) {
+      errorEl.textContent = String(e);
+      errorEl.classList.remove("hidden");
+    }
+  }
+}
+
+function renderConnectors(status: ConnectorsStatus) {
+  for (const item of status.catalog) {
+    const card = document.getElementById(`connector-${item.id}`);
+    const hint = document.getElementById(`connector-${item.id}-hint`);
+    if (hint) hint.textContent = item.hint;
+    if (card) {
+      card.classList.toggle("connected", item.connected);
+      card.classList.toggle("live", item.live);
+    }
+  }
+}
+
+async function setConnector(id: string, connect: boolean) {
+  const errorEl = document.getElementById("connectors-error");
+  if (!currentEntitlement.entitled && connect) {
+    openPlans();
+    return;
+  }
+  try {
+    const status = await invoke<ConnectorsStatus>(
+      connect ? "connectors_connect" : "connectors_disconnect",
+      { id },
+    );
+    renderConnectors(status);
+    applyStikiFromConnectors(status);
+    if (errorEl) {
+      errorEl.textContent = "";
+      errorEl.classList.add("hidden");
+    }
+  } catch (e) {
+    console.error(connect ? "connectors_connect:" : "connectors_disconnect:", e);
+    if (errorEl) {
+      errorEl.textContent = String(e);
+      errorEl.classList.remove("hidden");
+    }
+    if (connect && !currentEntitlement.entitled) openPlans();
+    else if (connect && String(e).includes("Sign in with Stiki")) openAccount();
+  }
+}
+
+function applyStikiFromConnectors(status: ConnectorsStatus) {
+  currentStiki = {
+    live: !!status.signedIn,
+    signedIn: !!status.signedIn,
+    hint: status.stikiHint,
+  };
+  const hint = document.getElementById("stiki-session-hint");
+  if (hint) hint.textContent = status.stikiHint;
+  const signIn = document.getElementById("stiki-signin") as HTMLButtonElement | null;
+  const signOut = document.getElementById("stiki-signout") as HTMLButtonElement | null;
+  if (signIn) signIn.disabled = status.signedIn;
+  if (signOut) signOut.disabled = !status.signedIn;
+  applyProLocks();
+  applyPolishUi();
+  if (proUnlocked()) {
+    loadProSurfaces().catch((e) => console.error("loadProSurfaces:", e));
+  }
+}
+
+document.getElementById("stiki-signin")?.addEventListener("click", async () => {
+  const hint = document.getElementById("stiki-session-hint");
+  const signIn = document.getElementById("stiki-signin") as HTMLButtonElement | null;
+  if (hint) {
+    hint.textContent = "Opening Stiki (Apple, Google, or Microsoft at auth.chibitek.com)…";
+  }
+  if (signIn) signIn.disabled = true;
+  try {
+    const session = await invoke<StikiSession>("stiki_sign_in");
+    if (hint) hint.textContent = session.hint;
+    await refreshConnectors();
+    await refreshStikiSession();
+  } catch (e) {
+    if (hint) hint.textContent = String(e);
+    if (signIn) signIn.disabled = false;
+    await refreshConnectors();
+  }
+});
+
+document.getElementById("stiki-signout")?.addEventListener("click", async () => {
+  try {
+    const status = await invoke<ConnectorsStatus>("stiki_sign_out");
+    renderConnectors(status);
+    applyStikiFromConnectors(status);
+  } catch (e) {
+    console.error("stiki_sign_out:", e);
+    const hint = document.getElementById("stiki-session-hint");
+    if (hint) hint.textContent = String(e);
+  }
+});
+
+document.querySelectorAll<HTMLButtonElement>(".connector-connect").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    void setConnector(btn.dataset.id || "", true);
+  });
+});
+document.querySelectorAll<HTMLButtonElement>(".connector-disconnect").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    void setConnector(btn.dataset.id || "", false);
+  });
+});
 
 function renderTeams(team: TeamState) {
   const org = $<HTMLInputElement>("team-org");
@@ -1848,7 +2072,12 @@ function renderTeams(team: TeamState) {
         row(
           `<div><div>${s.displayName} · ${s.role}</div><div class="pro-row-meta">${s.email}</div></div>`,
           async () => {
-            renderTeams(await invoke<TeamState>("teams_remove_seat", { seatId: s.id }));
+            try {
+              renderTeams(await invoke<TeamState>("teams_remove_seat", { seatId: s.id }));
+            } catch (e) {
+              console.error("teams_remove_seat:", e);
+              if (teamAclFailed(e)) openAccount();
+            }
           }
         )
       );
@@ -1861,7 +2090,12 @@ function renderTeams(team: TeamState) {
         row(
           `<div><div>${i.email} · ${i.status}</div><div class="pro-row-meta">${i.token}</div></div>`,
           async () => {
-            renderTeams(await invoke<TeamState>("teams_revoke_invite", { inviteId: i.id }));
+            try {
+              renderTeams(await invoke<TeamState>("teams_revoke_invite", { inviteId: i.id }));
+            } catch (e) {
+              console.error("teams_revoke_invite:", e);
+              if (teamAclFailed(e)) openAccount();
+            }
           }
         )
       );
@@ -1960,11 +2194,16 @@ $("scratchpad-text").addEventListener("input", () => {
   }, 400);
 });
 
+function teamAclFailed(err: unknown): boolean {
+  return String(err).includes("Sign in with Stiki");
+}
+
 $("team-org-save").addEventListener("click", async () => {
   try {
     renderTeams(await invoke<TeamState>("teams_set_org", { orgName: $<HTMLInputElement>("team-org").value }));
   } catch (e) {
     console.error("teams_set_org:", e);
+    if (teamAclFailed(e)) openAccount();
   }
 });
 $("seat-add").addEventListener("click", async () => {
@@ -1979,6 +2218,7 @@ $("seat-add").addEventListener("click", async () => {
     renderTeams(team);
   } catch (e) {
     console.error("teams_add_seat:", e);
+    if (teamAclFailed(e)) openAccount();
   }
 });
 $("invite-add").addEventListener("click", async () => {
@@ -1990,6 +2230,7 @@ $("invite-add").addEventListener("click", async () => {
     renderTeams(team);
   } catch (e) {
     console.error("teams_create_invite:", e);
+    if (teamAclFailed(e)) openAccount();
   }
 });
 

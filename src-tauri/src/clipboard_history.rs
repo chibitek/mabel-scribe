@@ -12,8 +12,9 @@
 //!   any future Nexus clipboard toggle — do not merge those settings
 //!   without Enforcer. Wipe is a local file delete, never SIEM-logged.
 //!
-//! Caps: Free keeps the last 25 items. Pro is treated as unlimited for
-//! product copy, but persisted history is hard-capped at 10_000 so an
+//! Caps: Free keeps the last 25 items with no Stiki session. Clipboard
+//! Pro unlimited is dual-gated (StoreKit **and** Stiki). Product copy
+//! says unlimited; persisted history is hard-capped at 10_000 so an
 //! unbounded file cannot grow without limit.
 
 use serde::{Deserialize, Serialize};
@@ -23,7 +24,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::storekit;
 
 /// Free plan keeps this many most-recent text items.
 pub const FREE_CAP: usize = 25;
@@ -182,7 +182,8 @@ impl Service {
         if let Some(err) = self.load_error() {
             return Err(err);
         }
-        let entitled = storekit::current_entitlement().entitled;
+        // Clipboard Pro unlimited: StoreKit AND Stiki. Else Free 25, no account.
+        let entitled = crate::stiki::pro_unlocked(&self.app_dir);
         let cap = cap_for(entitled);
         let enabled = self.is_enabled();
         let mut g = self.inner.lock().map_err(|e| e.to_string())?;
@@ -247,7 +248,7 @@ impl Service {
             return Ok(CaptureDecision::SkippedSecret);
         }
 
-        let entitled = storekit::current_entitlement().entitled;
+        let entitled = crate::stiki::pro_unlocked(&self.app_dir);
         let cap = cap_for(entitled);
         let mut g = self.inner.lock().map_err(|e| e.to_string())?;
         if g.items
@@ -597,6 +598,33 @@ mod tests {
         assert!(PRO_CAP > FREE_CAP);
         assert_eq!(cap_for(false), FREE_CAP);
         assert_eq!(cap_for(true), PRO_CAP);
+    }
+
+    #[test]
+    fn clipboard_pro_unlimited_is_dual_gated() {
+        let src = include_str!("clipboard_history.rs");
+        let list = src.split("pub fn list").nth(1).unwrap();
+        let list = list.split("pub fn item_text").next().unwrap();
+        assert!(
+            list.contains("pro_unlocked"),
+            "BREAKS IF: Clipboard Pro unlimited skips Stiki"
+        );
+        let capture = src.split("pub fn capture_with_access").nth(1).unwrap();
+        let capture = capture.split("pub fn cap_for").next().unwrap();
+        assert!(
+            capture.contains("pro_unlocked"),
+            "BREAKS IF: Clipboard Pro unlimited skips Stiki"
+        );
+        assert_eq!(FREE_CAP, 25);
+        let dir = tmp();
+        let svc = Service::new(dir, true);
+        svc.capture_text("slot", &types(&["public.utf8-plain-text"]))
+            .unwrap();
+        let list = svc.list().unwrap();
+        assert!(
+            !list.entitled && list.cap == FREE_CAP,
+            "BREAKS IF: Free clipboard 25 requires Stiki"
+        );
     }
 
     #[test]

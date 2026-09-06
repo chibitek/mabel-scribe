@@ -72,6 +72,7 @@ pub struct Settings {
     pub dictionary: Vec<String>,
     /// Opt-in Mac clipboard history. Default off. When off, Mabel must not
     /// poll or read pasteboard contents. Turning off wipes the local store.
+    /// Distinct from any future Nexus clipboard toggle — do not merge.
     #[serde(rename = "clipboardHistoryEnabled", default)]
     pub clipboard_history_enabled: bool,
 }

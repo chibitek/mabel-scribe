@@ -101,7 +101,8 @@ pub fn spawn_poller(app: AppHandle, service: Arc<Service>) {
         loop {
             tokio::time::sleep(Duration::from_millis(500)).await;
             if !service.is_enabled() {
-                // Fail closed: do not poll changeCount or read contents.
+                // Fail closed / never always-on spy: do not poll
+                // changeCount or read contents while opted out.
                 primed = false;
                 last_change = 0;
                 continue;

@@ -418,7 +418,7 @@
 
           <div class="card help-card">
             <h2 class="help-h">Clipboard History</h2>
-            <p>Mac only, off by default. Open <b>Clipboard History…</b> from the menu-bar extra, or Settings → Privacy. When on, Mabel keeps recent <b>text</b> copies in Application Support on this Mac. Free keeps the last 25 items; Pro is treated as unlimited with a 10,000-item ceiling. Concealed, transient, auto-generated, and known password-manager pasteboard types are skipped. Turning the feature off wipes the store. Nothing is uploaded.</p>
+            <p>Mac only, off by default. Open <b>Clipboard History…</b> from the menu-bar extra, or Settings → Privacy. When on, Mabel keeps recent <b>text</b> copies in Application Support on this Mac. Free keeps the last 25 local slots; Pro raises the local slot count (10,000 ceiling). This is not cloud quota and is not synced. Concealed, transient, auto-generated, and password-manager pasteboard types are skipped; obvious secrets are dropped. Turning the feature off wipes the local file. Coach cannot read it. Nothing is uploaded.</p>
           </div>
 
           <div class="card help-card">
@@ -856,7 +856,7 @@
               <div class="row">
                 <div class="row-text">
                   <div class="row-label">Clipboard History</div>
-                  <div class="row-hint">Off by default. When on, Mabel keeps recent text copies on this Mac only. Menu bar → Clipboard History…. Free keeps the last 25; Pro raises the cap. Passwords and concealed pasteboard items are skipped.</div>
+                  <div class="row-hint">Off by default. Menu bar → Clipboard History…. Local slots only (Free 25 / Pro high cap). Not synced. Concealed pasteboard and obvious secrets are dropped. Coach cannot read this store.</div>
                 </div>
                 <button type="button" id="clipboard-history-toggle" class="switch" role="switch" aria-checked="false" aria-label="Clipboard History">
                   <span class="switch-thumb"></span>
@@ -865,7 +865,7 @@
               <div class="row">
                 <div class="row-text">
                   <div class="row-label">Clear clipboard history</div>
-                  <div class="row-hint">Wipe stored copies immediately. Turning the feature off also wipes.</div>
+                  <div class="row-hint">Local wipe only. Turning the feature off also wipes. Not logged remotely.</div>
                 </div>
                 <button type="button" id="clipboard-history-clear" class="btn-secondary">Clear</button>
               </div>

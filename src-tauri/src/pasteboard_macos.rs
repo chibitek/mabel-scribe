@@ -139,9 +139,18 @@ pub fn mark_mabel_pasteboard_write() {
     }
 }
 
+pub fn pasteboard_accessible() -> bool {
+    let _pool = AutoreleasePool::new();
+    !general_pasteboard().is_null()
+}
+
 /// One poll tick. The caller must already have confirmed opt-in is on.
-/// Types are inspected before any string payload is read.
+/// Types are inspected before any string payload is read. If the OS
+/// pasteboard handle is unavailable, fail closed (no types, no string).
 pub fn poll_capture(service: &clipboard_history::Service, last_change: &mut i64, primed: &mut bool) {
+    if !pasteboard_accessible() {
+        return;
+    }
     let count = change_count();
     if !*primed {
         *last_change = count;
@@ -170,5 +179,5 @@ pub fn poll_capture(service: &clipboard_history::Service, last_change: &mut i64,
     let Some(text) = read_plain_text() else {
         return;
     };
-    let _ = service.capture_text(&text, &types);
+    let _ = service.capture_with_access(&text, &types, true);
 }

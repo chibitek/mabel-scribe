@@ -14,6 +14,7 @@ interface HistoryList {
   cap: number;
   count: number;
   items: HistoryItemView[];
+  localSlotsOnly: boolean;
 }
 
 const enabledToggle = document.getElementById("enabled-toggle") as HTMLButtonElement;
@@ -42,9 +43,9 @@ function formatWhen(epochSecs: number): string {
 function render(list: HistoryList) {
   setSwitch(list.enabled);
   if (list.entitled) {
-    capHint.textContent = `Pro · up to ${list.cap.toLocaleString()} text items on this Mac.`;
+    capHint.textContent = `Pro · up to ${list.cap.toLocaleString()} local slots on this Mac.`;
   } else {
-    capHint.textContent = `Free keeps the last ${list.cap} text items. Pro raises the cap.`;
+    capHint.textContent = `Free keeps the last ${list.cap} local slots. Pro raises the local cap.`;
   }
   offState.classList.toggle("hidden", list.enabled);
   onState.classList.toggle("hidden", !list.enabled);

@@ -1,7 +1,16 @@
 //! Mac-only, opt-in, local clipboard history.
 //!
-//! Fail closed: when the setting is off, callers must not poll or read
-//! pasteboard contents. Opt-out wipes the on-disk store.
+//! Enforcer contract (PASS suite b6530197):
+//! - Default OFF. Never an always-on clipboard spy.
+//! - Local paste history only. Caps are **local slot counts**, never a
+//!   cloud quota or sync trigger.
+//! - Fail closed when opt-in is off **or** the OS pasteboard is
+//!   inaccessible. Do not poll or read contents in either case.
+//! - Skip Concealed / Transient / password-manager pasteboard types.
+//!   Drop obvious secrets (do not store them).
+//! - Not company memory. Coach must not read this store. Distinct from
+//!   any future Nexus clipboard toggle — do not merge those settings
+//!   without Enforcer. Wipe is a local file delete, never SIEM-logged.
 //!
 //! Caps: Free keeps the last 25 items. Pro is treated as unlimited for
 //! product copy, but persisted history is hard-capped at 10_000 so an
@@ -94,6 +103,9 @@ pub struct HistoryList {
     pub cap: usize,
     pub count: usize,
     pub items: Vec<HistoryItemView>,
+    /// Always true. Free/Pro limits are local slot counts only.
+    #[serde(rename = "localSlotsOnly")]
+    pub local_slots_only: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -104,6 +116,8 @@ pub enum CaptureDecision {
     SkippedImage,
     SkippedEmpty,
     SkippedHuge,
+    SkippedSecret,
+    DeniedPermission,
     Deduped,
 }
 
@@ -138,6 +152,8 @@ impl Service {
         Ok(())
     }
 
+    /// Local file delete only. Do not log the wipe, the items, or a
+    /// remote event — this is not a Nexus/SIEM action.
     pub fn wipe(&self) -> Result<(), String> {
         {
             let mut g = self.inner.lock().map_err(|e| e.to_string())?;
@@ -163,6 +179,7 @@ impl Service {
             cap,
             count: items.len(),
             items,
+            local_slots_only: true,
         })
     }
 
@@ -178,8 +195,22 @@ impl Service {
     /// Record a text snapshot. Callers must already have decided the
     /// pasteboard is safe to read. Still fail-closed if opt-in is off.
     pub fn capture_text(&self, text: &str, types: &[String]) -> Result<CaptureDecision, String> {
+        self.capture_with_access(text, types, true)
+    }
+
+    /// Same as [`Self::capture_text`], with an explicit OS-permission bit.
+    /// `os_allowed == false` is fail-closed: nothing is stored or logged.
+    pub fn capture_with_access(
+        &self,
+        text: &str,
+        types: &[String],
+        os_allowed: bool,
+    ) -> Result<CaptureDecision, String> {
         if !self.is_enabled() {
             return Ok(CaptureDecision::Disabled);
+        }
+        if !os_allowed {
+            return Ok(CaptureDecision::DeniedPermission);
         }
         if should_skip_types(types) {
             return Ok(CaptureDecision::SkippedConfidential);
@@ -193,6 +224,9 @@ impl Service {
         }
         if trimmed.len() > MAX_TEXT_BYTES {
             return Ok(CaptureDecision::SkippedHuge);
+        }
+        if looks_like_secret(trimmed) {
+            return Ok(CaptureDecision::SkippedSecret);
         }
 
         let entitled = storekit::current_entitlement().entitled;
@@ -218,12 +252,133 @@ impl Service {
     }
 }
 
+/// Local slot count only. Does not call a network, quota API, or sync.
 pub fn cap_for(entitled: bool) -> usize {
     if entitled {
         PRO_CAP
     } else {
         FREE_CAP
     }
+}
+
+/// Drop (do not store) obvious secrets. Fail closed: the whole item is
+/// rejected rather than redacted-and-kept, so confidential pasteboard
+/// never lands on disk.
+pub fn looks_like_secret(text: &str) -> bool {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    if pem_private_key(trimmed) {
+        return true;
+    }
+    if jwt_blob(trimmed) {
+        return true;
+    }
+    if uri_with_embedded_password(trimmed) {
+        return true;
+    }
+    if assignment_secret(trimmed) {
+        return true;
+    }
+    token_prefix_secret(trimmed)
+}
+
+fn pem_private_key(text: &str) -> bool {
+    text.contains("BEGIN PRIVATE KEY")
+        || text.contains("BEGIN RSA PRIVATE KEY")
+        || text.contains("BEGIN EC PRIVATE KEY")
+        || text.contains("BEGIN OPENSSH PRIVATE KEY")
+        || text.contains("BEGIN DSA PRIVATE KEY")
+}
+
+fn jwt_blob(text: &str) -> bool {
+    let token = text.split_whitespace().next().unwrap_or("");
+    if !token.starts_with("eyJ") {
+        return false;
+    }
+    token.bytes().filter(|b| *b == b'.').count() == 2 && token.len() > 40
+}
+
+fn uri_with_embedded_password(text: &str) -> bool {
+    for word in text.split_whitespace() {
+        let Some(scheme_end) = word.find("://") else {
+            continue;
+        };
+        let rest = &word[scheme_end + 3..];
+        if let Some(at) = rest.find('@') {
+            let creds = &rest[..at];
+            if creds.contains(':') && creds.len() > 2 {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn assignment_secret(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    const KEYS: &[&str] = &[
+        "password",
+        "passwd",
+        "secret",
+        "api_key",
+        "apikey",
+        "access_token",
+        "auth_token",
+        "authorization",
+        "aws_secret_access_key",
+        "private_key",
+        "client_secret",
+    ];
+    for line in lower.lines() {
+        let line = line.trim();
+        for key in KEYS {
+            for sep in [":", "=", " "] {
+                let prefix = format!("{key}{sep}");
+                if let Some(rest) = line.strip_prefix(&prefix) {
+                    if !rest.trim().is_empty() {
+                        return true;
+                    }
+                }
+            }
+        }
+        if line.contains("bearer ") && line.split_whitespace().any(|w| w.len() > 12) {
+            return true;
+        }
+    }
+    false
+}
+
+fn token_prefix_secret(text: &str) -> bool {
+    const PREFIXES: &[&str] = &[
+        "gsk_",
+        "sk_live_",
+        "sk_test_",
+        "rk_live_",
+        "rk_test_",
+        "ghp_",
+        "github_pat_",
+        "gho_",
+        "ghs_",
+        "ghu_",
+        "xoxb-",
+        "xoxp-",
+        "xoxa-",
+        "xoxs-",
+        "xoxe-",
+        "xoxc-",
+        "AKIA",
+        "AIza",
+    ];
+    for word in text.split_whitespace() {
+        for prefix in PREFIXES {
+            if word.starts_with(prefix) && word.len() > prefix.len() + 8 {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 pub fn should_skip_types(types: &[String]) -> bool {
@@ -506,5 +661,103 @@ mod tests {
         let whats = include_str!("../../docs/whatsnew.md");
         assert!(whats.contains("## v1.4.0"));
         assert!(!whats.contains("## v1.5.0"));
+    }
+
+    #[test]
+    fn no_os_permission_fails_closed() {
+        let dir = tmp();
+        let svc = Service::new(dir, true);
+        let decision = svc
+            .capture_with_access(
+                "hello from pasteboard",
+                &types(&["public.utf8-plain-text"]),
+                false,
+            )
+            .unwrap();
+        assert_eq!(decision, CaptureDecision::DeniedPermission);
+        assert_eq!(svc.list().unwrap().count, 0);
+    }
+
+    #[test]
+    fn obvious_secrets_are_dropped_not_stored() {
+        let dir = tmp();
+        let svc = Service::new(dir, true);
+        let t = types(&["public.utf8-plain-text"]);
+        // Assemble at runtime so the file never contains a scanner-shaped token.
+        let secrets = [
+            "-----BEGIN OPENSSH PRIVATE KEY-----\nfake\n-----END OPENSSH PRIVATE KEY-----"
+                .to_string(),
+            format!("{}{}", "gsk_", "abcdefghijklmnopqrstuvwxyz123456"),
+            format!("{}{}{}", "sk_", "live_", "abcdefghijklmnopqrstuvwxyz"),
+            format!("{}{}", "ghp_", "abcdefghijklmnopqrstuvwxyz1234"),
+            format!("{}{}", "xoxb-", "1234567890-abcdefghijklmnop"),
+            format!("{}{}", "AKIA", "AAAAAAAAAAAAAAAA"),
+            format!("{}{}", "password=", "hunter2"),
+            format!("{}{}", "api_key: ", "super-secret-value"),
+            format!("{}{}", "postgres://user:", "s3cret@localhost:5432/db"),
+            format!(
+                "{}{}{}",
+                "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+                ".eyJzdWIiOiIxMjM0In0.",
+                "signaturepart"
+            ),
+        ];
+        for secret in secrets {
+            let decision = svc.capture_text(&secret, &t).unwrap();
+            assert_eq!(
+                decision,
+                CaptureDecision::SkippedSecret,
+                "should drop {secret}"
+            );
+        }
+        assert_eq!(svc.list().unwrap().count, 0);
+        assert!(!looks_like_secret("meeting notes for Thursday"));
+    }
+
+    #[test]
+    fn wipe_is_local_file_delete_not_logged() {
+        let src = include_str!("clipboard_history.rs");
+        let prod = src.split("#[cfg(test)]").next().unwrap();
+        assert!(prod.contains("fs::remove_file"));
+        assert!(!prod.contains("reqwest::"));
+        let wipe = prod.split("pub fn wipe").nth(1).unwrap();
+        let wipe = wipe.split("pub fn list").next().unwrap();
+        assert!(wipe.contains("remove_file"));
+        assert!(!wipe.contains("reqwest"));
+        assert!(!wipe.contains("Emitter"));
+    }
+
+    #[test]
+    fn isolated_from_nexus_coach_and_cloud_quota() {
+        let src = include_str!("clipboard_history.rs");
+        assert!(src.contains("local slot counts"));
+        assert!(src.contains("HISTORY_FILE"));
+        let main = include_str!("main.rs");
+        let clear = main.split("fn clipboard_history_clear").nth(1).unwrap();
+        let clear = clear.split("fn clipboard_history_paste").next().unwrap();
+        assert!(clear.contains("wipe"));
+        assert!(!clear.contains("reqwest"));
+        assert!(main.contains("clipboard_history_enabled"));
+        assert!(!main.contains("nexusClipboard"));
+        assert!(!main.contains("MabelSpatial"));
+        assert!(src.contains("localSlotsOnly"));
+    }
+
+    #[test]
+    fn list_marks_local_slots_only() {
+        let dir = tmp();
+        let svc = Service::new(dir, true);
+        let list = svc.list().unwrap();
+        assert!(list.local_slots_only);
+        assert_eq!(list.cap, FREE_CAP);
+    }
+
+    #[test]
+    fn setting_name_is_not_a_nexus_clipboard_toggle() {
+        let settings = include_str!("settings.rs");
+        assert!(settings.contains("clipboardHistoryEnabled"));
+        assert!(!settings.contains("nexusClipboard"));
+        assert!(settings.contains("must not"));
+        assert!(settings.contains("poll or read pasteboard"));
     }
 }

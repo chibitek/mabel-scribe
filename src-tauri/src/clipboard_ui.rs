@@ -25,7 +25,7 @@ fn build_menu(app: &AppHandle) -> Result<tauri::menu::Menu<tauri::Wry>, String> 
     use tauri::menu::{CheckMenuItem, Menu, MenuItem, Submenu};
 
     let mode = current_polish_mode(app);
-    let entitled = mabel_lib::storekit::current_entitlement().entitled;
+    let entitled = mabel_lib::storekit::pro_surfaces_unlocked();
     let history = MenuItem::with_id(app, "clipboard-history", "Clipboard History…", true, None::<&str>)
         .map_err(|e| e.to_string())?;
     let polish_off = CheckMenuItem::with_id(

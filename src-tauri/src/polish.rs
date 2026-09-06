@@ -73,7 +73,7 @@ pub fn effective_mode(persisted: &str) -> String {
     if !is_live(&mode) {
         return MODE_OFF.to_string();
     }
-    if storekit::current_entitlement().entitled {
+    if storekit::pro_surfaces_unlocked() {
         mode
     } else {
         MODE_OFF.to_string()
@@ -169,6 +169,11 @@ mod tests {
         assert_eq!(effective_mode(MODE_PROFESSIONAL), MODE_OFF);
         assert_eq!(effective_mode(MODE_POLITE), MODE_OFF);
         assert_eq!(effective_mode(MODE_OFF), MODE_OFF);
+        let src = include_str!("polish.rs");
+        assert!(
+            src.contains("pro_surfaces_unlocked()"),
+            "live Polish is a Pro surface: StoreKit alone is not enough"
+        );
     }
 
     #[test]

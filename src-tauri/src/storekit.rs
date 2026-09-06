@@ -112,13 +112,22 @@ pub fn entitlement_from_json(raw: &str) -> Entitlement {
     }
 }
 
+/// Pro surfaces need StoreKit **and** a live Stiki session.
+/// Offer-code redeem does not call this — the sheet stays ungated.
 pub fn require_pro() -> Result<Entitlement, String> {
     let entitlement = current_entitlement();
-    if entitlement.entitled {
-        Ok(entitlement)
-    } else {
-        Err("Mabel Pro requires an active App Store subscription (the 30-day trial counts).".into())
+    if !entitlement.entitled {
+        return Err(
+            "Mabel Pro requires an active App Store subscription (the 30-day trial counts)."
+                .into(),
+        );
     }
+    crate::stiki_session::require_session()?;
+    Ok(entitlement)
+}
+
+pub fn pro_surfaces_unlocked() -> bool {
+    current_entitlement().entitled && crate::stiki_session::is_live()
 }
 
 pub fn attach(app: tauri::AppHandle) {
@@ -167,6 +176,25 @@ pub fn manage_subscriptions() -> Result<(), String> {
         0 => Ok(()),
         _ => Err(native_last_error().unwrap_or_else(|| "Could not open subscription management".into())),
     }
+}
+
+pub const OFFER_CODES_NEED_NEWER_MACOS: &str = "Offer codes need a newer macOS";
+
+/// Present StoreKit `offerCodeRedemption`. Never mock-grants Pro: success
+/// still goes through `current_entitlement()` (verified tx only).
+pub fn redeem_offer_code() -> Result<Entitlement, String> {
+    match native_redeem_offer_code()? {
+        0 => Ok(current_entitlement()),
+        1 => Err("Offer code redemption cancelled. You are still on Free.".into()),
+        3 => Err(OFFER_CODES_NEED_NEWER_MACOS.into()),
+        _ => Err(native_last_error().unwrap_or_else(|| {
+            "Could not redeem the offer code. You are still on Free.".into()
+        })),
+    }
+}
+
+pub fn offer_codes_supported() -> bool {
+    native_offer_codes_supported()
 }
 
 fn timeout_message(op: &str) -> String {
@@ -226,6 +254,20 @@ pub fn storekit_manage_subscriptions() -> Result<(), String> {
     manage_subscriptions()
 }
 
+#[tauri::command]
+pub async fn storekit_redeem_offer_code() -> Result<Entitlement, String> {
+    with_storekit_timeout(
+        redeem_offer_code,
+        timeout_message("Offer code redemption"),
+    )
+    .await
+}
+
+#[tauri::command]
+pub fn storekit_offer_codes_supported() -> bool {
+    offer_codes_supported()
+}
+
 #[cfg(all(target_os = "macos", mabel_native_storekit))]
 mod ffi {
     use super::*;
@@ -238,6 +280,8 @@ mod ffi {
         pub fn mabel_storekit_purchase(product_id: *const c_char) -> c_int;
         pub fn mabel_storekit_restore() -> c_int;
         pub fn mabel_storekit_manage() -> c_int;
+        pub fn mabel_storekit_redeem_offer_code() -> c_int;
+        pub fn mabel_storekit_offer_codes_supported() -> c_int;
         pub fn mabel_storekit_free(s: *mut c_char);
         pub fn mabel_storekit_last_error() -> *const c_char;
     }
@@ -293,6 +337,16 @@ fn native_manage() -> Result<c_int, String> {
 }
 
 #[cfg(all(target_os = "macos", mabel_native_storekit))]
+fn native_redeem_offer_code() -> Result<c_int, String> {
+    Ok(unsafe { ffi::mabel_storekit_redeem_offer_code() })
+}
+
+#[cfg(all(target_os = "macos", mabel_native_storekit))]
+fn native_offer_codes_supported() -> bool {
+    unsafe { ffi::mabel_storekit_offer_codes_supported() } == 1
+}
+
+#[cfg(all(target_os = "macos", mabel_native_storekit))]
 fn native_last_error() -> Option<String> {
     let ptr = unsafe { ffi::mabel_storekit_last_error() };
     if ptr.is_null() {
@@ -333,6 +387,16 @@ fn native_restore() -> Result<c_int, String> {
 #[cfg(not(all(target_os = "macos", mabel_native_storekit)))]
 fn native_manage() -> Result<c_int, String> {
     Err(unavailable_message())
+}
+
+#[cfg(not(all(target_os = "macos", mabel_native_storekit)))]
+fn native_redeem_offer_code() -> Result<c_int, String> {
+    Err(unavailable_message())
+}
+
+#[cfg(not(all(target_os = "macos", mabel_native_storekit)))]
+fn native_offer_codes_supported() -> bool {
+    false
 }
 
 #[cfg(not(all(target_os = "macos", mabel_native_storekit)))]
@@ -451,6 +515,52 @@ mod tests {
         assert!(!current_entitlement().entitled);
         assert!(load_products().is_err());
         assert!(require_pro().is_err());
+        assert!(!pro_surfaces_unlocked());
+    }
+
+    #[test]
+    fn require_pro_needs_stiki_session_too() {
+        assert!(!crate::stiki_session::is_live());
+        assert!(
+            !pro_surfaces_unlocked(),
+            "StoreKit alone must not unlock Pro surfaces"
+        );
+        let err = require_pro().unwrap_err();
+        assert!(
+            err.contains("subscription") || err.contains("Stiki"),
+            "fail closed on StoreKit or Stiki: {err}"
+        );
+    }
+
+    #[test]
+    fn redeem_is_not_gated_on_stiki() {
+        let rust = include_str!("storekit.rs");
+        let start = rust
+            .find("pub fn redeem_offer_code()")
+            .expect("redeem_offer_code");
+        let chunk = &rust[start..start + 500];
+        assert!(
+            !chunk.contains("stiki"),
+            "Have a code? must not require a Stiki session to open the sheet"
+        );
+        let err = redeem_offer_code().unwrap_err();
+        assert!(!err.contains("Stiki"), "redeem error must not be a Stiki gate: {err}");
+        assert!(!current_entitlement().entitled);
+    }
+
+    #[test]
+    fn redeem_offer_code_never_mock_grants_pro() {
+        let before = current_entitlement();
+        assert!(!before.entitled);
+        let err = redeem_offer_code().unwrap_err();
+        assert!(!current_entitlement().entitled);
+        assert!(
+            err.contains("StoreKit")
+                || err.contains("newer macOS")
+                || err.contains("Free")
+                || err.contains("subscription")
+        );
+        assert!(!offer_codes_supported());
     }
 
     #[test]
@@ -461,6 +571,18 @@ mod tests {
         assert!(docs.contains(ASC_APP_APPLE_ID));
         assert!(docs.contains("30-day"));
         assert!(docs.contains("In-App Purchase"));
+        assert!(docs.contains("Have a code?"));
+        assert!(docs.contains("offerCodeRedemption"));
+        assert!(docs.contains("Offer codes need a newer macOS"));
+        assert!(docs.contains("Stiki"));
+        assert!(docs.contains("StoreKit alone"));
+        assert!(docs.contains("01ff2bea-692e-4aa8-a03c-eff20209605f"));
+        assert!(docs.contains("b9c12df1-5153-459a-b50d-9e320b14885d"));
+        assert!(docs.contains("ASC 409"));
+        assert!(docs.contains("PREPARE_FOR_SUBMISSION"));
+        let mas_docs = include_str!("../../docs/mas-and-testflight.md");
+        assert!(mas_docs.contains("01ff2bea-692e-4aa8-a03c-eff20209605f"));
+        assert!(mas_docs.contains("b9c12df1-5153-459a-b50d-9e320b14885d"));
     }
 
     #[test]
@@ -530,6 +652,13 @@ mod tests {
             "mixed-language + dynamic is a common Xcode 16 swift build failure"
         );
         assert!(manifest.contains("swiftLanguageMode"));
+        assert!(
+            manifest.contains("SwiftUI"),
+            "offerCodeRedemption is a SwiftUI modifier; link the system framework"
+        );
+        let header = include_str!("../../native/MabelStoreKit/Sources/MabelStoreKit/include/mabel_storekit.h");
+        assert!(header.contains("mabel_storekit_redeem_offer_code"));
+        assert!(header.contains("mabel_storekit_offer_codes_supported"));
     }
 
     #[test]
@@ -586,6 +715,19 @@ mod tests {
         assert!(swift.contains("@MainActor"), "Product.purchase must run on MainActor");
         assert!(swift.contains("bridgeTimeoutSeconds"));
         assert!(swift.contains("120"));
+        assert!(
+            swift.contains("offerCodeRedemption"),
+            "Plans redeem must open StoreKit offerCodeRedemption, not a home-rolled code field"
+        );
+        assert!(
+            swift.contains("#available(macOS 15.0"),
+            "offerCodeRedemption is macOS 15+; gate it so macosx14.0 still compiles"
+        );
+        assert!(swift.contains("Offer codes need a newer macOS"));
+        assert!(
+            !swift.contains("presentOfferCodeRedeemSheet"),
+            "presentOfferCodeRedeemSheet overloads are UIWindowScene-shaped like showManageSubscriptions"
+        );
     }
 
     #[test]
@@ -597,7 +739,9 @@ mod tests {
         assert!(rust.contains("async fn storekit_restore"));
         assert!(rust.contains("async fn storekit_products"));
         assert!(rust.contains("async fn storekit_entitlement"));
+        assert!(rust.contains("async fn storekit_redeem_offer_code"));
         assert!(rust.contains("fn storekit_manage_subscriptions"));
+        assert!(rust.contains("fn storekit_offer_codes_supported"));
         assert!(!rust.contains("async fn storekit_manage_subscriptions"));
         assert_eq!(STOREKIT_IPC_TIMEOUT_SECS, 125);
     }
@@ -614,5 +758,23 @@ mod tests {
         assert!(ts.contains("Waiting for App Store"));
         assert!(ts.contains("get_storage_status"));
         assert!(ts.contains("withTimeout"));
+        assert!(html.contains("Have a code?"));
+        assert!(html.contains("plan-redeem"));
+        assert!(html.contains("offer-code-cat"));
+        assert!(!html.contains("offer-code-input"));
+        assert!(!html.contains("id=\"offer-code-input\""));
+        assert!(ts.contains("storekit_redeem_offer_code"));
+        assert!(ts.contains("Offer codes need a newer macOS"));
+        assert!(!ts.contains("chibiteklabs.com/redeem"));
+        assert!(ts.contains("stiki_session"));
+        assert!(ts.contains("proSurfacesUnlocked"));
+        assert!(ts.contains("StoreKit alone is not enough"));
+        let rust = include_str!("storekit.rs");
+        assert!(
+            rust.contains("stiki_session::require_session"),
+            "Pro surface unlock must AND a live Stiki session"
+        );
+        let docs = include_str!("../../docs/app-store-iap.md");
+        assert!(docs.contains("Stiki"));
     }
 }

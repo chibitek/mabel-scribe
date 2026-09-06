@@ -16,10 +16,15 @@ void mabel_storekit_start_listener(void);
 char *mabel_storekit_products_json(void);
 char *mabel_storekit_entitlement_json(void);
 
-/* 0 = purchased / restored, 1 = user cancelled, 2 = pending, -1 = error. */
+/* 0 = purchased / restored / redeemed, 1 = user cancelled, 2 = pending,
+ * 3 = offer codes need a newer macOS, -1 = error.
+ * Redeem never grants Pro by itself — entitlement still requires a
+ * verified StoreKit transaction. */
 int mabel_storekit_purchase(const char *product_id);
 int mabel_storekit_restore(void);
 int mabel_storekit_manage(void);
+int mabel_storekit_redeem_offer_code(void);
+int mabel_storekit_offer_codes_supported(void);
 
 void mabel_storekit_free(char *s);
 const char *mabel_storekit_last_error(void);

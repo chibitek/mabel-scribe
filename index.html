@@ -473,7 +473,7 @@
 
           <div class="card help-card">
             <h2 class="help-h">Mabel Pro</h2>
-            <p>Free is personal-only. Pro unlocks teams (org, seats, invites) plus snippets, style, transforms, and scratchpad. Subscribe from Settings → Plans and Billing. The App Store shows the live price and the 30-day free trial. Restore Purchases and Manage Subscriptions are in that same pane. Mabel never opens a marketing site to upgrade.</p>
+            <p>Free is personal-only. Pro unlocks teams (org, seats, invites) plus snippets, style, transforms, and scratchpad. Subscribe from Settings → Plans and Billing. The App Store shows the live price and the 30-day free trial. Restore Purchases, Manage Subscriptions, and Have a code? are in that same pane. Offer codes use Apple’s system sheet — Mabel never opens a marketing site to upgrade or redeem.</p>
           </div>
         </section>
 
@@ -945,12 +945,20 @@
                 </div>
               </div>
               <div id="plan-products" class="plan-products"></div>
+              <div class="offer-code-entry" id="plan-offer-code">
+                <img class="offer-code-cat" src="/mabel.png" alt="Mabel" />
+                <div class="offer-code-copy">
+                  <div class="row-label">Have a code?</div>
+                  <div class="row-hint">Apple subscription offer codes open the system App Store sheet. Cancel or a failed code leaves you on Free.</div>
+                </div>
+                <button type="button" id="plan-redeem" class="btn-secondary">Have a code?</button>
+              </div>
               <p class="row-hint" id="plan-error"></p>
               <div class="plan-actions">
                 <button type="button" id="plan-restore" class="btn-secondary">Restore Purchases</button>
                 <button type="button" id="plan-manage" class="btn-secondary">Manage Subscriptions</button>
               </div>
-              <p class="row-hint">Prices and the introductory trial come from StoreKit. Mabel does not open a website to upgrade.</p>
+              <p class="row-hint">Prices and the introductory trial come from StoreKit. Mabel does not open a website to upgrade or redeem.</p>
             </div>
           </div>
         </section>

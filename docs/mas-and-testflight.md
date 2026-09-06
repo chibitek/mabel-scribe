@@ -18,7 +18,7 @@ Parakeet / WhisperKit are **structurally MAS-clean for the transcription path**:
 
 Still open before any store upload:
 
-- **App Store Connect IAP** on app `6809059582`: subscription group + `com.mabel.app.pro.monthly` / `com.mabel.app.pro.yearly` with 30-day (1-month) free intro. See [app-store-iap.md](app-store-iap.md). No free MAS ship until a Mac binary completes purchase / restore / manage.
+- **App Store Connect IAP** on app `6809059582`: subscription group + `com.mabel.app.pro.monthly` / `com.mabel.app.pro.yearly` with 30-day (1-month) free intro. CIO ASC offer IDs (FREE_TRIAL 1×ONE_MONTH, NEW+EXISTING): monthly `01ff2bea-692e-4aa8-a03c-eff20209605f`, yearly `b9c12df1-5153-459a-b50d-9e320b14885d`. Custom/OTU codes are ASC 409 until Mac app + IAPs are Approved (listing is PREPARE_FOR_SUBMISSION / READY_TO_SUBMIT). Eng does not invent prices. In-app redeem is Plans → Have a code? (`offerCodeRedemption`, macOS 15+). See [app-store-iap.md](app-store-iap.md). No free MAS ship until a Mac binary completes purchase / restore / manage.
 - Enable **In-App Purchase** on App ID `com.mabel.app` and regenerate the MAS provisioning profile. This is not a plist key; do not add Apple Pay merchant entitlements. Developer ID `entitlements.plist` stays unchanged.
 - Sandboxed WebKit may still need `allow-jit` (omitted today; add only with an App Review justification).
 - `llama-server` AI cleanup is a sidecar on the DMG. Keep it off or replace it before MAS.

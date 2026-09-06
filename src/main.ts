@@ -602,13 +602,13 @@ function isLivePolish(mode: string): boolean {
 
 function displayedPolishMode(): string {
   const stored = currentSettings.polishMode || "off";
-  if (isLivePolish(stored) && !currentEntitlement.entitled) return "off";
+  if (isLivePolish(stored) && !proSurfacesUnlocked()) return "off";
   return stored;
 }
 
 function applyPolishUi() {
   if (!currentSettings || !polishModeSelect) return;
-  const entitled = !!currentEntitlement.entitled;
+  const entitled = proSurfacesUnlocked();
   const mode = displayedPolishMode();
   const live = isLivePolish(mode) && entitled;
   polishModeSelect.value = entitled ? mode : "off";
@@ -766,7 +766,7 @@ cleanupModeSelect.addEventListener("change", async () => {
 });
 
 async function persistPolishMode(next: string) {
-  if (isLivePolish(next) && !currentEntitlement.entitled) {
+  if (isLivePolish(next) && !proSurfacesUnlocked()) {
     currentSettings.polishMode = "off";
     applyPolishUi();
     openPlans();
@@ -796,7 +796,7 @@ async function persistPolishMode(next: string) {
 }
 
 polishToggle.addEventListener("click", () => {
-  if (!currentEntitlement.entitled) {
+  if (!proSurfacesUnlocked()) {
     setSwitch(polishToggle, false);
     openPlans();
     return;
@@ -1240,6 +1240,12 @@ interface TransformPrefs {
   punctuation: boolean;
 }
 
+interface StikiSession {
+  live: boolean;
+  subject?: string | null;
+  expiresAt?: string | null;
+}
+
 let currentEntitlement: Entitlement = {
   entitled: false,
   status: "none",
@@ -1247,17 +1253,33 @@ let currentEntitlement: Entitlement = {
   willAutoRenew: false,
 };
 
+let currentStiki: StikiSession = { live: false };
+
 function planLabel(ent: Entitlement): string {
   if (!ent.entitled) return "Free";
   if (ent.isTrial || ent.status === "trial") return "Trial";
   return "Pro";
 }
 
+function proSurfacesUnlocked(ent: Entitlement = currentEntitlement, stiki: StikiSession = currentStiki): boolean {
+  return !!ent.entitled && !!stiki.live;
+}
+
+async function refreshStikiSession() {
+  try {
+    currentStiki = await invoke<StikiSession>("stiki_session");
+  } catch (e) {
+    console.error("stiki_session:", e);
+    currentStiki = { live: false };
+  }
+}
+
 function applyEntitlement(ent: Entitlement) {
   currentEntitlement = ent;
   const entitled = !!ent.entitled;
+  const unlocked = proSurfacesUnlocked(ent);
   const pill = $("brand-pill");
-  const label = planLabel(ent);
+  const label = unlocked ? planLabel(ent) : "Free";
   pill.textContent = label;
   pill.classList.toggle("pro", label === "Pro");
   pill.classList.toggle("trial", label === "Trial");
@@ -1271,14 +1293,14 @@ function applyEntitlement(ent: Entitlement) {
   document.querySelectorAll<HTMLElement>(".nav-item.locked, .nav-item[data-pro]").forEach((item) => {
     const view = item.dataset.view;
     if (!view || !["snippets", "style", "transforms", "scratchpad", "teams"].includes(view)) return;
-    item.classList.toggle("locked", !entitled);
+    item.classList.toggle("locked", !unlocked);
     item.toggleAttribute("data-pro", true);
     const lock = item.querySelector(".lock-pill");
-    if (lock) (lock as HTMLElement).style.display = entitled ? "none" : "";
+    if (lock) (lock as HTMLElement).style.display = unlocked ? "none" : "";
   });
 
-  document.querySelectorAll(".pro-lock").forEach((el) => el.classList.toggle("hidden", entitled));
-  document.querySelectorAll(".pro-unlock").forEach((el) => el.classList.toggle("hidden", !entitled));
+  document.querySelectorAll(".pro-lock").forEach((el) => el.classList.toggle("hidden", unlocked));
+  document.querySelectorAll(".pro-unlock").forEach((el) => el.classList.toggle("hidden", !unlocked));
 
   const accountHint = document.getElementById("account-plan-hint");
   const accountPill = document.getElementById("account-plan-pill");
@@ -1289,7 +1311,9 @@ function applyEntitlement(ent: Entitlement) {
   }
   if (accountHint) {
     if (!entitled) {
-      accountHint.textContent = "Personal (Free). Teams and locked features need a verified App Store subscription.";
+      accountHint.textContent = "Personal (Free). Teams and locked features need a verified App Store subscription and a Stiki sign-on.";
+    } else if (!currentStiki.live) {
+      accountHint.textContent = "App Store Pro is on this Mac. Sign on with Stiki to unlock Pro surfaces. StoreKit alone is not enough.";
     } else if (ent.isTrial) {
       accountHint.textContent = `30-day trial is active${ent.expirationDate ? ` until ${ent.expirationDate}` : ""}.`;
     } else {
@@ -1301,11 +1325,12 @@ function applyEntitlement(ent: Entitlement) {
   const status = document.getElementById("plan-status");
   if (status) {
     if (!entitled) status.textContent = "Personal (Free). Subscribe below — prices come from the App Store.";
+    else if (!currentStiki.live) status.textContent = "App Store is entitled. Sign on with Stiki to unlock Pro. StoreKit alone is not enough.";
     else if (ent.isTrial) status.textContent = `Trial active${ent.expirationDate ? ` · ends ${ent.expirationDate}` : ""}.`;
     else status.textContent = `Pro · ${ent.productId ?? "subscription"}${ent.willAutoRenew ? " · auto-renew on" : ""}`;
   }
 
-  if (entitled) {
+  if (unlocked) {
     loadProSurfaces().catch((e) => console.error("loadProSurfaces:", e));
   }
   applyPolishUi();
@@ -1313,6 +1338,7 @@ function applyEntitlement(ent: Entitlement) {
 }
 
 async function refreshEntitlement() {
+  await refreshStikiSession();
   try {
     const ent = await invoke<Entitlement>("storekit_entitlement");
     applyEntitlement(ent);
@@ -1447,6 +1473,40 @@ document.getElementById("plan-manage")?.addEventListener("click", async () => {
   }
 });
 
+document.getElementById("plan-redeem")?.addEventListener("click", async () => {
+  const errorEl = document.getElementById("plan-error");
+  const statusEl = document.getElementById("plan-status");
+  const redeemBtn = document.getElementById("plan-redeem") as HTMLButtonElement | null;
+  if (errorEl) errorEl.textContent = "";
+  if (redeemBtn) redeemBtn.disabled = true;
+  try {
+    const supported = await invoke<boolean>("storekit_offer_codes_supported");
+    if (!supported) {
+      if (errorEl) errorEl.textContent = "Offer codes need a newer macOS";
+      if (statusEl) statusEl.textContent = "Offer codes need a newer macOS";
+      return;
+    }
+    if (statusEl) statusEl.textContent = "Waiting for App Store…";
+    const ent = await withTimeout(
+      invoke<Entitlement>("storekit_redeem_offer_code"),
+      STOREKIT_UI_TIMEOUT_MS,
+      "Offer code redemption timed out. You are still on Free.",
+    );
+    await refreshStikiSession();
+    applyEntitlement(ent);
+    await refreshStorefront();
+    if (ent.entitled && !proSurfacesUnlocked(ent) && errorEl) {
+      errorEl.textContent =
+        "Offer applied. Sign on with Stiki to unlock Pro. StoreKit alone is not enough.";
+    }
+  } catch (e) {
+    if (errorEl) errorEl.textContent = String(e);
+    if (statusEl) statusEl.textContent = "Offer code was not applied.";
+  } finally {
+    if (redeemBtn) redeemBtn.disabled = false;
+  }
+});
+
 listen<Entitlement>("pro-entitlement-changed", (event) => {
   applyEntitlement(event.payload);
 });
@@ -1470,7 +1530,7 @@ function row(html: string, onRemove: () => void) {
 }
 
 async function loadProSurfaces() {
-  if (!currentEntitlement.entitled) return;
+  if (!proSurfacesUnlocked()) return;
 
   const snippets = await invoke<Snippet[]>("snippets_get");
   const snippetList = document.getElementById("snippet-list");

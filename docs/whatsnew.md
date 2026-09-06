@@ -12,6 +12,10 @@ The in-app first-launch popup reads from this file. Every Mabel release MUST add
 - Transcribe a local WAV, MP3, OGG, or FLAC file to TXT, JSON, SRT, or VTT. Processing stays on this Mac (whisper.cpp sidecar / Developer ID).
 - The whisper.cpp path can download a small Silero VAD model and drop silence before decode, which cuts empty-audio hallucinations.
 
+### Fixed
+- TestFlight version bumps on the same install keep Insights and local history. Application Support files are not wiped on upgrade. If a file cannot be read, Mabel says so and leaves it alone.
+- Subscribe no longer freezes the window. The App Store sheet runs off the main thread, shows progress, and returns success or a recoverable error within two minutes. Restore Purchases and Manage Subscriptions stay usable. Pro still requires a verified StoreKit transaction.
+
 ## v1.3.0 (2026-09-05)
 
 ### New

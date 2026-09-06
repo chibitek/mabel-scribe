@@ -7,6 +7,7 @@
 use serde::{Deserialize, Serialize};
 use std::os::raw::c_int;
 use std::sync::OnceLock;
+use std::time::Duration;
 
 #[cfg(all(target_os = "macos", mabel_native_storekit))]
 use std::ffi::{CStr, CString};
@@ -19,6 +20,9 @@ pub const PRODUCT_MONTHLY: &str = "com.mabel.app.pro.monthly";
 pub const PRODUCT_YEARLY: &str = "com.mabel.app.pro.yearly";
 pub const ASC_APP_APPLE_ID: &str = "6809059582";
 pub const BUNDLE_ID: &str = "com.mabel.app";
+/// Rust IPC ceiling. Swift `bridgeTimeoutSeconds` is 120; this is slightly
+/// longer so the native error (if any) wins. Pro stays locked on timeout.
+pub const STOREKIT_IPC_TIMEOUT_SECS: u64 = 125;
 
 static APP: OnceLock<tauri::AppHandle> = OnceLock::new();
 
@@ -165,24 +169,56 @@ pub fn manage_subscriptions() -> Result<(), String> {
     }
 }
 
-#[tauri::command]
-pub fn storekit_entitlement() -> Entitlement {
-    current_entitlement()
+fn timeout_message(op: &str) -> String {
+    format!(
+        "{op} timed out after {STOREKIT_IPC_TIMEOUT_SECS}s. Restore Purchases and Manage Subscriptions still work. Mabel did not grant Pro."
+    )
+}
+
+async fn with_storekit_timeout<T, F>(op: F, timeout_msg: String) -> Result<T, String>
+where
+    F: FnOnce() -> Result<T, String> + Send + 'static,
+    T: Send + 'static,
+{
+    let joined = tokio::time::timeout(
+        Duration::from_secs(STOREKIT_IPC_TIMEOUT_SECS),
+        tokio::task::spawn_blocking(op),
+    )
+    .await
+    .map_err(|_| timeout_msg)?;
+    joined.map_err(|e| format!("StoreKit worker failed: {e}"))?
 }
 
 #[tauri::command]
-pub fn storekit_products() -> Result<Vec<StoreProduct>, String> {
-    load_products()
+pub async fn storekit_entitlement() -> Entitlement {
+    with_storekit_timeout(
+        || Ok(current_entitlement()),
+        timeout_message("Entitlement check"),
+    )
+    .await
+    .unwrap_or_else(|_| Entitlement::none())
 }
 
 #[tauri::command]
-pub fn storekit_purchase(product_id: String) -> Result<Entitlement, String> {
-    purchase(&product_id)
+pub async fn storekit_products() -> Result<Vec<StoreProduct>, String> {
+    with_storekit_timeout(load_products, timeout_message("Product catalog")).await
 }
 
 #[tauri::command]
-pub fn storekit_restore() -> Result<Entitlement, String> {
-    restore()
+pub async fn storekit_purchase(product_id: String) -> Result<Entitlement, String> {
+    if !is_known_product(&product_id) {
+        return Err("Unknown Mabel Pro product".into());
+    }
+    with_storekit_timeout(
+        move || purchase(&product_id),
+        timeout_message("Purchase"),
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn storekit_restore() -> Result<Entitlement, String> {
+    with_storekit_timeout(restore, timeout_message("Restore")).await
 }
 
 #[tauri::command]
@@ -443,6 +479,12 @@ mod tests {
             mas.contains("com.apple.systemevents"),
             "#10 System Events AE exception must stay on this branch"
         );
+        assert!(
+            mas.contains("temporary-exception.files.home-relative-path.read-only"),
+            "TF must be able to read prior DMG Application Support for upgrade import"
+        );
+        assert!(mas.contains("/Library/Application Support/com.mabel.app"));
+        assert!(mas.contains("/Library/Application Support/com.typr.app"));
         let dmg = include_str!("../entitlements.plist");
         assert!(!dmg.contains("com.apple.security.app-sandbox"));
     }
@@ -536,6 +578,28 @@ mod tests {
         assert!(swift.contains("macappstore://apps.apple.com/account/subscriptions"));
         assert!(swift.contains(PRODUCT_MONTHLY));
         assert!(swift.contains(PRODUCT_YEARLY));
+        assert!(
+            swift.contains("must not block the main thread"),
+            "purchase/restore FFI must refuse to hang AppKit"
+        );
+        assert!(swift.contains("timedOut") || swift.contains(".timedOut"));
+        assert!(swift.contains("@MainActor"), "Product.purchase must run on MainActor");
+        assert!(swift.contains("bridgeTimeoutSeconds"));
+        assert!(swift.contains("120"));
+    }
+
+    #[test]
+    fn purchase_and_restore_are_async_with_timeout() {
+        let rust = include_str!("storekit.rs");
+        assert!(rust.contains("STOREKIT_IPC_TIMEOUT_SECS"));
+        assert!(rust.contains("spawn_blocking"));
+        assert!(rust.contains("async fn storekit_purchase"));
+        assert!(rust.contains("async fn storekit_restore"));
+        assert!(rust.contains("async fn storekit_products"));
+        assert!(rust.contains("async fn storekit_entitlement"));
+        assert!(rust.contains("fn storekit_manage_subscriptions"));
+        assert!(!rust.contains("async fn storekit_manage_subscriptions"));
+        assert_eq!(STOREKIT_IPC_TIMEOUT_SECS, 125);
     }
 
     #[test]
@@ -547,5 +611,8 @@ mod tests {
         assert!(!ts.contains("PRO_URL"));
         assert!(!html.contains("chibiteklabs.com"));
         assert!(!html.contains("$10/month"));
+        assert!(ts.contains("Waiting for App Store"));
+        assert!(ts.contains("get_storage_status"));
+        assert!(ts.contains("withTimeout"));
     }
 }

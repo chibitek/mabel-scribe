@@ -180,9 +180,9 @@ If the UI says `NO_PRODUCTS` or “App Store prices are unavailable”, the proc
 
 | Case | Expect |
 |---|---|
-| **Purchase + trial** | Subscribe Monthly (or Yearly). StoreKit sheet from the Xcode config. Entitlement `status=trial`, `isTrial=true`, Pro unlocks (teams + locked nav). |
-| **Restore** | Fresh config with no transactions: restore succeeds, still Free (empty). After a trial purchase: restore returns that trial. |
-| **Fail-closed** | Quit, or Debug → StoreKit → refund / expire in Xcode. App is Free. No mock paid path. Missing dylib cannot compile on macOS unless `MABEL_SKIP_NATIVE_STOREKIT=1`, which stays Free. |
+| **Purchase + trial** | Subscribe Monthly (or Yearly). Button shows **Waiting for App Store…**. StoreKit sheet from the Xcode config. Success or a visible error within ~125s — the window must not hang. Entitlement `status=trial`, `isTrial=true`, Pro unlocks (teams + locked nav). |
+| **Restore / Manage** | Stay clickable during purchase. Restore times out with an error instead of hanging. Manage still opens the App Store subscriptions URL immediately. |
+| **Fail-closed** | Quit, or Debug → StoreKit → refund / expire in Xcode. App is Free. Timeout / cancel / pending never grant Pro. No mock paid path. Missing dylib cannot compile on macOS unless `MABEL_SKIP_NATIVE_STOREKIT=1`, which stays Free. |
 
 Sandbox Apple IDs are for TestFlight / ASC sandbox, not this local configuration. The `.storekit` file does not ship paid entitlement.
 
@@ -192,7 +192,8 @@ Do **not** merge this draft on a RED purchase+trial.
 
 - Native bridge: `native/MabelStoreKit` (StoreKit 2, C ABI, pure Swift package) staged by `scripts/build-mabel-storekit.sh` / `npm run vendor-storekit`.
 - Rust fail-closed parser: `src-tauri/src/storekit.rs`.
-- MAS flavor still uses `entitlements.mas.plist` + `tauri.mas.conf.json` (device.audio-input + System Events AE exception). IAP does not add sandbox keys and does not change Developer ID `entitlements.plist`.
+- MAS flavor still uses `entitlements.mas.plist` + `tauri.mas.conf.json` (device.audio-input + System Events AE exception + home-relative read of prior Application Support for upgrade import). IAP does not add Apple Pay keys and does not change Developer ID `entitlements.plist`.
+- Purchase / restore FFI must not run on the AppKit main thread. Swift waits at most 120s; Rust IPC 125s. Unverified transactions still never grant Pro.
 - Release builds have **no** mock paid entitlement. Missing dylib / non-macOS / unverified transaction → Free.
 
 ## Still required before a free MAS ship

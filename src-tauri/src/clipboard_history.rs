@@ -125,16 +125,28 @@ pub struct Service {
     enabled: Arc<AtomicBool>,
     app_dir: PathBuf,
     inner: Mutex<HistoryFile>,
+    load_error: Mutex<Option<String>>,
 }
 
 impl Service {
     pub fn new(app_dir: PathBuf, enabled: bool) -> Arc<Self> {
-        let loaded = load_file(&app_dir);
+        let (loaded, error) = match load_file(&app_dir) {
+            Ok(file) => (file, None),
+            Err(e) => {
+                eprintln!("[Mabel] {e}");
+                (HistoryFile::default(), Some(e))
+            }
+        };
         Arc::new(Self {
             enabled: Arc::new(AtomicBool::new(enabled)),
             app_dir,
             inner: Mutex::new(loaded),
+            load_error: Mutex::new(error),
         })
+    }
+
+    pub fn load_error(&self) -> Option<String> {
+        self.load_error.lock().ok().and_then(|g| g.clone())
     }
 
     pub fn is_enabled(&self) -> bool {
@@ -167,6 +179,9 @@ impl Service {
     }
 
     pub fn list(&self) -> Result<HistoryList, String> {
+        if let Some(err) = self.load_error() {
+            return Err(err);
+        }
         let entitled = storekit::current_entitlement().entitled;
         let cap = cap_for(entitled);
         let enabled = self.is_enabled();
@@ -208,6 +223,9 @@ impl Service {
     ) -> Result<CaptureDecision, String> {
         if !self.is_enabled() {
             return Ok(CaptureDecision::Disabled);
+        }
+        if let Some(err) = self.load_error() {
+            return Err(err);
         }
         if !os_allowed {
             return Ok(CaptureDecision::DeniedPermission);
@@ -437,11 +455,15 @@ fn apply_cap(items: &mut Vec<HistoryItem>, cap: usize) {
     }
 }
 
-fn load_file(app_dir: &PathBuf) -> HistoryFile {
-    fs::read_to_string(app_dir.join(HISTORY_FILE))
-        .ok()
-        .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+fn load_file(app_dir: &PathBuf) -> Result<HistoryFile, String> {
+    match crate::storage::read_existing_json::<HistoryFile>(
+        &app_dir.join(HISTORY_FILE),
+        "clipboard history",
+    ) {
+        Ok(Some(file)) => Ok(file),
+        Ok(None) => Ok(HistoryFile::default()),
+        Err(e) => Err(e),
+    }
 }
 
 fn persist(app_dir: &PathBuf, file: &HistoryFile) -> Result<(), String> {
@@ -760,5 +782,17 @@ mod tests {
         assert!(!settings.contains("nexusClipboard"));
         assert!(settings.contains("must not"));
         assert!(settings.contains("poll or read pasteboard"));
+    }
+
+    #[test]
+    fn corrupt_history_file_is_not_wiped() {
+        let dir = tmp();
+        fs::write(dir.join(HISTORY_FILE), "{nope").unwrap();
+        let svc = Service::new(dir.clone(), true);
+        let err = svc.list().unwrap_err();
+        assert!(err.contains("left untouched"), "{err}");
+        assert_eq!(fs::read_to_string(dir.join(HISTORY_FILE)).unwrap(), "{nope");
+        assert!(svc.capture_text("x", &types(&["public.utf8-plain-text"])).is_err());
+        assert_eq!(fs::read_to_string(dir.join(HISTORY_FILE)).unwrap(), "{nope");
     }
 }

@@ -18,6 +18,7 @@ use mabel_lib::stats::{StatsStore, StatsSummary};
 use mabel_lib::system_ui;
 use mabel_lib::local_engine;
 use mabel_lib::pro_features;
+use mabel_lib::storage;
 use mabel_lib::storekit;
 use mabel_lib::teams;
 use mabel_lib::transcribe_local;
@@ -34,6 +35,7 @@ struct AppState {
     stats: Arc<StatsStore>,
     llm_server: Arc<LlmServer>,
     clipboard: Arc<clipboard_history::Service>,
+    storage_status: storage::StorageStatus,
 }
 
 #[derive(serde::Serialize)]
@@ -182,6 +184,9 @@ fn scratchpad_save(state: State<AppState>, text: String) -> Result<(), String> {
 
 #[tauri::command]
 fn mark_version_seen(state: State<AppState>) -> Result<(), String> {
+    if let Some(err) = state.storage_status.settings_error.as_ref() {
+        return Err(err.clone());
+    }
     let mut held = state.settings.lock().unwrap();
     held.last_seen_version = mabel_lib::MABEL_VERSION.to_string();
     held.save(&state.app_dir)
@@ -244,9 +249,12 @@ fn request_apple_events_permission() {
 }
 
 fn get_app_dir() -> PathBuf {
-    dirs::config_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("com.mabel.app")
+    storage::app_dir()
+}
+
+#[tauri::command]
+fn get_storage_status(state: State<AppState>) -> storage::StorageStatus {
+    state.storage_status.clone()
 }
 
 #[tauri::command]
@@ -274,6 +282,9 @@ fn reconcile_groq_keychain(state: State<AppState>) -> bool {
         return true;
     }
     if mabel_lib::secrets::has_groq_key() {
+        if state.storage_status.settings_error.is_some() {
+            return false;
+        }
         let mut held = state.settings.lock().unwrap();
         held.groq_key_configured = true;
         let _ = held.save(&state.app_dir);
@@ -285,6 +296,9 @@ fn reconcile_groq_keychain(state: State<AppState>) -> bool {
 
 #[tauri::command]
 fn save_settings(app: tauri::AppHandle, state: State<AppState>, settings: Settings) -> Result<(), String> {
+    if let Some(err) = state.storage_status.settings_error.as_ref() {
+        return Err(err.clone());
+    }
     let mut settings = settings;
     settings.polish_mode = mabel_lib::polish::normalize_mode(&settings.polish_mode);
     // No silent Pro path: live Polish without entitlement is an error, not a clamp.
@@ -312,6 +326,9 @@ fn save_settings(app: tauri::AppHandle, state: State<AppState>, settings: Settin
 #[tauri::command]
 fn polish_set(app: tauri::AppHandle, state: State<AppState>, mode: String) -> Result<String, String> {
     // Enforcer BOUND: Polish only. Do not write the clipboard opt-in or a Nexus store.
+    if let Some(err) = state.storage_status.settings_error.as_ref() {
+        return Err(err.clone());
+    }
     let mode = mabel_lib::polish::require_mode_allowed(&mode)?;
     {
         let mut held = state.settings.lock().unwrap();
@@ -343,6 +360,9 @@ fn clipboard_history_set_enabled(
     enabled: bool,
 ) -> Result<clipboard_history::HistoryList, String> {
     {
+        if let Some(err) = state.storage_status.settings_error.as_ref() {
+            return Err(err.clone());
+        }
         let mut held = state.settings.lock().unwrap();
         held.clipboard_history_enabled = enabled;
         held.save(&state.app_dir)?;
@@ -837,10 +857,30 @@ async fn do_toggle_recording(
 
 fn main() {
     let app_dir = get_app_dir();
-    let settings = Settings::load(&app_dir);
+    let migration = storage::migrate_into(&app_dir, &storage::legacy_candidate_dirs());
+    if migration.is_failed() {
+        eprintln!(
+            "[Mabel] storage migrate failed: {}",
+            migration.message.as_deref().unwrap_or("unknown")
+        );
+    } else if migration.status == "migrated" {
+        eprintln!(
+            "[Mabel] storage migrate: {}",
+            migration.message.as_deref().unwrap_or("imported prior data")
+        );
+    }
+    let settings_load = Settings::load_with_status(&app_dir);
+    if let Some(err) = settings_load.error.as_ref() {
+        eprintln!("[Mabel] {err}");
+    }
+    let settings = settings_load.settings;
     let initial_hotkey = settings.hotkey.clone();
 
-    let stats = Arc::new(StatsStore::load(&app_dir));
+    let (stats_store, stats_error) = StatsStore::load_with_status(&app_dir);
+    if let Some(err) = stats_error.as_ref() {
+        eprintln!("[Mabel] {err}");
+    }
+    let stats = Arc::new(stats_store);
     let llm_server = Arc::new(LlmServer::new());
     let recorder = Recorder::new(stats.clone(), llm_server.clone());
     mabel_lib::recorder::wipe_audio_artifacts(&app_dir);
@@ -851,6 +891,12 @@ fn main() {
     let initial_llm_model = settings.llm_model.clone();
     let initial_companion_enabled = settings.companion_enabled;
     let clipboard = clipboard_history::Service::new(app_dir.clone(), settings.clipboard_history_enabled);
+    let storage_status = storage::StorageStatus {
+        migration,
+        settings_error: settings_load.error,
+        stats_error,
+        history_error: clipboard.load_error(),
+    };
 
     tauri::Builder::default()
         // Single-instance MUST be the first plugin registered. When a second
@@ -878,6 +924,7 @@ fn main() {
             stats,
             llm_server: llm_server.clone(),
             clipboard: clipboard.clone(),
+            storage_status,
         })
         .invoke_handler(tauri::generate_handler![
             get_settings,
@@ -910,6 +957,7 @@ fn main() {
             companion_visit_now,
             reconcile_groq_keychain,
             get_whats_new,
+            get_storage_status,
             mark_version_seen,
             storekit::storekit_entitlement,
             storekit::storekit_products,
@@ -939,6 +987,9 @@ fn main() {
         ])
         .setup(move |app| {
             storekit::attach(app.handle().clone());
+            if let Some(msg) = app.state::<AppState>().storage_status.visible_error() {
+                let _ = app.emit("storage-status-error", msg);
+            }
             // Create the overlay window (small mic icon, top-right, always on top)
             // Default position: top center of the primary screen.
             let monitor = app.primary_monitor().ok().flatten();

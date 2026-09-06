@@ -1,18 +1,16 @@
 //! Product **Snippets** — Enforcer BOUND (suite b6530197) + Sign-on RE-LOCK.
 //!
-//! - Local-first personal snippets (trigger → expansion); on-device only
-//! - Pro surface: StoreKit Pro entitlement AND Stiki session
-//! - Free locked + Activate Pro / Sign in with Stiki (same pattern; no website)
-//! - No cloud sync, no team/company share, no Nexus/SIEM write
-//! - Distinct from Dictionary (spelling), Polish (tone), and Clipboard History
-//! - Free dictation must not require Stiki
-//! - No HIPAA/BAA claim copy (until Enforcer+Legal yes)
+//! GREEN: StoreKit Pro + Stiki dual gate; local-first personal snippets;
+//! no cloud sync; no team/company share without ACL Make It So;
+//! no Nexus/SIEM write; no auto-promote; no HIPAA/BAA; Free dictate no Stiki;
+//! distinct from Polish/Clipboard/Dictionary stores.
 //!
-//! BREAKS IF: Snippets usable without Stiki
-//! BREAKS IF: cloud/team share ships without separate ACL Make It So
-//! BREAKS IF: Free dictation gated
+//! BREAKS IF: Snippets without dual gate
+//! BREAKS IF: cloud/team share without ACL
+//! BREAKS IF: Nexus write
+//! BREAKS IF: auto-promote
 //! HELD: cloud sync + team share until MCS with Stiki/folder-style ACL;
-//! fail closed if ACL missing.
+//! fail-closed if ACL missing.
 
 use std::path::PathBuf;
 
@@ -20,8 +18,11 @@ use crate::pro_features::{self, Snippet};
 use crate::stiki_session;
 use crate::storekit;
 
+/// Named Enforcer suite. Tests fail if this is retargeted without a new MCS.
+pub const ENFORCER_SUITE: &str = "b6530197";
+
 /// Named Enforcer BOUND. Tests fail if this is violated.
-pub const ENFORCER_BOUND: &str = "Pro-gated + Stiki session; local-first; no cloud sync; no team share; no Nexus/SIEM write; no HIPAA/BAA; Scratchpad/Insights local-only default; fail closed if ACL missing";
+pub const ENFORCER_BOUND: &str = "StoreKit Pro + Stiki dual gate; local-first personal snippets; no cloud sync; no team/company share without ACL Make It So; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA; Free dictate no Stiki; distinct from Polish/Clipboard/Dictionary stores";
 
 /// Product LOCK Snippets v1 + Sign-on. Tests fail if the surface drifts.
 pub const PRODUCT_LOCK: &str = "Name: Snippets; Pro surface requires StoreKit Pro AND Stiki session; Free locked + Activate Pro / Sign in with Stiki; trigger phrase → replacement during cleanup/dictation paste; Settings + sidebar/nav; default empty; add/edit/delete on device; local-first; not Nexus; not cloud sync v1; distinct from Dictionary, Polish, and Clipboard History; non-goals: shared team snippets, cloud write, HIPAA";
@@ -346,15 +347,31 @@ mod tests {
     }
 
     #[test]
-    fn enforcer_bound_breaks_if_free_cloud_nexus_or_web_upgrade() {
-        assert!(ENFORCER_BOUND.contains("Pro-gated + Stiki session"));
-        assert!(ENFORCER_BOUND.contains("local-first"));
+    fn enforcer_bound_suite_b6530197_green() {
+        assert_eq!(ENFORCER_SUITE, "b6530197");
+        assert!(ENFORCER_BOUND.contains("StoreKit Pro + Stiki dual gate"));
+        assert!(ENFORCER_BOUND.contains("local-first personal snippets"));
         assert!(ENFORCER_BOUND.contains("no cloud sync"));
-        assert!(ENFORCER_BOUND.contains("no team share"));
+        assert!(ENFORCER_BOUND.contains("no team/company share without ACL Make It So"));
         assert!(ENFORCER_BOUND.contains("no Nexus/SIEM write"));
+        assert!(ENFORCER_BOUND.contains("no auto-promote"));
         assert!(ENFORCER_BOUND.contains("no HIPAA/BAA"));
-        assert!(ENFORCER_BOUND.contains("Scratchpad/Insights local-only default"));
-        assert!(ENFORCER_BOUND.contains("fail closed if ACL missing"));
+        assert!(ENFORCER_BOUND.contains("Free dictate no Stiki"));
+        assert!(ENFORCER_BOUND.contains("distinct from Polish/Clipboard/Dictionary stores"));
+    }
+
+    #[test]
+    fn enforcer_bound_breaks_if_free_cloud_nexus_or_web_upgrade() {
+        assert_eq!(ENFORCER_SUITE, "b6530197");
+        assert!(ENFORCER_BOUND.contains("StoreKit Pro + Stiki dual gate"));
+        assert!(ENFORCER_BOUND.contains("local-first personal snippets"));
+        assert!(ENFORCER_BOUND.contains("no cloud sync"));
+        assert!(ENFORCER_BOUND.contains("no team/company share without ACL Make It So"));
+        assert!(ENFORCER_BOUND.contains("no Nexus/SIEM write"));
+        assert!(ENFORCER_BOUND.contains("no auto-promote"));
+        assert!(ENFORCER_BOUND.contains("no HIPAA/BAA"));
+        assert!(ENFORCER_BOUND.contains("Free dictate no Stiki"));
+        assert!(ENFORCER_BOUND.contains("distinct from Polish/Clipboard/Dictionary stores"));
 
         let html = include_str!("../../index.html");
         let nav = html
@@ -460,6 +477,86 @@ mod tests {
         let tray = include_str!("clipboard_ui.rs");
         assert!(tray.contains("Snippets"));
         assert!(tray.contains("open-snippets"));
+        assert!(
+            include_str!("snippets.rs").contains("promote_to_company_memory"),
+            "BREAKS IF: auto-promote stub missing"
+        );
+        assert!(
+            include_str!("pro_features.rs").contains("snippets.json"),
+            "BREAKS IF: snippet store missing"
+        );
+        assert!(
+            !include_str!("settings.rs").contains("snippets.json"),
+            "BREAKS IF: snippets folded into Dictionary/settings store"
+        );
+        assert!(
+            !include_str!("polish.rs").contains("snippets.json")
+                && !include_str!("clipboard_history.rs").contains("snippets.json"),
+            "BREAKS IF: snippets folded into Polish or Clipboard stores"
+        );
+    }
+
+    #[test]
+    fn breaks_if_snippets_without_dual_gate() {
+        assert!(
+            require_surface_with(true, false).is_err(),
+            "BREAKS IF: Snippets without dual gate (Pro, no Stiki)"
+        );
+        assert!(
+            require_surface_with(false, true).is_err(),
+            "BREAKS IF: Snippets without dual gate (Stiki, no Pro)"
+        );
+        assert!(
+            require_surface_with(false, false).is_err(),
+            "BREAKS IF: Snippets without dual gate"
+        );
+        assert!(require_surface_with(true, true).is_ok());
+        assert!(
+            effective_snippets_with(&[sample("sig", "Best")], true, false).is_empty(),
+            "BREAKS IF: Snippets without dual gate"
+        );
+        assert!(!surface_ready(), "BREAKS IF: Snippets without dual gate");
+    }
+
+    #[test]
+    fn breaks_if_cloud_team_share_without_acl() {
+        assert!(
+            !STIKI_FOLDER_ACL_SHIPPED && !stiki_folder_acl_present(),
+            "BREAKS IF: cloud/team share without ACL"
+        );
+        assert!(
+            require_share_acl().is_err() && share_cloud_or_team().is_err(),
+            "BREAKS IF: cloud/team share without ACL"
+        );
+    }
+
+    #[test]
+    fn breaks_if_nexus_or_siem_write() {
+        let nexus_write = format!("{}{}", "nexus", "_write");
+        let siem_write = format!("{}{}", "siem", "_write");
+        for hay in [
+            include_str!("main.rs"),
+            include_str!("snippets.rs"),
+            include_str!("pro_features.rs"),
+            include_str!("settings.rs"),
+            include_str!("../../src/main.ts"),
+            include_str!("../../index.html"),
+        ] {
+            assert!(!hay.contains(&nexus_write), "BREAKS IF: Nexus write");
+            assert!(!hay.contains(&siem_write), "BREAKS IF: Nexus write");
+        }
+    }
+
+    #[test]
+    fn breaks_if_auto_promote() {
+        assert!(
+            promote_to_company_memory().is_err(),
+            "BREAKS IF: auto-promote"
+        );
+        assert!(
+            !include_str!("../../src/main.ts").contains("snippets_promote"),
+            "BREAKS IF: auto-promote"
+        );
     }
 
     fn rec_or_stream_applies() -> bool {

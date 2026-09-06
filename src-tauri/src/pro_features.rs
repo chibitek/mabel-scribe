@@ -34,22 +34,23 @@ impl Default for StylePrefs {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct TransformPrefs {
-    #[serde(rename = "fillerWords", default = "default_true")]
-    pub filler_words: bool,
-    #[serde(default = "default_true")]
-    pub grammar: bool,
-    #[serde(default = "default_true")]
-    pub punctuation: bool,
+    /// Last user-invoked action: email | bullets | shorter | clearer.
+    /// Empty until the user invokes. Not Style register. Not Polish tone.
+    /// Not auto-on filler/grammar/punctuation prefs.
+    #[serde(rename = "lastAction", default)]
+    pub last_action: String,
+    #[serde(rename = "lastSource", default)]
+    pub last_source: String,
+    #[serde(rename = "lastResult", default)]
+    pub last_result: String,
 }
-
-fn default_true() -> bool { true }
 
 impl Default for TransformPrefs {
     fn default() -> Self {
         Self {
-            filler_words: true,
-            grammar: true,
-            punctuation: true,
+            last_action: String::new(),
+            last_source: String::new(),
+            last_result: String::new(),
         }
     }
 }
@@ -162,15 +163,29 @@ pub fn style_write_local(app_dir: &PathBuf, prefs: StylePrefs) -> Result<StylePr
     Ok(clean)
 }
 
-pub fn transforms_get(app_dir: &PathBuf) -> Result<TransformPrefs, String> {
-    stiki::require_pro_unlock(app_dir)?;
-    Ok(read_json(&app_dir.join("transforms.json")))
+/// Ungated local read. Product Transforms applies the dual gate before rewrite / mutate.
+pub fn transforms_read(app_dir: &PathBuf) -> TransformPrefs {
+    read_json(&app_dir.join("transforms.json"))
 }
 
-pub fn transforms_save(app_dir: &PathBuf, prefs: TransformPrefs) -> Result<TransformPrefs, String> {
-    stiki::require_pro_unlock(app_dir)?;
-    write_json(app_dir, "transforms.json", &prefs)?;
-    Ok(prefs)
+pub fn transforms_write_local(
+    app_dir: &PathBuf,
+    prefs: TransformPrefs,
+) -> Result<TransformPrefs, String> {
+    let action = match prefs.last_action.trim().to_ascii_lowercase().as_str() {
+        "email" | "e-mail" => "email".into(),
+        "bullets" | "bullet" | "bullet-points" | "bullet points" => "bullets".into(),
+        "shorter" | "make-shorter" | "make shorter" | "shorten" => "shorter".into(),
+        "clearer" | "make-clearer" | "make clearer" | "clarify" => "clearer".into(),
+        _ => String::new(),
+    };
+    let clean = TransformPrefs {
+        last_action: action,
+        last_source: prefs.last_source,
+        last_result: prefs.last_result,
+    };
+    write_json(app_dir, "transforms.json", &clean)?;
+    Ok(clean)
 }
 
 pub fn scratchpad_get(app_dir: &PathBuf) -> Result<String, String> {
@@ -208,7 +223,8 @@ mod tests {
         assert!(crate::snippets::add(&dir, "sig".into(), "Best".into()).is_err());
         assert!(crate::style::require_prefs(&dir).is_err());
         assert!(crate::style::set_mode(&dir, "formal".into()).is_err());
-        assert!(transforms_get(&dir).is_err());
+        assert!(crate::transforms::require_prefs(&dir).is_err());
+        assert!(crate::transforms::apply_local(&dir, "email".into(), "hi".into()).is_err());
         assert!(scratchpad_get(&dir).is_err());
         assert!(scratchpad_save(&dir, "hello".into()).is_err());
     }
@@ -232,5 +248,27 @@ mod tests {
         assert!(snippets_update_local(&dir, "missing".into(), "x".into(), "y".into()).is_err());
         let left = snippets_remove_local(&dir, items[0].id.clone()).unwrap();
         assert!(left.is_empty());
+    }
+
+    #[test]
+    fn local_transform_store_persists_last_invoke() {
+        let dir = tmp();
+        let written = transforms_write_local(
+            &dir,
+            TransformPrefs {
+                last_action: "email".into(),
+                last_source: "ship friday".into(),
+                last_result: "Subject: ship friday\n\nship friday".into(),
+            },
+        )
+        .unwrap();
+        assert_eq!(written.last_action, "email");
+        let loaded = transforms_read(&dir);
+        assert_eq!(loaded.last_action, "email");
+        assert_eq!(loaded.last_source, "ship friday");
+        assert!(loaded.last_result.contains("ship friday"));
+        let cleared = transforms_write_local(&dir, TransformPrefs::default()).unwrap();
+        assert!(cleared.last_action.is_empty());
+        assert!(transforms_read(&dir).last_result.is_empty());
     }
 }

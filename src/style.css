@@ -950,6 +950,23 @@ select:focus, input:focus { outline: 2px solid var(--salmon); outline-offset: -1
   background: #fff;
 }
 .pro-row-meta { color: var(--text-mute); font-size: 12.5px; }
+.xf-text {
+  width: 100%;
+  min-height: 120px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  font: inherit;
+  resize: vertical;
+  background: #fff;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+.xf-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 420px;
+}
 .scratchpad {
   width: 100%;
   min-height: 280px;

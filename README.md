@@ -303,6 +303,7 @@ src-tauri/
     dictionary.rs          Pro + Stiki local-first terms (ASR prompt + cleanup hints)
     snippets.rs            Pro + Stiki local-first trigger → expansion (dictation)
     style.rs               Pro + Stiki Formal|Casual|Very casual register (cleanup)
+    transforms.rs          Pro + Stiki user-invoked Email|Bullets|Shorter|Clearer (local Gemma)
     stiki_session.rs       Local Stiki sign-on (Pro surfaces; not cloud ACL)
     settings.rs            Persisted user prefs (config.json)
     audio.rs               cpal recorder, ring buffer, RMS metering

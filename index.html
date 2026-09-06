@@ -49,7 +49,7 @@
             Style
             <span class="lock-pill">Pro</span>
           </a>
-          <a class="nav-item locked" data-view="transforms">
+          <a class="nav-item locked" data-view="transforms" data-pro>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 5l3-3 3 3M3 11l3 3 3-3M11 5h2v6h-2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
             Transforms
             <span class="lock-pill">Pro</span>
@@ -320,32 +320,46 @@
           </div>
         </section>
         <section class="view" data-view="transforms">
-          <header class="view-header"><h1 class="view-title">Transforms</h1><p class="view-sub">On-device cleanup preferences. Audio still never leaves this Mac.</p></header>
-          <div class="card locked-card pro-lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and Sign in with Stiki for grammar, punctuation, and filler-word cleanup that runs locally. Free dictation does not need an account.</p><button type="button" class="btn-primary pro-activate">Unlock Pro</button></div>
-          <div class="pro-unlock hidden">
+          <header class="view-header"><h1 class="view-title">Transforms</h1><p class="view-sub">Invoke Email, Bullet points, Make shorter, or Make clearer on dictated or selected text. Local Gemma. She never invents facts. Not Style, not Polish, not Dictionary, not Snippets.</p></header>
+          <div class="card locked-card pro-lock" data-xf-gate="lock"><div class="locked-eyebrow">Pro feature</div><p>Activate Pro and sign in with Stiki so Mabel can reshape what you just said — Email, bullets, shorter, or clearer — locally, like a house cat who only rewrites the note you actually left on the counter. She will not invent facts. Free dictation does not need an account.</p><div class="locked-actions"><button type="button" class="btn-primary pro-activate" id="xf-pane-activate">Activate Pro</button><button type="button" class="btn-secondary" id="xf-pane-stiki">Sign in with Stiki</button></div></div>
+          <div class="pro-unlock hidden" data-xf-gate="unlock">
             <div class="card pane-card">
               <div class="row">
                 <div class="row-text">
-                  <div class="row-label">Remove filler words</div>
-                  <div class="row-hint">Strip um, uh, and similar fillers when cleanup runs.</div>
+                  <div class="row-label">Source</div>
+                  <div class="row-hint">Paste dictated or selected text. Transforms run only when you press an action — never auto-on.</div>
                 </div>
-                <button type="button" class="switch" id="xf-filler" role="switch" aria-checked="true" aria-label="Remove filler words"><span class="switch-thumb"></span></button>
+              </div>
+              <textarea id="xf-source" class="xf-text" rows="6" aria-label="Text to transform" placeholder="Paste what you dictated or selected…"></textarea>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Rewrite</div>
+                  <div class="row-hint">Email, Bullet points, Make shorter, or Make clearer. Local Gemma on this Mac. Distinct from Style register and Polish tone.</div>
+                </div>
+                <div class="seg xf-actions" role="group" aria-label="Transform action">
+                  <button type="button" class="seg-btn" data-xf-action="email" id="xf-action-email">Email</button>
+                  <button type="button" class="seg-btn" data-xf-action="bullets" id="xf-action-bullets">Bullet points</button>
+                  <button type="button" class="seg-btn" data-xf-action="shorter" id="xf-action-shorter">Make shorter</button>
+                  <button type="button" class="seg-btn" data-xf-action="clearer" id="xf-action-clearer">Make clearer</button>
+                </div>
               </div>
               <div class="row">
                 <div class="row-text">
-                  <div class="row-label">Grammar</div>
-                  <div class="row-hint">Light grammar normalization on-device.</div>
+                  <div class="row-label">Result</div>
+                  <div class="row-hint">Last rewrite stays on this Mac until you clear it.</div>
                 </div>
-                <button type="button" class="switch" id="xf-grammar" role="switch" aria-checked="true" aria-label="Grammar"><span class="switch-thumb"></span></button>
+                <button type="button" id="xf-clear-btn" class="btn-secondary">Clear</button>
               </div>
+              <textarea id="xf-result" class="xf-text" rows="8" aria-label="Transform result" readonly></textarea>
+              <div id="xf-error" class="dict-error" hidden></div>
+            </div>
+            <div class="card pane-card">
               <div class="row">
                 <div class="row-text">
-                  <div class="row-label">Punctuation</div>
-                  <div class="row-hint">Add sentence punctuation after dictation.</div>
+                  <div class="row-label">Privacy</div>
+                  <div class="row-hint">Transforms live on this Mac. Local Gemma. Never invent facts. Not uploaded, not Nexus memory, and not shared with a team. Cloud and team share stay off. Distinct from Style, Polish, Dictionary, Snippets, and Clipboard.</div>
                 </div>
-                <button type="button" class="switch" id="xf-punct" role="switch" aria-checked="true" aria-label="Punctuation"><span class="switch-thumb"></span></button>
               </div>
-              <p class="row-hint">Engine cleanup still lives in Settings → Engine. These flags are stored locally for Pro.</p>
             </div>
           </div>
         </section>
@@ -816,6 +830,17 @@
                   <button type="button" class="btn-secondary hidden" id="style-open">Open Style</button>
                   <button type="button" class="btn-secondary" id="style-activate">Activate Pro</button>
                   <button type="button" class="btn-secondary" id="style-stiki">Sign in with Stiki</button>
+                </div>
+              </div>
+              <div class="row">
+                <div class="row-text">
+                  <div class="row-label">Transforms</div>
+                  <div class="row-hint">Pro + Stiki. User-invoked Email, Bullet points, Make shorter, or Make clearer on dictated or selected text. Local Gemma. Never invents facts. Local on this Mac &mdash; not Style, not Polish, not Dictionary, not Snippets. Menu bar → Transforms…</div>
+                </div>
+                <div class="row-actions">
+                  <button type="button" class="btn-secondary hidden" id="transforms-open">Open Transforms</button>
+                  <button type="button" class="btn-secondary" id="transforms-activate">Activate Pro</button>
+                  <button type="button" class="btn-secondary" id="transforms-stiki">Sign in with Stiki</button>
                 </div>
               </div>
               <div class="row">

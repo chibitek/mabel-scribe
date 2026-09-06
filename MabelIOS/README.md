@@ -30,14 +30,14 @@ Ship order (do not skip or reorder): **Keyboard → Polish → Dictionary → Sc
 - **Mabel cat UI only.** No Flow brand. No Wispr clone.
 - **Free dictate:** no account, no Stiki, no StoreKit. Tap the orb → speak → tap to stop → text inserts.
 - **Keyboard is not a silent spy.** Explicit orb start. Fail closed without Microphone (and Speech / Full Access). Lifecycle hooks never start the mic. `viewWillDisappear` tears it down. No ambient / always-on listen.
-- **Local-only privacy mode (Suite b6530197):** no HIPAA/BAA claim UI; improve-models OFF default; iOS cloud storage / dictation cloud OFF/unavailable v1; no silent cloud; local-only mode ships; real BAA parked. Never “HIPAA compliant.”
+- **Local-only privacy mode (Suite b6530197):** local-only mode ships; real HIPAA BAA parked (no Make It So); no HIPAA / BAA / Wispr BAA / compliant claim in UI or App Store; improve-models OFF default (no silent training upload); cloud storage + dictation cloud OFF/unavailable v1; no silent cloud of audio/transcripts/Scratchpad/history; local-only / local-first copy OK in Settings.
 - Host **Settings** scaffold: Account (Stiki + Pro, dual gate), General, Keyboard, Notifications, Data & privacy. Free dictate does not use Account.
 - Host **Home IA (Suite b6530197):** Free Home + dictate available without Stiki / without account. Pro tabs / Pro surfaces require StoreKit Pro AND Stiki session (both). StoreKit ≠ Stiki; neither alone unlocks Pro tabs.
 - Later ships (Polish, Dictionary, Scratchpad, Languages) plus Connectors / Notetaker stay out of this tip.
 
 **BREAKS IF (prior iOS):** Flow brand; keyboard spy / ambient always-on listen; Free dictate requires Stiki; keyboard audio without permission.
 
-**BREAKS IF (b6530197):** HIPAA/BAA claim; improve-models default ON; dictation/cloud sync available v1; or silent cloud.
+**BREAKS IF (b6530197):** HIPAA/BAA/Wispr BAA claim ships; improve-models default ON or silent upload; dictation cloud or cloud storage ON/available as sync v1; silent cloud of local content.
 
 **BREAKS IF (b6530197 Home IA):** Free Home or Free dictate gated on Stiki/account; Pro tabs unlock without StoreKit Pro + Stiki; StoreKit alone or Stiki alone treated as full Pro unlock for those tabs.
 

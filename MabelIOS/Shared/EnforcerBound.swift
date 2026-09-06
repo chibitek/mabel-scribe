@@ -7,15 +7,20 @@ import Foundation
 /// silent spy (explicit start; fail closed without mic permission). Ship
 /// order is Keyboard → Polish → Dictionary → Scratchpad → Languages.
 ///
-/// GREEN (b6530197): no HIPAA/BAA claim UI; improve-models OFF default;
-/// iOS cloud storage / dictation cloud OFF/unavailable v1; no silent cloud;
-/// local-only mode ships; real BAA parked.
+/// GREEN (b6530197): Local-only mode ships; real HIPAA BAA parked (no Make It So);
+/// no HIPAA / BAA / Wispr BAA / compliant claim in UI or App Store;
+/// improve-models OFF default (no silent training upload);
+/// cloud storage + dictation cloud OFF/unavailable v1;
+/// no silent cloud of audio/transcripts/Scratchpad/history;
+/// local-only / local-first copy OK in Settings.
 ///
 /// BREAKS IF (prior iOS): Flow brand; keyboard spy / ambient always-on
 /// listen; Free dictate requires Stiki; keyboard audio without permission.
 ///
-/// BREAKS IF (b6530197): HIPAA/BAA claim; improve-models default ON;
-/// dictation/cloud sync available v1; or silent cloud.
+/// BREAKS IF (b6530197): HIPAA/BAA/Wispr BAA claim ships;
+/// improve-models default ON or silent upload;
+/// dictation cloud or cloud storage ON/available as sync v1;
+/// silent cloud of local content.
 ///
 /// GREEN (b6530197 Home IA): Free Home + dictate available without Stiki /
 /// without account. Pro tabs / Pro surfaces require StoreKit Pro AND Stiki
@@ -53,11 +58,18 @@ enum EnforcerBound {
     static let dictationCloudAvailableV1 = false
     /// BREAKS IF: dictation/cloud sync available v1.
     static let cloudSyncAvailableV1 = false
-    /// Improve-models must boot OFF. User may toggle locally; never silent upload.
+    /// Improve-models must boot OFF. User may toggle locally; never silent training upload.
     static let improveModelsDefaultOn = false
+    static let silentTrainingUploadAllowed = false
+    /// No silent cloud of audio / transcripts / Scratchpad / history.
     static let silentCloudAllowed = false
-    /// Real BAA parked. Not a claim. Do not surface in UI / ASC / marketing.
+    /// Real HIPAA BAA parked. No Make It So. Not a claim in UI or App Store.
     static let hipaaBAAFollowUpParked = true
+    static let hipaaMakeItSo = false
+    /// BREAKS IF: HIPAA/BAA/Wispr BAA claim ships.
+    static let wisprBAAClaimAllowed = false
+    /// GREEN: Local-only / local-first copy OK in Settings.
+    static let localOnlyLocalFirstCopyOK = true
 
     static var shipOrderLine: String {
         shipOrder.joined(separator: " → ")

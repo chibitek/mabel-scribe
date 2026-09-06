@@ -130,7 +130,7 @@ done
 LEAK="$(mktemp)"
 if grep -R -n -E 'StoreKit|Stiki|HIPAA|BAA|whisper\.cpp|WhisperKit|FluidAudio|Parakeet|tauri|com\.mabel\.app|com\.mabel\.vision' \
   --include='*.swift' "$IOS/MabelIOS" "$IOS/MabelKeyboard" "$IOS/Shared" \
-  | grep -v -i -E 'macBundleID|spatialBundleID|macASC|do not|not tauri|no whisper|stiki|hipaa|no storekit|no account|not mochii|not mac|BREAKS IF|forbidden|dual gate|when ASC|not required|local-only' \
+  | grep -v -i -E 'macBundleID|spatialBundleID|macASC|do not|not tauri|no whisper|stiki|hipaa|wisprbaa|no storekit|no account|not mochii|not mac|BREAKS IF|forbidden|dual gate|when ASC|not required|local-only' \
   >"$LEAK" || true
 then
   :
@@ -157,10 +157,15 @@ if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift"
   && grep -q 'static let cloudSyncAvailableV1 = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let localOnlyModeShips = true' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let hipaaBAAFollowUpParked = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let hipaaMakeItSo = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let wisprBAAClaimAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let silentTrainingUploadAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let localOnlyLocalFirstCopyOK = true' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'privacySuite = "b6530197"' "$IOS/Shared/EnforcerBound.swift" \
-  && grep -q 'GREEN (b6530197): no HIPAA/BAA claim UI' "$IOS/Shared/EnforcerBound.swift" \
-  && grep -q 'BREAKS IF (b6530197): HIPAA/BAA claim; improve-models default ON' "$IOS/Shared/EnforcerBound.swift" \
-  && grep -q 'dictation/cloud sync available v1' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'GREEN (b6530197): Local-only mode ships' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'real HIPAA BAA parked (no Make It So)' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'BREAKS IF (b6530197): HIPAA/BAA/Wispr BAA claim ships' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'dictation cloud or cloud storage ON/available as sync v1' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let homeTabs = \["Home", "Dictionary", "Snippets", "Style", "Scratchpad"\]' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let freeHomeTabs = \["Home"\]' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let freeHomeAndDictateRequireAccount = false' "$IOS/Shared/EnforcerBound.swift" \
@@ -362,16 +367,36 @@ if "static let cloudSyncAvailableV1 = false" not in enforcer:
 else:
     print("  PASS  dictation/cloud sync unavailable v1")
 if "static let hipaaBAAFollowUpParked = true" not in enforcer:
-    print("  FAIL  real BAA must stay parked (no claim)")
+    print("  FAIL  real HIPAA BAA must stay parked (no claim)")
     failed = True
 else:
-    print("  PASS  real BAA parked")
-if "GREEN (b6530197): no HIPAA/BAA claim UI" not in enforcer \
-        or "BREAKS IF (b6530197): HIPAA/BAA claim; improve-models default ON" not in enforcer:
-    print("  FAIL  Suite b6530197 GREEN/BREAKS IF missing")
+    print("  PASS  real HIPAA BAA parked")
+if "static let hipaaMakeItSo = false" not in enforcer:
+    print("  FAIL  HIPAA BAA Make It So must stay off")
     failed = True
 else:
-    print("  PASS  Suite b6530197 GREEN/BREAKS IF folded")
+    print("  PASS  no HIPAA BAA Make It So")
+if "static let wisprBAAClaimAllowed = false" not in enforcer:
+    print("  FAIL  Wispr BAA claim must stay disallowed")
+    failed = True
+else:
+    print("  PASS  no Wispr BAA claim")
+if "static let silentTrainingUploadAllowed = false" not in enforcer:
+    print("  FAIL  silent training upload must stay disallowed")
+    failed = True
+else:
+    print("  PASS  no silent training upload")
+if "static let localOnlyLocalFirstCopyOK = true" not in enforcer:
+    print("  FAIL  local-only / local-first Settings copy must stay allowed")
+    failed = True
+else:
+    print("  PASS  local-only / local-first copy OK in Settings")
+if "GREEN (b6530197): Local-only mode ships" not in enforcer \
+        or "BREAKS IF (b6530197): HIPAA/BAA/Wispr BAA claim ships" not in enforcer:
+    print("  FAIL  Suite b6530197 canonical GREEN/BREAKS IF missing")
+    failed = True
+else:
+    print("  PASS  Suite b6530197 canonical GREEN/BREAKS IF folded")
 if "request.requiresOnDeviceRecognition = EnforcerBound.dictationCloudAvailableV1 == false" not in engine:
     print("  FAIL  speech engine must bind requiresOnDeviceRecognition to dictation-cloud lock")
     failed = True
@@ -400,8 +425,12 @@ if "EnforcerBound.privacySurfaceName" not in settings_panes:
 else:
     print("  PASS  Settings uses Local-only privacy mode surface name")
 # Silent cloud: no upload / iCloud / CloudKit in the iOS tree
-silent = re.compile(r'URLSession|uploadTask|CKContainer|CKRecord|NSUbiquitous|iCloud|CloudKit|silent upload', re.I)
-silent_ok = re.compile(r'not in icloud|unavailable|no silent', re.I)
+silent = re.compile(
+    r'URLSession|uploadTask|CKContainer|CKRecord|NSUbiquitous|iCloud|CloudKit|'
+    r'silent upload|silent training|silent cloud',
+    re.I,
+)
+silent_ok = re.compile(r'not in icloud|unavailable|no silent|silentCloudAllowed|silentTrainingUploadAllowed', re.I)
 silent_hit = False
 for dirpath, _, files in os.walk(root):
     if "xcodeproj" in dirpath:
@@ -428,7 +457,8 @@ else:
 claim_hit = False
 deny = re.compile(
     r'NO HIPAA|no HIPAA|never.{0,4}HIPAA|HIPAA.{0,24}parked|parked.{0,24}HIPAA|'
-    r'hipaaBAAFollowUpParked|BREAKS IF|Does not claim HIPAA|including.{0,8}HIPAA',
+    r'hipaaBAAFollowUpParked|hipaaMakeItSo|wisprBAAClaimAllowed|BREAKS IF|'
+    r'Does not claim HIPAA|including.{0,8}HIPAA|no Make It So',
     re.I,
 )
 for dirpath, _, files in os.walk(root):

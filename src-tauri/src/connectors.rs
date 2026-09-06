@@ -38,7 +38,7 @@ use crate::stiki;
 use crate::storekit;
 
 /// Named Enforcer BOUND. `enforcer_bound_*` tests fail if this is violated.
-pub const ENFORCER_BOUND: &str = "explicit user connect Mochii+Nexus MCP only; Sign in with Stiki before MCP; Stiki KYC + Suite ACL fail closed; Scratchpad NOT MCP source/sink v1; no silent ASR/Polish/Scratchpad/history/clipboard auto-push; no default always-on; no cookie auto-reconnect; no HIPAA/BAA; no silent Stiki bootstrap; cross-market Stiki session is identity only; SSO ≠ MCP connected; Stiki required for ALL Pro unlocks; not Connectors-only; StoreKit ≠ Stiki; Dictionary and Insights require Stiki + StoreKit; Style requires Stiki + StoreKit; Transforms requires Stiki + StoreKit; Scratchpad requires Stiki + StoreKit; Free dictation no Stiki; Clipboard Free 25 no Stiki";
+pub const ENFORCER_BOUND: &str = "explicit user connect Mochii+Nexus MCP only; Sign in with Stiki before MCP; Stiki KYC + Suite ACL fail closed; Scratchpad NOT MCP source/sink v1; Scratchpad v1 CONFIRMED local-only; no cloud/team/Nexus/Mochii auto-push; no silent ASR/Polish/Scratchpad/history/clipboard auto-push; no default always-on; no cookie auto-reconnect; no HIPAA/BAA; no silent Stiki bootstrap; cross-market Stiki session is identity only; SSO ≠ MCP connected; Stiki required for ALL Pro unlocks; not Connectors-only; StoreKit ≠ Stiki; Dictionary and Insights require Stiki + StoreKit; Style requires Stiki + StoreKit; Transforms requires Stiki + StoreKit; Scratchpad requires Stiki + StoreKit; Free dictation no Stiki; Clipboard Free 25 no Stiki";
 
 /// Suite id for the canonical Sign-on BOUND tip.
 pub const SIGN_ON_SUITE: &str = "b6530197";
@@ -528,6 +528,8 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("Sign in with Stiki before MCP"));
         assert!(ENFORCER_BOUND.contains("Stiki KYC + Suite ACL fail closed"));
         assert!(ENFORCER_BOUND.contains("Scratchpad NOT MCP source/sink v1"));
+        assert!(ENFORCER_BOUND.contains("Scratchpad v1 CONFIRMED local-only"));
+        assert!(ENFORCER_BOUND.contains("no cloud/team/Nexus/Mochii auto-push"));
         assert!(ENFORCER_BOUND.contains("no silent ASR/Polish/Scratchpad/history/clipboard auto-push"));
         assert!(ENFORCER_BOUND.contains("no default always-on"));
         assert!(ENFORCER_BOUND.contains("no cookie auto-reconnect"));
@@ -668,6 +670,9 @@ mod tests {
         assert!(SIGN_ON_BOUND.contains("Stiki required for ALL Pro unlocks"));
         assert!(SIGN_ON_BOUND.contains("Snippets/Style"));
         assert!(SIGN_ON_BOUND.contains("Style/Scratchpad Pro/Transforms"));
+        assert!(include_str!("scratchpad.rs").contains("CONFIRMED Suite b6530197"));
+        assert!(include_str!("scratchpad.rs").contains("enforcer_bound_scratchpad_v1_suite_b6530197"));
+        assert!(include_str!("scratchpad.rs").contains("no cloud/team/Nexus/Mochii auto-push"));
         assert!(SIGN_ON_BOUND.contains("not Connectors-only"));
         assert!(SIGN_ON_BOUND.contains("StoreKit ≠ Stiki"));
         assert!(SIGN_ON_BOUND.contains("neither substitutes"));

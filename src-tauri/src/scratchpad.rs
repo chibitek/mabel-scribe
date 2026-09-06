@@ -1,13 +1,13 @@
-//! Product **Scratchpad** — Enforcer BOUND (suite b6530197) + Sign-on RE-LOCK.
+//! Product **Scratchpad** — Enforcer BOUND (suite b6530197) CONFIRMED + Sign-on RE-LOCK.
 //!
 //! GREEN: StoreKit Pro + Stiki dual gate; local-only scratchpad of
 //! dictations/notes on this Mac; Scratchpad NOT MCP source/sink v1;
-//! no Nexus/Mochii promote; share fail closed; distinct Style
-//! (Formal|Casual|Very casual), Transforms (Email|Bullets|Shorter|Clearer),
-//! Polish (Off|Casual|Professional|Polite), Dictionary, Snippets, Clipboard;
-//! no cloud sync; no team/company share without ACL Make It So; no
-//! Nexus/SIEM write; no auto-promote; no HIPAA/BAA; Free dictate no Stiki;
-//! sign-out locks Scratchpad.
+//! no cloud/team/Nexus/Mochii auto-push; no Nexus/Mochii promote; share
+//! fail closed; distinct Style (Formal|Casual|Very casual), Transforms
+//! (Email|Bullets|Shorter|Clearer), Polish (Off|Casual|Professional|Polite),
+//! Dictionary, Snippets, Clipboard; no cloud sync; no team/company share
+//! without ACL Make It So; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA;
+//! Free dictate no Stiki; sign-out locks Scratchpad.
 //!
 //! BREAKS IF: Scratchpad without dual gate
 //! BREAKS IF: Scratchpad MCP source/sink v1
@@ -29,7 +29,7 @@ use crate::storekit;
 pub const ENFORCER_SUITE: &str = "b6530197";
 
 /// Named Enforcer BOUND. `enforcer_bound_scratchpad_v1_suite_*` tests fold this.
-pub const ENFORCER_BOUND: &str = "StoreKit Pro + Stiki dual gate; local-only scratchpad of dictations/notes; Scratchpad NOT MCP source/sink v1; no Nexus/Mochii promote; share fail closed; local-only; sign-out locks Scratchpad; distinct Style/Transforms/Polish/Dictionary/Snippets/Clipboard; no cloud sync; no team/company share without ACL Make It So; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA; Free dictate no Stiki";
+pub const ENFORCER_BOUND: &str = "CONFIRMED Suite b6530197; StoreKit Pro + Stiki dual gate; local-only scratchpad of dictations/notes; Scratchpad NOT MCP source/sink v1; no cloud/team/Nexus/Mochii auto-push; no Nexus/Mochii promote; share fail closed; local-only; sign-out locks Scratchpad; distinct Style/Transforms/Polish/Dictionary/Snippets/Clipboard; no cloud sync; no team/company share without ACL Make It So; no Nexus/SIEM write; no auto-promote; no HIPAA/BAA; Free dictate no Stiki";
 
 /// Product LOCK Scratchpad v1 + Sign-on. Tests fail if the surface drifts.
 pub const PRODUCT_LOCK: &str = "Name: Scratchpad; Pro catalog #5 after Dictionary → Snippets → Style → Transforms → Scratchpad; Pro surface requires StoreKit Pro AND Stiki session; Free locked + Activate Pro / Sign in with Stiki; local-only scratchpad of dictations/notes on this Mac; Settings + sidebar/nav + menu bar; add/edit/clear notes; local-first; not Nexus; not Mochii; not MCP source/sink v1; not cloud sync v1; distinct from Style (Formal|Casual|Very casual register), Transforms (Email|Bullet points|Make shorter|Make clearer), Polish (Off|Casual|Professional|Polite Gemma tone rewrite), Dictionary (spelling), Snippets (trigger→expansion), and Clipboard History; non-goals: MCP source/sink, cloud write, Nexus/Mochii promote, HIPAA";
@@ -338,9 +338,11 @@ mod tests {
     #[test]
     fn enforcer_bound_suite_b6530197_green() {
         assert_eq!(ENFORCER_SUITE, "b6530197");
+        assert!(ENFORCER_BOUND.contains("CONFIRMED Suite b6530197"));
         assert!(ENFORCER_BOUND.contains("StoreKit Pro + Stiki dual gate"));
         assert!(ENFORCER_BOUND.contains("local-only scratchpad of dictations/notes"));
         assert!(ENFORCER_BOUND.contains("Scratchpad NOT MCP source/sink v1"));
+        assert!(ENFORCER_BOUND.contains("no cloud/team/Nexus/Mochii auto-push"));
         assert!(ENFORCER_BOUND.contains("no Nexus/Mochii promote"));
         assert!(ENFORCER_BOUND.contains("share fail closed"));
         assert!(ENFORCER_BOUND.contains("local-only"));
@@ -357,14 +359,18 @@ mod tests {
     #[test]
     fn enforcer_bound_scratchpad_v1_suite_b6530197() {
         assert_eq!(ENFORCER_SUITE, "b6530197");
+        assert!(ENFORCER_BOUND.contains("CONFIRMED Suite b6530197"));
         assert!(ENFORCER_BOUND.contains("StoreKit Pro + Stiki dual gate"));
+        assert!(ENFORCER_BOUND.contains("local-only"));
         assert!(ENFORCER_BOUND.contains("local-only scratchpad of dictations/notes"));
         assert!(ENFORCER_BOUND.contains("Scratchpad NOT MCP source/sink v1"));
+        assert!(ENFORCER_BOUND.contains("no cloud/team/Nexus/Mochii auto-push"));
         assert!(ENFORCER_BOUND.contains("no Nexus/Mochii promote"));
         assert!(ENFORCER_BOUND.contains("share fail closed"));
         assert!(ENFORCER_BOUND.contains("sign-out locks Scratchpad"));
         assert!(ENFORCER_BOUND.contains("no cloud sync"));
         assert!(ENFORCER_BOUND.contains("no Nexus/SIEM write"));
+        assert!(ENFORCER_BOUND.contains("no HIPAA/BAA"));
         assert!(ENFORCER_BOUND.contains("Free dictate no Stiki"));
 
         assert!(
@@ -420,9 +426,11 @@ mod tests {
     #[test]
     fn enforcer_bound_breaks_if_free_cloud_nexus_or_web_upgrade() {
         assert_eq!(ENFORCER_SUITE, "b6530197");
+        assert!(ENFORCER_BOUND.contains("CONFIRMED Suite b6530197"));
         assert!(ENFORCER_BOUND.contains("StoreKit Pro + Stiki dual gate"));
         assert!(ENFORCER_BOUND.contains("local-only scratchpad of dictations/notes"));
         assert!(ENFORCER_BOUND.contains("Scratchpad NOT MCP source/sink v1"));
+        assert!(ENFORCER_BOUND.contains("no cloud/team/Nexus/Mochii auto-push"));
         assert!(ENFORCER_BOUND.contains("no Nexus/Mochii promote"));
         assert!(ENFORCER_BOUND.contains("share fail closed"));
         assert!(ENFORCER_BOUND.contains("sign-out locks Scratchpad"));

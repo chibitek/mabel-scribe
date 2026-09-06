@@ -646,6 +646,8 @@ mod tests {
         assert!(connectors.contains("ENFORCER_BOUND"));
         assert!(connectors.contains("no default always-on"));
         assert!(connectors.contains("Scratchpad NOT MCP"));
+        assert!(connectors.contains("Scratchpad v1 CONFIRMED local-only"));
+        assert!(connectors.contains("no cloud/team/Nexus/Mochii auto-push"));
         assert!(connectors.contains("no HIPAA/BAA"));
         assert!(connectors.contains("Sign in with Stiki before MCP"));
         assert!(connectors.contains("SIGN_ON_BOUND"));
@@ -727,8 +729,10 @@ mod tests {
         assert!(pad.contains("ENFORCER_BOUND"));
         assert!(pad.contains("b6530197"));
         assert!(pad.contains("StoreKit Pro + Stiki dual gate"));
+        assert!(pad.contains("CONFIRMED Suite b6530197"));
         assert!(pad.contains("local-only scratchpad of dictations/notes"));
         assert!(pad.contains("Scratchpad NOT MCP source/sink v1"));
+        assert!(pad.contains("no cloud/team/Nexus/Mochii auto-push"));
         assert!(pad.contains("no Nexus/Mochii promote"));
         assert!(pad.contains("share fail closed"));
         assert!(pad.contains("local-only"));

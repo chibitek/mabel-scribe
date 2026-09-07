@@ -30,7 +30,7 @@ enum DictatePermissionGate: Equatable {
     var userMessage: String {
         switch self {
         case .ready:
-            return "Tap Mabel to dictate"
+            return "Tap Start to dictate"
         case .needsFullAccess:
             return "Turn on Full Access for Mabel in Settings → General → Keyboard"
         case .needsMicrophone:

@@ -36,9 +36,10 @@ struct HostDictatePlayground: View {
                 .buttonStyle(.plain)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(session.statusMessage)
+                    Text(session.isListening ? EnforcerBound.keyboardOnStateCopy : session.statusMessage)
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(session.phase == .denied ? IOSPalette.roseDeep : IOSPalette.ink)
+                        .accessibilityLabel(session.isListening ? "Mabel is on. Listening." : session.statusMessage)
                     if session.displayTranscript.isEmpty == false && session.isListening {
                         Text(session.displayTranscript)
                             .font(.footnote)

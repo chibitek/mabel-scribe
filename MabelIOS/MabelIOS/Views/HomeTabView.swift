@@ -225,12 +225,13 @@ struct HomeTabView: View {
     }
 
     private var privacyCard: some View {
-        Text(IOSPrivacy.blurb)
-            .font(.footnote)
-            .foregroundStyle(IOSPalette.mist)
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Color.white.opacity(0.62), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        VStack(alignment: .leading, spacing: 10) {
+            PrivacyDefaultsCard()
+            Text(IOSPrivacy.blurb)
+                .font(.footnote)
+                .foregroundStyle(IOSPalette.mist)
+                .padding(.horizontal, 4)
+        }
     }
 
     private var versionLine: some View {

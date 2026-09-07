@@ -198,9 +198,12 @@ struct NotificationsSettingsPane: View {
 struct PrivacySettingsPane: View {
     var body: some View {
         SettingsStoreForm { store in
-            Section(EnforcerBound.privacySurfaceName) {
+            Section {
+                PrivacyDefaultsCard()
+            } header: {
+                Text(EnforcerBound.privacySurfaceName)
+            } footer: {
                 Text(IOSPrivacy.localOnlyMode)
-                    .font(.footnote)
                     .foregroundStyle(IOSPalette.mist)
             }
             Section {

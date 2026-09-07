@@ -50,6 +50,25 @@ import Foundation
 /// iOS 0.1.0 has no history file.
 /// BREAKS IF: cloud sync; Nexus/Mochii write; clipboard spy/coach; HIPAA claim;
 /// invented iOS history; mock restore.
+///
+/// GREEN (Erick 2026-09-07 Flow→Mabel iOS UX): sticky listen after explicit
+/// Start; clear on-state "Mabel is on" (not Flow brand); swipe bottom-edge
+/// continue/confirm does not start the mic; full keyboard Start/mic chrome;
+/// keyboard tone picker is existing Polish Off|Casual|Professional|Polite
+/// only (Style Formal|Casual|Very casual stays the Style catalog — later
+/// iOS body, distinct store); Pro+Stiki dual gate; default Off; privacy
+/// card lists local defaults; no HIPAA/BAA.
+/// BREAKS IF (Erick 2026-09-07 Flow→Mabel iOS UX): Flow brand / "Flow is on";
+/// ambient / always-on listen; swipe starts the mic; second tone catalog;
+/// Formal/Casual invented separate from Polish/Style; dual gate weakened;
+/// Polish default ON; HIPAA/BAA claim; cloud / Nexus / Mochii write.
+///
+/// GREEN (b6530197 Enforcer BOUND UPDATE): local privacy card;
+/// tone→Polish/Style only; no HIPAA claim; sticky listen explicit;
+/// no cloud/Nexus/ambient.
+/// BREAKS IF (b6530197 Enforcer BOUND UPDATE): HIPAA claim; second tone
+/// catalog; cloud; Nexus write; ambient / always-on listen; privacy card
+/// not local; sticky listen without explicit start/on-state.
 enum EnforcerBound {
     static let displayBrand = "Mabel"
     static let forbiddenBrands = ["Flow", "Wispr"]
@@ -112,6 +131,22 @@ enum EnforcerBound {
     static let historySurviveClipboardSpyAllowed = false
     static let historySurviveCoachAllowed = false
     static let historySurviveHipaaClaimAllowed = false
+    /// Erick 2026-09-07 Flow→Mabel iOS UX. On-state is Mabel, not Flow.
+    static let keyboardOnStateCopy = "Mabel is on"
+    static let keyboardFlowIsOnCopyAllowed = false
+    static let keyboardSwipeConfirmDoesNotStartMic = true
+    static let keyboardStartMicChrome = true
+    static let keyboardTonePickerIsExistingPolish = true
+    static let keyboardSecondToneCatalogAllowed = false
+    static let keyboardInventedFormalCasualCatalogAllowed = false
+    static let privacyCardListsLocalDefaults = true
+    /// Suite b6530197 Enforcer BOUND UPDATE (Flow→Mabel iOS). Soft nits later.
+    static let enforcerSoftBoundSuite = "b6530197"
+    static let localFirstPrivacyCard = true
+    static let keyboardToneMapsToPolishOrStyleOnly = true
+    static let stickyListenRequiresExplicitOnState = true
+    static let startTapOrGestureOnly = true
+    static let hipaaCloudNexusAmbientAllowed = false
 
     static var shipOrderLine: String {
         shipOrder.joined(separator: " → ")

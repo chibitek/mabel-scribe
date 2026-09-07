@@ -28,8 +28,8 @@ A shared Xcode multiplatform app (macOS + iOS, or “Designed for iPhone” on V
 Ship order (do not skip or reorder): **Keyboard → Polish → Dictionary → Scratchpad → Languages**. This tip is **Polish** (ship #2 after Keyboard).
 
 - **Mabel cat UI only.** No Flow brand. No Wispr clone.
-- **Free dictate:** no account, no Stiki, no StoreKit. Tap the orb → speak → tap to stop → text inserts.
-- **Keyboard is not a silent spy.** Explicit orb start. Fail closed without Microphone (and Speech / Full Access). Lifecycle hooks never start the mic. `viewWillDisappear` tears it down. No ambient / always-on listen.
+- **Free dictate:** no account, no Stiki, no StoreKit. Tap Start → speak → swipe to confirm or tap Start to stop → text inserts.
+- **Keyboard is not a silent spy.** Explicit Start tap. Fail closed without Microphone (and Speech / Full Access). Lifecycle hooks never start the mic. `viewWillDisappear` tears it down. No ambient / always-on listen.
 - **Local-only privacy mode (Suite b6530197):** local-only mode ships; real HIPAA BAA parked (no Make It So); no HIPAA / BAA / Wispr BAA / compliant claim in UI or App Store; improve-models OFF default (no silent training upload); cloud storage + dictation cloud OFF/unavailable v1; no silent cloud of audio/transcripts/Scratchpad/history; local-only / local-first copy OK in Settings.
 - Host **Settings** scaffold: Account (Stiki + Pro, dual gate), General, Keyboard, **Polish**, Notifications, Data & privacy. Free dictate does not use Account.
 - Host **Home IA (Suite b6530197):** Free Home + dictate available without Stiki / without account. Pro tabs / Pro surfaces require StoreKit Pro AND Stiki session (both). StoreKit ≠ Stiki; neither alone unlocks Pro tabs.
@@ -44,13 +44,24 @@ Ship order (do not skip or reorder): **Keyboard → Polish → Dictionary → Sc
 
 **BREAKS IF (Polish):** default ON; cloud rewrite; invent / expand meaning; Nexus/SIEM write; HIPAA/BAA; Free dictate gated; StoreKit alone or Stiki alone unlocks live Polish; merged with Style Formal|Casual|Very casual.
 
+**GREEN (Erick 2026-09-07 Flow→Mabel iOS UX):** sticky listen after explicit Start; **Mabel is on** (not Flow brand); swipe confirm does not start the mic; Start/mic chrome; keyboard tone picker is existing Polish only; privacy card local defaults; no HIPAA/BAA.
+
+**BREAKS IF (Erick 2026-09-07 Flow→Mabel iOS UX):** Flow brand / "Flow is on"; ambient / always-on; swipe starts the mic; second tone catalog; Formal/Casual invented separate from Polish/Style; dual gate weakened; HIPAA/BAA claim.
+
+**GREEN (b6530197 Enforcer BOUND UPDATE):** local privacy card; tone→Polish/Style only; no HIPAA claim; sticky listen explicit; no cloud/Nexus/ambient.
+
+**BREAKS IF (b6530197 Enforcer BOUND UPDATE):** HIPAA claim; second tone catalog; cloud; Nexus write; ambient / always-on listen; privacy card not local; sticky listen without explicit start/on-state.
+
 ## What v0.1.0 does
 
 - Host app shell with Mabel cat chrome (cream / rose / portrait). Bottom tabs Home | Dictionary | Snippets | Style | Scratchpad. Hamburger opens Account / Settings. Setup steps enable the keyboard.
 - Settings → Polish: Off | Casual | Professional | Polite. Default Off. Live modes need StoreKit Pro AND Stiki. Free shows Activate Pro / Sign in with Stiki. Sign-out locks Polish. Applied after ASR on host playground and keyboard insert.
 - Host playground: same on-device dictate path, used to grant permissions.
-- Custom keyboard (`UIInputViewController`) with the Mabel cat, live preview, full QWERTY (edit the transcript), globe / delete / space / return. Height is a full board, not a truncated orb strip.
-- Sticky on-device listen: Apple end-of-speech / silence does not stop the session. Tap Mabel to stop. Optional Settings idle-stop (default off) never starts the mic.
+- Custom keyboard (`UIInputViewController`) with full QWERTY, globe / delete / space / return, and Start/mic chrome (Mabel cat). Height is a full board, not a truncated orb strip.
+- Sticky on-device listen after an explicit Start tap: Apple end-of-speech / silence does not stop the session. Clear on-state **Mabel is on** while listening. Tap Start to stop. Optional Settings idle-stop (default off) never starts the mic.
+- Bottom-edge swipe-up continues/confirms the current words (insert + keep listening). Swipe never starts the microphone.
+- Keyboard Polish chips: Off | Casual | Professional | Polite. Same catalog as Settings → Polish. Default Off. Live modes need StoreKit Pro AND Stiki. Not a second Formal/Casual tone system. Style Formal | Casual | Very casual stays the Style catalog (later iOS body).
+- Host privacy card lists local defaults (on-device speech, improve-models off, cloud unavailable). No HIPAA / BAA claim.
 - On-device `SFSpeechRecognizer` (`requiresOnDeviceRecognition = true`). No Apple network-speech fallback. No whisper.cpp / Parakeet / WhisperKit.
 - Privacy: `PrivacyInfo.xcprivacy` tracking = false. Mic powered only while listening.
 
@@ -69,7 +80,7 @@ Linux CI **cannot** compile iOS. Run these on the Mac with **Xcode 16+**.
 5. Enable the keyboard:
    1. iPhone Settings → General → Keyboard → Keyboards → Add New Keyboard… → **Mabel**
    2. Tap **Mabel** → turn on **Allow Full Access**
-6. Open Notes (or any app). Switch to the Mabel keyboard. Tap Mabel to dictate. Keep talking across pauses. Tap again to stop. Edit with the full keyboard. Text inserts into the field.
+6. Open Notes (or any app). Switch to the Mabel keyboard. Tap **Start** to dictate. Keep talking across pauses (on-state shows **Mabel is on**). Swipe up from the bottom edge to confirm and keep listening, or tap Start to stop. Edit with the full keyboard. Text inserts into the field.
 7. Deny Microphone in Settings and reopen the keyboard — the orb must stay silent (fail closed).
 
 TestFlight comes later on a **new** iOS ASC listing. Until then, local Xcode install is the path.

@@ -49,7 +49,8 @@ Ship order (do not skip or reorder): **Keyboard → Polish → Dictionary → Sc
 - Host app shell with Mabel cat chrome (cream / rose / portrait). Bottom tabs Home | Dictionary | Snippets | Style | Scratchpad. Hamburger opens Account / Settings. Setup steps enable the keyboard.
 - Settings → Polish: Off | Casual | Professional | Polite. Default Off. Live modes need StoreKit Pro AND Stiki. Free shows Activate Pro / Sign in with Stiki. Sign-out locks Polish. Applied after ASR on host playground and keyboard insert.
 - Host playground: same on-device dictate path, used to grant permissions.
-- Custom keyboard (`UIInputViewController`) with the orb, live preview, globe / delete / space / return.
+- Custom keyboard (`UIInputViewController`) with the Mabel cat, live preview, full QWERTY (edit the transcript), globe / delete / space / return. Height is a full board, not a truncated orb strip.
+- Sticky on-device listen: Apple end-of-speech / silence does not stop the session. Tap Mabel to stop. Optional Settings idle-stop (default off) never starts the mic.
 - On-device `SFSpeechRecognizer` (`requiresOnDeviceRecognition = true`). No Apple network-speech fallback. No whisper.cpp / Parakeet / WhisperKit.
 - Privacy: `PrivacyInfo.xcprivacy` tracking = false. Mic powered only while listening.
 
@@ -68,7 +69,7 @@ Linux CI **cannot** compile iOS. Run these on the Mac with **Xcode 16+**.
 5. Enable the keyboard:
    1. iPhone Settings → General → Keyboard → Keyboards → Add New Keyboard… → **Mabel**
    2. Tap **Mabel** → turn on **Allow Full Access**
-6. Open Notes (or any app). Switch to the Mabel keyboard. Tap the orb to dictate. Tap again to stop. Text inserts into the field.
+6. Open Notes (or any app). Switch to the Mabel keyboard. Tap Mabel to dictate. Keep talking across pauses. Tap again to stop. Edit with the full keyboard. Text inserts into the field.
 7. Deny Microphone in Settings and reopen the keyboard — the orb must stay silent (fail closed).
 
 TestFlight comes later on a **new** iOS ASC listing. Until then, local Xcode install is the path.

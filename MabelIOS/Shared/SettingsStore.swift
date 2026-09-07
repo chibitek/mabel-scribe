@@ -108,6 +108,13 @@ final class SettingsStore {
         defaults.set(EnforcerBound.dictationCloudAvailableV1, forKey: Key.dictationCloud)
     }
 
+    /// App Group idle-stop seconds. 0 means keep listening until tap.
+    /// Read-only helper so SpeechSession does not start the mic.
+    static func idleStopSeconds(defaults: UserDefaults? = nil) -> Int {
+        let store = defaults ?? UserDefaults(suiteName: IOSIdentity.appGroup) ?? .standard
+        return store.integer(forKey: Key.idleSeconds)
+    }
+
     func persist() {
         defaults.set(improveModels, forKey: Key.improveModels)
         defaults.set(autoDelete, forKey: Key.autoDelete)

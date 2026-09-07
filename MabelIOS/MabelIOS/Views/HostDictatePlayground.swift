@@ -12,7 +12,7 @@ struct HostDictatePlayground: View {
             Text("Try it here first")
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(IOSPalette.ink)
-            Text("Tap the orb. Speak. Tap again to stop. Text lands in the field below — not in iCloud, not in Stiki.")
+            Text("Tap Mabel. Speak. Tap again to stop. Text lands in the field below — not in iCloud, not in Stiki.")
                 .font(.footnote)
                 .foregroundStyle(IOSPalette.mist)
 

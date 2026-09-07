@@ -8,6 +8,7 @@ pub const TITLE_MIC: &str = "Mic access needed";
 pub const TITLE_MODEL: &str = "Model not ready";
 pub const TITLE_CAPTURE: &str = "No audio captured";
 pub const TITLE_EMPTY: &str = "Nothing recognized";
+pub const TITLE_CLOUD: &str = "Cloud engine failed";
 pub const TITLE_PASTE: &str = "Paste blocked";
 pub const TITLE_GENERIC: &str = "Dictation failed";
 
@@ -72,9 +73,31 @@ pub fn whisper_cpp_excluded() -> UserError {
 
 pub fn cloud_key_missing() -> UserError {
     UserError::new(
-        TITLE_MODEL,
+        TITLE_CLOUD,
         "Cloud transcription is selected but no Groq API key is saved. \
          Add a key in Settings → Engine, or switch to Parakeet.",
+    )
+}
+
+/// Keychain / Groq auth failure. Must not be classified as "Nothing recognized".
+pub fn cloud_unavailable(detail: &str) -> UserError {
+    let lower = detail.to_lowercase();
+    if lower.contains("keychain") {
+        return UserError::new(
+            TITLE_CLOUD,
+            format!(
+                "Cloud transcription could not read the Groq API key ({detail}). \
+                 Unlock the macOS login keychain, re-save the key in Settings → Engine, \
+                 or switch to Parakeet."
+            ),
+        );
+    }
+    UserError::new(
+        TITLE_CLOUD,
+        format!(
+            "Cloud transcription failed ({detail}). \
+             Check the Groq API key in Settings → Engine, or switch to Parakeet."
+        ),
     )
 }
 
@@ -145,7 +168,11 @@ mod tests {
     fn silent_capture_calls_out_tcc() {
         let err = capture_silent(2_000, 0.0);
         assert_eq!(err.title, TITLE_CAPTURE);
-        assert!(err.message.contains("TCC") || err.message.contains("silence"), "{}", err.message);
+        assert!(
+            err.message.contains("TCC") || err.message.contains("silence"),
+            "{}",
+            err.message
+        );
         assert!(err.message.contains("Microphone"), "{}", err.message);
     }
 
@@ -177,5 +204,26 @@ mod tests {
         assert_eq!(err.title, TITLE_PASTE);
         assert!(err.message.contains("Accessibility"));
         assert!(err.message.contains("System Events"));
+    }
+
+    #[test]
+    fn cloud_keychain_fail_is_not_nothing_recognized() {
+        let err = cloud_unavailable("Keychain read error: default keychain could not be found");
+        assert_eq!(err.title, TITLE_CLOUD);
+        assert_ne!(err.title, TITLE_EMPTY);
+        assert!(
+            err.message.contains("keychain") || err.message.contains("Keychain"),
+            "{}",
+            err.message
+        );
+        assert!(err.message.contains("Parakeet"), "{}", err.message);
+    }
+
+    #[test]
+    fn cloud_key_missing_is_not_model_or_empty() {
+        let err = cloud_key_missing();
+        assert_eq!(err.title, TITLE_CLOUD);
+        assert_ne!(err.title, TITLE_EMPTY);
+        assert_ne!(err.title, TITLE_MODEL);
     }
 }

@@ -167,10 +167,7 @@ impl Recorder {
             app_dir,
             &format!(
                 "settings snapshot: engine={} streaming={} cleanup_mode={} polish_mode={}",
-                settings.engine,
-                settings.streaming,
-                settings.cleanup_mode,
-                settings.polish_mode
+                settings.engine, settings.streaming, settings.cleanup_mode, settings.polish_mode
             ),
         );
         println!("[Mabel] stop_and_transcribe entered");
@@ -240,7 +237,10 @@ impl Recorder {
             Ok((_path, rms)) => rms,
             Err(err) => {
                 let user_err = err.to_user_error(elapsed_ms);
-                crate::debug_log::append(app_dir, &format!("stop_and_save failed: {}", user_err.message));
+                crate::debug_log::append(
+                    app_dir,
+                    &format!("stop_and_save failed: {}", user_err.message),
+                );
                 eprintln!("[Mabel] stop_and_save failed: {}", user_err.message);
                 let _ = std::fs::remove_file(&temp_path);
 
@@ -259,10 +259,8 @@ impl Recorder {
         if settings.engine == "local"
             && crate::audio::native_engine_needs_min_duration(&settings.local_engine)
         {
-            match crate::audio::pad_pcm16_mono_wav(
-                &temp_path,
-                crate::audio::NATIVE_ASR_MIN_SAMPLES,
-            ) {
+            match crate::audio::pad_pcm16_mono_wav(&temp_path, crate::audio::NATIVE_ASR_MIN_SAMPLES)
+            {
                 Ok(samples) => {
                     crate::debug_log::append(
                         app_dir,
@@ -277,7 +275,11 @@ impl Recorder {
         if let Ok(meta) = std::fs::metadata(&temp_path) {
             crate::debug_log::append(
                 app_dir,
-                &format!("captured temp wav {} bytes rms={:.6}", meta.len(), captured_rms),
+                &format!(
+                    "captured temp wav {} bytes rms={:.6}",
+                    meta.len(),
+                    captured_rms
+                ),
             );
             println!(
                 "[Mabel] Captured temp WAV: {} bytes rms={:.6}",
@@ -311,7 +313,10 @@ impl Recorder {
                 "cloud" => {
                     crate::debug_log::append(app_dir, "cloud transcription start");
                     println!("[Mabel] Cloud transcription starting");
-                    let key = crate::secrets::get_groq_key()?;
+                    let key = crate::secrets::get_groq_key().map_err(|e| {
+                        crate::debug_log::append(app_dir, &format!("cloud key read failed: {e}"));
+                        e
+                    })?;
                     transcribe_groq::transcribe_groq(&key, &temp_path, &settings.whisper_language)
                         .await?
                 }
@@ -333,14 +338,9 @@ impl Recorder {
             }
 
             let rule_cleaned = cleanup_text(&raw_text);
-            let cleaned = crate::llm::polish_or_rules(
-                app,
-                &self.llm_server,
-                settings,
-                app_dir,
-                rule_cleaned,
-            )
-            .await;
+            let cleaned =
+                crate::llm::polish_or_rules(app, &self.llm_server, settings, app_dir, rule_cleaned)
+                    .await;
             let cleaned = crate::dictionary::apply_replacements(&cleaned, &settings.dictionary);
             let cleaned = crate::snippets::apply_expansions_for_dir(&cleaned, app_dir);
             let cleaned = crate::style::apply_register_for_dir(&cleaned, app_dir);
@@ -494,18 +494,69 @@ mod tests {
     }
 
     #[test]
+    fn classify_cloud_keychain_and_groq_auth_are_not_empty_takes() {
+        let keychain =
+            classify_pipeline_error("Keychain read error: default keychain could not be found");
+        assert_eq!(keychain.title, dictation_error::TITLE_CLOUD);
+        assert_ne!(keychain.title, dictation_error::TITLE_EMPTY);
+
+        let missing =
+            classify_pipeline_error("Groq API key not set. Please enter your API key in settings.");
+        assert_eq!(missing.title, dictation_error::TITLE_CLOUD);
+        assert_ne!(missing.title, dictation_error::TITLE_EMPTY);
+
+        let unauthorized = classify_pipeline_error("Groq API error (401): invalid api key");
+        assert_eq!(unauthorized.title, dictation_error::TITLE_CLOUD);
+        assert_ne!(unauthorized.title, dictation_error::TITLE_EMPTY);
+    }
+
+    #[test]
+    fn cloud_ready_and_transcribe_fail_closed_on_keychain() {
+        let src = include_str!("recorder.rs");
+        let ensure = src
+            .split("fn ensure_engine_ready")
+            .nth(1)
+            .expect("ensure_engine_ready");
+        assert!(
+            ensure.contains("get_groq_key"),
+            "cloud ready must read the key fail-closed, not only has_groq_key"
+        );
+        assert!(
+            ensure.contains("cloud_unavailable"),
+            "keychain errors at start must surface as Cloud engine failed"
+        );
+        let stop = src
+            .split("pub async fn stop_and_transcribe")
+            .nth(1)
+            .expect("stop_and_transcribe");
+        assert!(
+            stop.contains("cloud key read failed"),
+            "cloud keychain fail must be logged, not swallowed as empty ASR"
+        );
+        assert!(
+            src.contains("is_cloud_auth_or_keychain_error"),
+            "pipeline must classify keychain/Groq auth before Nothing recognized"
+        );
+    }
+
+    #[test]
     fn start_recording_claims_state_before_capture() {
         let src = include_str!("recorder.rs");
         let start = src
             .split("pub fn start_recording")
             .nth(1)
             .expect("start_recording");
-        let start = start.split("pub async fn stop_and_transcribe").next().unwrap();
+        let start = start
+            .split("pub async fn stop_and_transcribe")
+            .next()
+            .unwrap();
         let ready_idx = start.find("RecordingState::Ready").expect("Ready check");
         let claim_idx = start
             .find("*state = RecordingState::Recording")
             .expect("claim Recording under the same lock");
-        let mic_idx = start.find("mic_permission::ensure_granted").expect("mic gate");
+        let mic_idx = start
+            .find("mic_permission::ensure_granted")
+            .expect("mic gate");
         assert!(
             ready_idx < claim_idx && claim_idx < mic_idx,
             "Ready check must claim Recording before TCC/cpal so a second hotkey cannot also start"
@@ -548,15 +599,12 @@ mod tests {
 fn ensure_engine_ready(settings: &Settings, app_dir: &PathBuf) -> Result<(), UserError> {
     match settings.engine.as_str() {
         "local" => {
-            let engine = local_engine::validate(&settings.local_engine)
-                .map_err(UserError::generic)?;
+            let engine =
+                local_engine::validate(&settings.local_engine).map_err(UserError::generic)?;
             match engine {
                 local_engine::PARAKEET | local_engine::WHISPERKIT => {
-                    if !transcribe_native::engine_ready(
-                        engine,
-                        &settings.whisper_language,
-                        app_dir,
-                    ) {
+                    if !transcribe_native::engine_ready(engine, &settings.whisper_language, app_dir)
+                    {
                         let label = if engine == local_engine::PARAKEET {
                             "Parakeet"
                         } else {
@@ -583,18 +631,32 @@ fn ensure_engine_ready(settings: &Settings, app_dir: &PathBuf) -> Result<(), Use
                 }
             }
         }
-        "cloud" => {
-            if !crate::secrets::has_groq_key() {
-                return Err(dictation_error::cloud_key_missing());
+        "cloud" => match crate::secrets::get_groq_key() {
+            Ok(_) => {}
+            Err(e) if e.to_lowercase().contains("keychain") => {
+                return Err(dictation_error::cloud_unavailable(&e));
             }
-        }
+            Err(_) => return Err(dictation_error::cloud_key_missing()),
+        },
         other => return Err(UserError::generic(format!("Unknown engine: {other}"))),
     }
     Ok(())
 }
 
+fn is_cloud_auth_or_keychain_error(lower: &str) -> bool {
+    lower.contains("keychain")
+        || lower.contains("groq api key")
+        || lower.contains("api key not set")
+        || lower.contains("groq api error")
+        || lower.contains("groq api request failed")
+}
+
 fn classify_pipeline_error(err: &str) -> UserError {
     let lower = err.to_lowercase();
+    // Auth / keychain must not look like a clean empty recognition.
+    if is_cloud_auth_or_keychain_error(&lower) {
+        return dictation_error::cloud_unavailable(err);
+    }
     if err.contains(&dictation_error::nothing_recognized().message)
         || lower.contains("returned no text")
         || lower.contains("nothing was recognized")

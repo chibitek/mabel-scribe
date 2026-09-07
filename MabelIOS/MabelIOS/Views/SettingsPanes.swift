@@ -125,7 +125,7 @@ struct KeyboardSettingsPane: View {
 struct PolishSettingsPane: View {
     var body: some View {
         SettingsStoreForm { store in
-            Section("Polish") {
+            Section {
                 Text("Off, Casual, Professional, or Polite. After dictate, a local tone rewrite on this iPhone — autocorrect and light reword only. Never invents facts. Not Style (Formal, Casual, Very casual). Not Dictionary, Snippets, Scratchpad, or Clipboard. Coach cannot rewrite. Not Nexus.")
                     .font(.footnote)
                     .foregroundStyle(IOSPalette.mist)
@@ -137,9 +137,9 @@ struct PolishSettingsPane: View {
                         set: { on in
                             if on {
                                 let next = store.polishMode == Polish.off ? Polish.casual : store.polishMode
-                                store.setPolishMode(next)
+                                _ = store.setPolishMode(next)
                             } else {
-                                store.setPolishMode(Polish.off)
+                                _ = store.setPolishMode(Polish.off)
                             }
                         }
                     ))
@@ -148,7 +148,7 @@ struct PolishSettingsPane: View {
 
                     Picker("Polish mode", selection: Binding(
                         get: { store.effectivePolishMode },
-                        set: { store.setPolishMode($0) }
+                        set: { _ = store.setPolishMode($0) }
                     )) {
                         Text("Off").tag(Polish.off)
                         Text("Casual").tag(Polish.casual)
@@ -169,6 +169,8 @@ struct PolishSettingsPane: View {
                         AccountSettingsPane()
                     }
                 }
+            } header: {
+                Text("Polish")
             } footer: {
                 Text("Default Off. Sign out locks Polish. Free dictate stays ungated. Local-first — no cloud, no team, no Nexus.")
                     .foregroundStyle(IOSPalette.mist)

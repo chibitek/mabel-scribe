@@ -77,7 +77,7 @@ final class SettingsStore {
 
     /// Off always writes. Live modes need StoreKit Pro AND Stiki (dual gate).
     @discardableResult
-    func setPolishMode(_ raw: String) -> Result<String, String> {
+    func setPolishMode(_ raw: String) -> Result<String, PolishGateError> {
         switch Polish.requireModeAllowed(raw, stikiSignedIn: stikiSignedIn, storeKitEntitled: storeKitEntitled) {
         case .success(let mode):
             polishMode = mode

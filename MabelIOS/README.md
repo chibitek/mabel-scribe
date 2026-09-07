@@ -48,9 +48,9 @@ Ship order (do not skip or reorder): **Keyboard → Polish → Dictionary → Sc
 
 **BREAKS IF (Erick 2026-09-07 Flow→Mabel iOS UX):** Flow brand / "Flow is on"; ambient / always-on; swipe starts the mic; second tone catalog; Formal/Casual invented separate from Polish/Style; dual gate weakened; HIPAA/BAA claim.
 
-**GREEN (b6530197 Enforcer soft BOUND):** local-first privacy card; sticky listen with explicit on-state; start tap/gesture only; no HIPAA/cloud/Nexus/ambient.
+**GREEN (b6530197 Enforcer BOUND UPDATE):** local privacy card; tone→Polish/Style only; no HIPAA claim; sticky listen explicit; no cloud/Nexus/ambient.
 
-**BREAKS IF (b6530197 Enforcer soft BOUND):** HIPAA claim; cloud; Nexus write; ambient / always-on listen; privacy card not local-first; sticky listen without explicit on-state; start without tap/gesture.
+**BREAKS IF (b6530197 Enforcer BOUND UPDATE):** HIPAA claim; second tone catalog; cloud; Nexus write; ambient / always-on listen; privacy card not local; sticky listen without explicit start/on-state.
 
 ## What v0.1.0 does
 

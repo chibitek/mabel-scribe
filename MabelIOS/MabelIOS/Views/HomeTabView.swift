@@ -5,6 +5,7 @@ import UIKit
 struct HomeTabView: View {
     @Environment(SpeechSession.self) private var session
     @Environment(SettingsStore.self) private var settings
+    @Environment(HistoryStore.self) private var history
     @Environment(\.scenePhase) private var scenePhase
     @State private var showKeyboardSetup = true
 
@@ -49,6 +50,7 @@ struct HomeTabView: View {
         .tint(IOSPalette.roseDeep)
         .onAppear {
             session.refreshGate(context: .host)
+            history.reload()
         }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active && session.isListening {
@@ -56,6 +58,12 @@ struct HomeTabView: View {
             }
             if phase == .active {
                 session.refreshGate(context: .host)
+                history.reload()
+            }
+        }
+        .onChange(of: session.isListening) { _, listening in
+            if listening == false {
+                history.reload()
             }
         }
     }
@@ -121,9 +129,9 @@ struct HomeTabView: View {
     private var statsCarousel: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
-                statCard(title: "Words today", value: "0")
-                statCard(title: "Streak", value: "0")
-                statCard(title: "Sessions", value: "0")
+                statCard(title: "Words today", value: "\(history.wordsToday)")
+                statCard(title: "Streak", value: "\(history.streak)")
+                statCard(title: "Sessions", value: "\(history.sessions)")
             }
         }
         .accessibilityElement(children: .contain)
@@ -149,9 +157,23 @@ struct HomeTabView: View {
             Text("Activity")
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(IOSPalette.ink)
-            Text("No activity yet. Counts stay on this iPhone — \(EnforcerBound.privacySurfaceName).")
-                .font(.footnote)
-                .foregroundStyle(IOSPalette.mist)
+            if history.recentDays.isEmpty {
+                Text("No activity yet. Counts stay on this iPhone — \(EnforcerBound.privacySurfaceName).")
+                    .font(.footnote)
+                    .foregroundStyle(IOSPalette.mist)
+            } else {
+                ForEach(history.recentDays.prefix(14)) { day in
+                    HStack {
+                        Text(day.date)
+                            .font(.footnote.monospaced())
+                            .foregroundStyle(IOSPalette.ink)
+                        Spacer()
+                        Text("\(day.words) words · \(day.dictations) sessions")
+                            .font(.footnote)
+                            .foregroundStyle(IOSPalette.mist)
+                    }
+                }
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -35,6 +35,7 @@ need_file "$IOS/Shared/CatChrome.swift"
 need_file "$IOS/Shared/EnforcerBound.swift"
 need_file "$IOS/Shared/SettingsStore.swift"
 need_file "$IOS/Shared/Polish.swift"
+need_file "$IOS/Shared/HistoryStore.swift"
 need_file "$IOS/MabelIOS/Views/SettingsRootView.swift"
 need_file "$IOS/MabelIOS/Views/SettingsPanes.swift"
 need_file "$IOS/MabelIOS/Views/HomeTabView.swift"
@@ -927,6 +928,54 @@ else:
 if "2.5" not in polish:
     print("  FAIL  acceptOrFailClosed missing 2.5x invent tripwire")
     failed = True
+
+# Durable iOS history store: App Group file, not hardcoded zeros, no cloud.
+history = open(os.path.join(root, "Shared/HistoryStore.swift")).read()
+home_hist = open(os.path.join(root, "MabelIOS/Views/HomeTabView.swift")).read()
+session_hist = open(os.path.join(root, "Shared/SpeechSession.swift")).read()
+pbx = open(os.path.join(root, "MabelIOS.xcodeproj/project.pbxproj")).read()
+hist_ok = True
+for required in (
+    "group.com.mabel.ios",
+    "stats.json",
+    "applicationSupportDirectory",
+    "total_dictations",
+    "Never reset on version bump",
+    "persistTake",
+):
+    if required not in history:
+        print(f"  FAIL  HistoryStore missing {required}")
+        failed = True
+        hist_ok = False
+if hist_ok:
+    print("  PASS  HistoryStore App Group stats.json contract")
+if "HistoryStore.persistTake" not in session_hist:
+    print("  FAIL  SpeechSession must persist takes into the App Group store")
+    failed = True
+else:
+    print("  PASS  SpeechSession records local history on stop")
+if "HistoryStore" not in home_hist or 'value: "0"' in home_hist:
+    print("  FAIL  Home stats must read HistoryStore (not hardcoded zeros)")
+    failed = True
+else:
+    print("  PASS  Home stats read HistoryStore")
+if pbx.count("HistoryStore.swift in Sources") < 2:
+    print("  FAIL  HistoryStore must compile into host and keyboard")
+    failed = True
+else:
+    print("  PASS  HistoryStore in host + keyboard targets")
+cloud_hit = False
+for blob, rel in ((history, "HistoryStore.swift"), (home_hist, "HomeTabView.swift")):
+    for i, line in enumerate(blob.splitlines(), 1):
+        stripped = line.strip()
+        if stripped.startswith("//") or stripped.startswith("///"):
+            continue
+        if re.search(r'\b(iCloud|CloudKit|NSUbiquitous|CKRecord|Nexus|Mochii)\b', stripped):
+            print(f"  FAIL  history cloud/Nexus write {rel}:{i}: {stripped}")
+            failed = True
+            cloud_hit = True
+if not cloud_hit:
+    print("  PASS  iOS history store is local-only (no iCloud/Nexus/Mochii)")
 
 # Keyboard overlay / entitlements must stay App Group only.
 for rel in ("MabelIOS/MabelIOS.entitlements", "MabelKeyboard/MabelKeyboard.entitlements"):

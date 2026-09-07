@@ -145,6 +145,7 @@ final class SpeechSession {
             self.phase = .idle
             self.statusMessage = "Mic off · tap Mabel to dictate"
             if committed.isEmpty == false {
+                HistoryStore.persistTake(text: committed)
                 self.onStopped?(committed)
             }
             self.onStopped = nil

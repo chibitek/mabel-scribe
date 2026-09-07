@@ -6,12 +6,14 @@ import SwiftUI
 struct MabelIOSApp: App {
     @State private var session = SpeechSession()
     @State private var settings = SettingsStore()
+    @State private var history = HistoryStore()
 
     var body: some Scene {
         WindowGroup {
             HostRootView()
                 .environment(session)
                 .environment(settings)
+                .environment(history)
         }
     }
 }

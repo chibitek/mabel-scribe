@@ -20,7 +20,7 @@ The in-app first-launch popup reads from this file. Every Mabel release MUST add
 - The whisper.cpp path can download a small Silero VAD model and drop silence before decode, which cuts empty-audio hallucinations.
 
 ### Fixed
-- TestFlight version bumps on the same install keep Insights and local history. Application Support files are not wiped on upgrade. If a file cannot be read, Mabel says so and leaves it alone.
+- TestFlight version bumps keep Insights and local history. If the current container is empty, Mabel copies a prior local store (DMG / `com.typr.app` / `Mabel` Application Support) into it. A leftover empty-launch marker cannot hide months of data. The old files stay put until the copy is verified. If a file cannot be read, Mabel says so and leaves it alone. iOS writes counts to the App Group container so later updates do not start from a hardcoded zero.
 - Subscribe no longer freezes the window. The App Store sheet runs off the main thread, shows progress, and returns success or a recoverable error within two minutes. Restore Purchases and Manage Subscriptions stay usable. Pro still requires a verified StoreKit transaction.
 
 ## v1.3.0 (2026-09-05)

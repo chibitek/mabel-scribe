@@ -1,7 +1,7 @@
 import Foundation
 
-/// Enforcer BOUND addendum (fold hard). Product RE-LOCK for Mabel iOS ship #1.
-/// Suite b6530197 Local-only privacy mode + prior iOS locks.
+/// Enforcer BOUND addendum (fold hard). Product RE-LOCK for Mabel iOS ship #2.
+/// Suite b6530197 Local-only privacy mode + Keyboard locks + Polish.
 ///
 /// GREEN (prior iOS): Mabel cat UI only (no Flow brand). Keyboard is not a
 /// silent spy (explicit start; fail closed without mic permission). Ship
@@ -29,13 +29,28 @@ import Foundation
 /// BREAKS IF (b6530197 Home IA): Free Home or Free dictate gated on
 /// Stiki/account; Pro tabs unlock without StoreKit Pro + Stiki; StoreKit
 /// alone or Stiki alone treated as full Pro unlock for those tabs.
+///
+/// GREEN (Polish): Off|Casual|Professional|Polite; default OFF; StoreKit Pro AND Stiki dual gate;
+/// Free locked Activate Pro / Sign in with Stiki; local-first rules fail closed;
+/// never invent; sign-out locks Polish; distinct Style/Dictionary/Snippets/Scratchpad/Clipboard;
+/// Free dictate ungated; no cloud/team/Nexus/SIEM; no HIPAA/BAA.
+///
+/// BREAKS IF (Polish): default ON; cloud rewrite; invent / expand meaning;
+/// Nexus/SIEM write; HIPAA/BAA; Free dictate gated; StoreKit alone or Stiki
+/// alone unlocks live Polish; merged with Style Formal|Casual|Very casual.
 enum EnforcerBound {
     static let displayBrand = "Mabel"
     static let forbiddenBrands = ["Flow", "Wispr"]
     static let shipOrder = ["Keyboard", "Polish", "Dictionary", "Scratchpad", "Languages"]
-    static let thisTip = "Keyboard"
-    /// Host Settings IA. Scaffold only. Free dictate does not use these panes.
-    static let settingsPanes = ["Account", "General", "Keyboard", "Notifications", "Data & privacy"]
+    static let thisTip = "Polish"
+    /// Host Settings IA. Free dictate does not use these panes.
+    static let settingsPanes = ["Account", "General", "Keyboard", "Polish", "Notifications", "Data & privacy"]
+    static let polishModes = ["off", "casual", "professional", "polite"]
+    static let polishDefaultOff = true
+    static let polishRequiresDualGate = true
+    static let polishSignOutLocks = true
+    static let polishDistinctFromStyle = true
+    static let polishLockedMessage = "Needs Activate Pro and Sign in with Stiki. Both. Home dictate stays free."
     /// Host Home IA. Free: Home only. Pro tabs need StoreKit Pro AND Stiki.
     static let homeTabs = ["Home", "Dictionary", "Snippets", "Style", "Scratchpad"]
     static let freeHomeTabs = ["Home"]

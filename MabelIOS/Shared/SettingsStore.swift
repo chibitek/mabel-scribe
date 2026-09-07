@@ -10,6 +10,8 @@ final class SettingsStore {
 
     var stikiSignedIn = false
     var storeKitEntitled = false
+    /// Persisted Polish mode. Live modes still fail closed without dual gate.
+    var polishMode = Polish.defaultMode
 
     var languagesNote = "English (on-device)"
     var idleSeconds = 0
@@ -40,6 +42,11 @@ final class SettingsStore {
         EnforcerBound.isProUnlocked(stikiSignedIn: stikiSignedIn, storeKitEntitled: storeKitEntitled)
     }
 
+    /// Runtime Polish. Signed-out or Free → Off even if a live mode is stored.
+    var effectivePolishMode: String {
+        Polish.effectiveMode(polishMode, stikiSignedIn: stikiSignedIn, storeKitEntitled: storeKitEntitled)
+    }
+
     func isTabUnlocked(_ tab: String) -> Bool {
         EnforcerBound.isHomeTabUnlocked(tab, stikiSignedIn: stikiSignedIn, storeKitEntitled: storeKitEntitled)
     }
@@ -60,9 +67,31 @@ final class SettingsStore {
         pushNotifications = self.defaults.bool(forKey: Key.push)
         liveActivities = self.defaults.bool(forKey: Key.liveActivities)
         masterOn = self.defaults.object(forKey: Key.masterOn) as? Bool ?? true
+        polishMode = Polish.normalizeMode(self.defaults.string(forKey: Polish.DefaultsKey.mode) ?? Polish.defaultMode)
+        stikiSignedIn = self.defaults.bool(forKey: Polish.DefaultsKey.stikiSignedIn)
+        storeKitEntitled = self.defaults.bool(forKey: Polish.DefaultsKey.storeKitEntitled)
         // Ignore any stored true. Cloud ON v1 / silent cloud is a hard break.
         cloudStorage = EnforcerBound.cloudStorageAvailableV1
         dictationCloud = EnforcerBound.dictationCloudAvailableV1
+    }
+
+    /// Off always writes. Live modes need StoreKit Pro AND Stiki (dual gate).
+    @discardableResult
+    func setPolishMode(_ raw: String) -> Result<String, String> {
+        switch Polish.requireModeAllowed(raw, stikiSignedIn: stikiSignedIn, storeKitEntitled: storeKitEntitled) {
+        case .success(let mode):
+            polishMode = mode
+            persist()
+            return .success(mode)
+        case .failure(let message):
+            return .failure(message)
+        }
+    }
+
+    /// Sign-out locks Polish. Dual-gate flags persist to the App Group.
+    func signOutStiki() {
+        stikiSignedIn = false
+        persist()
     }
 
     /// Cloud storage cannot be enabled in v1. Local-first toggles only.
@@ -94,6 +123,9 @@ final class SettingsStore {
         defaults.set(pushNotifications, forKey: Key.push)
         defaults.set(liveActivities, forKey: Key.liveActivities)
         defaults.set(masterOn, forKey: Key.masterOn)
+        defaults.set(Polish.normalizeMode(polishMode), forKey: Polish.DefaultsKey.mode)
+        defaults.set(stikiSignedIn, forKey: Polish.DefaultsKey.stikiSignedIn)
+        defaults.set(storeKitEntitled, forKey: Polish.DefaultsKey.storeKitEntitled)
         defaults.set(EnforcerBound.cloudStorageAvailableV1, forKey: Key.cloudStorage)
         cloudStorage = EnforcerBound.cloudStorageAvailableV1
         defaults.set(EnforcerBound.dictationCloudAvailableV1, forKey: Key.dictationCloud)

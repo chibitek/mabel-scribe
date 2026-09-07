@@ -51,7 +51,7 @@ struct ProTabLaterShipPlaceholder: View {
                 Text(tab)
                     .font(.system(size: 26, weight: .semibold, design: .rounded))
                     .foregroundStyle(IOSPalette.ink)
-                Text("Unlocked. Feature body ships later. This tip stays Keyboard.")
+                Text("Unlocked. Feature body ships later. This tip is Polish. Dictionary, Scratchpad, and Languages stay later.")
                     .font(.footnote)
                     .foregroundStyle(IOSPalette.mist)
                     .multilineTextAlignment(.center)

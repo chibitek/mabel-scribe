@@ -25,15 +25,16 @@ A shared Xcode multiplatform app (macOS + iOS, or “Designed for iPhone” on V
 
 ## Product lock + Enforcer BOUND (fold hard)
 
-Ship order (do not skip or reorder): **Keyboard → Polish → Dictionary → Scratchpad → Languages**. This tip is Keyboard only.
+Ship order (do not skip or reorder): **Keyboard → Polish → Dictionary → Scratchpad → Languages**. This tip is **Polish** (ship #2 after Keyboard).
 
 - **Mabel cat UI only.** No Flow brand. No Wispr clone.
 - **Free dictate:** no account, no Stiki, no StoreKit. Tap the orb → speak → tap to stop → text inserts.
 - **Keyboard is not a silent spy.** Explicit orb start. Fail closed without Microphone (and Speech / Full Access). Lifecycle hooks never start the mic. `viewWillDisappear` tears it down. No ambient / always-on listen.
 - **Local-only privacy mode (Suite b6530197):** local-only mode ships; real HIPAA BAA parked (no Make It So); no HIPAA / BAA / Wispr BAA / compliant claim in UI or App Store; improve-models OFF default (no silent training upload); cloud storage + dictation cloud OFF/unavailable v1; no silent cloud of audio/transcripts/Scratchpad/history; local-only / local-first copy OK in Settings.
-- Host **Settings** scaffold: Account (Stiki + Pro, dual gate), General, Keyboard, Notifications, Data & privacy. Free dictate does not use Account.
+- Host **Settings** scaffold: Account (Stiki + Pro, dual gate), General, Keyboard, **Polish**, Notifications, Data & privacy. Free dictate does not use Account.
 - Host **Home IA (Suite b6530197):** Free Home + dictate available without Stiki / without account. Pro tabs / Pro surfaces require StoreKit Pro AND Stiki session (both). StoreKit ≠ Stiki; neither alone unlocks Pro tabs.
-- Later ships (Polish, Dictionary, Scratchpad, Languages) plus Connectors / Notetaker stay out of this tip.
+- **Polish (this tip):** Off | Casual | Professional | Polite tone rewrite after ASR. Default Off. Live modes need StoreKit Pro AND Stiki. Free locked with Activate Pro / Sign in with Stiki. Local-first rules on this iPhone (fail closed, never invent). Sign-out locks Polish. Distinct from Style (Formal | Casual | Very casual), Dictionary, Snippets, Scratchpad, and Clipboard. No Gemma sidecar in the keyboard appex.
+- Later ships (Dictionary body, Scratchpad body, Languages) plus Connectors / Notetaker stay out of this tip.
 
 **BREAKS IF (prior iOS):** Flow brand; keyboard spy / ambient always-on listen; Free dictate requires Stiki; keyboard audio without permission.
 
@@ -41,9 +42,12 @@ Ship order (do not skip or reorder): **Keyboard → Polish → Dictionary → Sc
 
 **BREAKS IF (b6530197 Home IA):** Free Home or Free dictate gated on Stiki/account; Pro tabs unlock without StoreKit Pro + Stiki; StoreKit alone or Stiki alone treated as full Pro unlock for those tabs.
 
+**BREAKS IF (Polish):** default ON; cloud rewrite; invent / expand meaning; Nexus/SIEM write; HIPAA/BAA; Free dictate gated; StoreKit alone or Stiki alone unlocks live Polish; merged with Style Formal|Casual|Very casual.
+
 ## What v0.1.0 does
 
 - Host app shell with Mabel cat chrome (cream / rose / portrait). Bottom tabs Home | Dictionary | Snippets | Style | Scratchpad. Hamburger opens Account / Settings. Setup steps enable the keyboard.
+- Settings → Polish: Off | Casual | Professional | Polite. Default Off. Live modes need StoreKit Pro AND Stiki. Free shows Activate Pro / Sign in with Stiki. Sign-out locks Polish. Applied after ASR on host playground and keyboard insert.
 - Host playground: same on-device dictate path, used to grant permissions.
 - Custom keyboard (`UIInputViewController`) with the orb, live preview, globe / delete / space / return.
 - On-device `SFSpeechRecognizer` (`requiresOnDeviceRecognition = true`). No Apple network-speech fallback. No whisper.cpp / Parakeet / WhisperKit.
@@ -136,7 +140,7 @@ MabelIOS/
   scripts/validate-ios-keyboard-scaffold.sh
   scripts/xcodebuild-ios.sh
   MabelIOS.xcodeproj/
-  Shared/                          Gate + EnforcerBound + SettingsStore + speech
+  Shared/                          Gate + EnforcerBound + SettingsStore + Polish + speech
   MabelIOS/                        Host tabs (Home IA) + Settings IA (cat UI)
   MabelKeyboard/                   Custom keyboard extension
 ```

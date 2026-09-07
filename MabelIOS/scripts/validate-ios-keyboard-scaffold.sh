@@ -213,8 +213,14 @@ if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift"
   && grep -q 'static let proUnlockRequiresStoreKitAndStiki = true' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let storeKitEqualsStiki = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'GREEN (b6530197 Home IA): Free Home + dictate available without Stiki' "$IOS/Shared/EnforcerBound.swift" \
-  && grep -q 'BREAKS IF (b6530197 Home IA): Free Home or Free dictate gated on' "$IOS/Shared/EnforcerBound.swift"; then
-  ok "EnforcerBound locks Mabel brand, ship order, Settings IA, Home IA, Suite b6530197"
+  && grep -q 'BREAKS IF (b6530197 Home IA): Free Home or Free dictate gated on' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -qF 'GREEN (CoS maple): maple = Mabel brand / Mabel cat icon, not a maple leaf' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -qF 'BREAKS IF (CoS maple): maple leaf icon; geometric orb as the dictate icon' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let mapleMeansMabelCatIcon = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let mapleLeafIconAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let dictateIconIsMabelCat = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let geometricOrbDictateIconAllowed = false' "$IOS/Shared/EnforcerBound.swift"; then
+  ok "EnforcerBound locks Mabel brand, ship order, Settings IA, Home IA, Suite b6530197, CoS maple"
 else
   bad "EnforcerBound missing brand/shipOrder/settings/home/cloud locks"
 fi

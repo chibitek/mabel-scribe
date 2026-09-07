@@ -38,6 +38,12 @@ import Foundation
 /// BREAKS IF (Polish): default ON; cloud rewrite; invent / expand meaning;
 /// Nexus/SIEM write; HIPAA/BAA; Free dictate gated; StoreKit alone or Stiki
 /// alone unlocks live Polish; merged with Style Formal|Casual|Very casual.
+///
+/// GREEN (CoS maple): maple = Mabel brand / Mabel cat icon, not a maple leaf.
+/// Dictate control is the Mabel cat (replace orb). Sticky listen + full
+/// keyboard edit. Soft nits later.
+///
+/// BREAKS IF (CoS maple): maple leaf icon; geometric orb as the dictate icon.
 enum EnforcerBound {
     static let displayBrand = "Mabel"
     static let forbiddenBrands = ["Flow", "Wispr"]
@@ -85,6 +91,11 @@ enum EnforcerBound {
     static let wisprBAAClaimAllowed = false
     /// GREEN: Local-only / local-first copy OK in Settings.
     static let localOnlyLocalFirstCopyOK = true
+    /// CoS Product LOCK (TF 0.1.0/2): maple = Mabel cat icon, not a maple leaf.
+    static let mapleMeansMabelCatIcon = true
+    static let mapleLeafIconAllowed = false
+    static let dictateIconIsMabelCat = true
+    static let geometricOrbDictateIconAllowed = false
 
     static var shipOrderLine: String {
         shipOrder.joined(separator: " → ")

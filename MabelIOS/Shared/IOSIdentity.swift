@@ -57,4 +57,44 @@ enum IOSPrivacy {
     on. Mabel uses that for dictation you start with a tap — not for silent \
     listening, and not for an account.
     """
+
+    static let localDefaultsRows: [(String, String)] = [
+        ("Speech", "On-device Apple Speech"),
+        ("Improve models", "Off"),
+        ("Dictation cloud", "Unavailable"),
+        ("Cloud storage", "Unavailable"),
+        ("Start", "Tap Start — not ambient"),
+    ]
+}
+
+/// Settings + Home privacy card. Local defaults only. No HIPAA/BAA claim.
+struct PrivacyDefaultsCard: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Local defaults")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(IOSPalette.ink)
+                .accessibilityIdentifier("privacy-local-defaults")
+            ForEach(IOSPrivacy.localDefaultsRows, id: \.0) { row in
+                HStack(alignment: .firstTextBaseline) {
+                    Text(row.0)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(IOSPalette.ink)
+                    Spacer()
+                    Text(row.1)
+                        .font(.footnote)
+                        .foregroundStyle(IOSPalette.mist)
+                        .multilineTextAlignment(.trailing)
+                }
+            }
+            Text("Transcripts stay on this iPhone. \(EnforcerBound.privacySurfaceName).")
+                .font(.footnote)
+                .foregroundStyle(IOSPalette.mist)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.72), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Local defaults. On-device speech. Improve models off. Cloud unavailable.")
+    }
 }

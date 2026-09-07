@@ -15,7 +15,7 @@ final class SpeechSession {
     var phase: ListenPhase = .idle
     var finalTranscript = ""
     var volatileTail = ""
-    var statusMessage = "Tap Mabel to dictate"
+    var statusMessage = "Tap Start to dictate"
     var lastError: String?
     var lastGate: DictatePermissionGate = .undeterminedOpenHost
 
@@ -116,7 +116,7 @@ final class SpeechSession {
                     }
                 }
                 self.phase = .listening
-                self.statusMessage = "Listening · tap Mabel to stop · mic is on"
+                self.statusMessage = EnforcerBound.keyboardOnStateCopy
                 self.armIdleWatch()
             } catch SpeechEngineError.permissionDenied, SpeechEngineError.fullAccessRequired {
                 self.refreshGate(context: context)
@@ -143,12 +143,32 @@ final class SpeechSession {
             }
             let committed = Polish.applyFromAppGroup(self.displayTranscript)
             self.phase = .idle
-            self.statusMessage = "Mic off · tap Mabel to dictate"
+            self.statusMessage = "Mic off · tap Start to dictate"
             if committed.isEmpty == false {
                 self.onStopped?(committed)
             }
             self.onStopped = nil
         }
+    }
+
+    /// Insert-ready polish of the current utterance. Keeps the mic up when
+    /// already listening (continue). Never starts the microphone.
+    /// Swipe confirm on the keyboard calls this; Start stays explicit.
+    func confirmUtterance() -> String {
+        if volatileTail.isEmpty == false {
+            appendFinal(volatileTail)
+            volatileTail = ""
+        }
+        let committed = Polish.applyFromAppGroup(displayTranscript)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        finalTranscript = ""
+        volatileTail = ""
+        if phase == .listening {
+            speech.rollRecognitionKeepingMic()
+            statusMessage = EnforcerBound.keyboardOnStateCopy
+            armIdleWatch()
+        }
+        return committed
     }
 
     func clearTranscript() {
@@ -173,7 +193,7 @@ final class SpeechSession {
             idleWatch = nil
             lastError = message
             phase = .idle
-            statusMessage = "Mic off · tap Mabel to dictate"
+            statusMessage = "Mic off · tap Start to dictate"
             Task { await speech.stop() }
         }
     }

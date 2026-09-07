@@ -55,23 +55,28 @@ final class SettingsStore {
 
     init(defaults: UserDefaults? = nil) {
         self.defaults = defaults ?? UserDefaults(suiteName: IOSIdentity.appGroup) ?? .standard
-        improveModels = self.defaults.bool(forKey: Key.improveModels)
-        autoDelete = self.defaults.bool(forKey: Key.autoDelete)
-        haptics = self.defaults.object(forKey: Key.haptics) as? Bool ?? true
-        lowData = self.defaults.bool(forKey: Key.lowData)
-        autoOpenNote = self.defaults.bool(forKey: Key.autoOpenNote)
-        actionButtonDictate = self.defaults.bool(forKey: Key.actionButton)
-        idleSeconds = self.defaults.integer(forKey: Key.idleSeconds)
-        qwertyLayout = self.defaults.object(forKey: Key.qwerty) as? Bool ?? true
-        autocorrect = self.defaults.object(forKey: Key.autocorrect) as? Bool ?? true
-        keyboardMicPref = self.defaults.object(forKey: Key.keyboardMic) as? Bool ?? true
-        keyboardSounds = self.defaults.bool(forKey: Key.keyboardSounds)
-        pushNotifications = self.defaults.bool(forKey: Key.push)
-        liveActivities = self.defaults.bool(forKey: Key.liveActivities)
-        masterOn = self.defaults.object(forKey: Key.masterOn) as? Bool ?? true
-        polishMode = Polish.normalizeMode(self.defaults.string(forKey: Polish.DefaultsKey.mode) ?? Polish.defaultMode)
-        stikiSignedIn = self.defaults.bool(forKey: Polish.DefaultsKey.stikiSignedIn)
-        storeKitEntitled = self.defaults.bool(forKey: Polish.DefaultsKey.storeKitEntitled)
+        reloadFromDefaults()
+    }
+
+    /// Re-read App Group prefs. Keyboard appear path only — never starts the mic.
+    func reloadFromDefaults() {
+        improveModels = defaults.bool(forKey: Key.improveModels)
+        autoDelete = defaults.bool(forKey: Key.autoDelete)
+        haptics = defaults.object(forKey: Key.haptics) as? Bool ?? true
+        lowData = defaults.bool(forKey: Key.lowData)
+        autoOpenNote = defaults.bool(forKey: Key.autoOpenNote)
+        actionButtonDictate = defaults.bool(forKey: Key.actionButton)
+        idleSeconds = defaults.integer(forKey: Key.idleSeconds)
+        qwertyLayout = defaults.object(forKey: Key.qwerty) as? Bool ?? true
+        autocorrect = defaults.object(forKey: Key.autocorrect) as? Bool ?? true
+        keyboardMicPref = defaults.object(forKey: Key.keyboardMic) as? Bool ?? true
+        keyboardSounds = defaults.bool(forKey: Key.keyboardSounds)
+        pushNotifications = defaults.bool(forKey: Key.push)
+        liveActivities = defaults.bool(forKey: Key.liveActivities)
+        masterOn = defaults.object(forKey: Key.masterOn) as? Bool ?? true
+        polishMode = Polish.normalizeMode(defaults.string(forKey: Polish.DefaultsKey.mode) ?? Polish.defaultMode)
+        stikiSignedIn = defaults.bool(forKey: Polish.DefaultsKey.stikiSignedIn)
+        storeKitEntitled = defaults.bool(forKey: Polish.DefaultsKey.storeKitEntitled)
         // Ignore any stored true. Cloud ON v1 / silent cloud is a hard break.
         cloudStorage = EnforcerBound.cloudStorageAvailableV1
         dictationCloud = EnforcerBound.dictationCloudAvailableV1

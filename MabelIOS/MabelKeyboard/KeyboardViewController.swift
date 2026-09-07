@@ -2,12 +2,13 @@ import SwiftUI
 import UIKit
 
 /// System keyboard extension. Not a silent spy.
-/// Dictation starts only on an explicit orb tap after the fail-closed
+/// Dictation starts only on an explicit Start tap after the fail-closed
 /// permission gate. Never listen in viewDidLoad / viewWillAppear /
 /// textDidChange. Ambient / always-on listen is a hard break.
 final class KeyboardViewController: UIInputViewController {
-    /// Full QWERTY + cat row. 276pt / defaultHigh was truncating the board.
-    static let preferredHeight: CGFloat = 408
+    /// Full QWERTY + Start/mic chrome + Polish row + swipe edge.
+    /// 276pt / defaultHigh was truncating the board.
+    static let preferredHeight: CGFloat = 428
 
     private let session = SpeechSession()
     private let chrome = KeyboardChrome()
@@ -45,6 +46,7 @@ final class KeyboardViewController: UIInputViewController {
         chrome.hasFullAccess = hasFullAccess
         chrome.needsInputModeSwitch = needsInputModeSwitchKey
         session.refreshGate(context: .keyboard(hasFullAccess: hasFullAccess))
+        chrome.reloadSettings()
     }
 
     private func applyKeyboardHeight() {
@@ -78,6 +80,11 @@ final class KeyboardChrome {
     weak var controller: KeyboardViewController?
     var hasFullAccess = false
     var needsInputModeSwitch = true
+    let settings = SettingsStore()
+
+    func reloadSettings() {
+        settings.reloadFromDefaults()
+    }
 
     func insert(_ text: String) {
         controller?.textDocumentProxy.insertText(text)

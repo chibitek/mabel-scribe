@@ -226,8 +226,18 @@ if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift"
   && grep -q 'static let mapleMeansMabelCatIcon = true' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let mapleLeafIconAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let dictateIconIsMabelCat = true' "$IOS/Shared/EnforcerBound.swift" \
-  && grep -q 'static let geometricOrbDictateIconAllowed = false' "$IOS/Shared/EnforcerBound.swift"; then
-  ok "EnforcerBound locks Mabel brand, ship order, Settings IA, Home IA, Suite b6530197, CoS maple"
+  && grep -q 'static let geometricOrbDictateIconAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let keyboardOnStateCopy = "Mabel is on"' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let keyboardFlowIsOnCopyAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let keyboardSwipeConfirmDoesNotStartMic = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let keyboardStartMicChrome = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let keyboardTonePickerIsExistingPolish = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let keyboardSecondToneCatalogAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let keyboardInventedFormalCasualCatalogAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let privacyCardListsLocalDefaults = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'GREEN (Erick 2026-09-07 Flow→Mabel iOS UX)' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'BREAKS IF (Erick 2026-09-07 Flow→Mabel iOS UX)' "$IOS/Shared/EnforcerBound.swift"; then
+  ok "EnforcerBound locks Mabel brand, ship order, Settings IA, Home IA, Suite b6530197, CoS maple, Flow→Mabel UX"
 else
   bad "EnforcerBound missing brand/shipOrder/settings/home/cloud locks"
 fi
@@ -714,7 +724,7 @@ if grep -q 'func idleStopSeconds' "$IOS/Shared/SettingsStore.swift" \
 else
   bad "idle-stop helper missing or could start the mic"
 fi
-if grep -q 'static let preferredHeight: CGFloat = 408' "$IOS/MabelKeyboard/KeyboardViewController.swift" \
+if grep -q 'static let preferredHeight: CGFloat = 428' "$IOS/MabelKeyboard/KeyboardViewController.swift" \
   && grep -q 'UILayoutPriority(999)' "$IOS/MabelKeyboard/KeyboardViewController.swift" \
   && ! grep -q 'equalToConstant: 276' "$IOS/MabelKeyboard/KeyboardViewController.swift"; then
   ok "keyboard height is full-board, not truncated 276"
@@ -994,6 +1004,84 @@ if "Formal|Casual|Very casual" not in polish or "Clipboard" not in polish:
 if "This tip is Polish" not in lock:
     print("  FAIL  later-ship placeholder must name this tip Polish")
     failed = True
+
+# Erick 2026-09-07 Flow→Mabel iOS UX. Not Flow brand. Existing Polish only.
+kb = open(os.path.join(root, "MabelKeyboard/KeyboardRootView.swift")).read()
+session_src = open(os.path.join(root, "Shared/SpeechSession.swift")).read()
+engine_src = open(os.path.join(root, "Shared/OnDeviceSpeechEngine.swift")).read()
+identity = open(os.path.join(root, "Shared/IOSIdentity.swift")).read()
+home_src = open(os.path.join(root, "MabelIOS/Views/HomeTabView.swift")).read()
+panes_src = open(os.path.join(root, "MabelIOS/Views/SettingsPanes.swift")).read()
+if "Mabel is on" not in kb or 'keyboardOnStateCopy = "Mabel is on"' not in enforcer:
+    print("  FAIL  keyboard on-state must be Mabel is on")
+    failed = True
+else:
+    print("  PASS  keyboard on-state is Mabel is on")
+if "Flow is on" in kb:
+    print("  FAIL  BREAKS IF: Flow is on copy leaked into keyboard UI")
+    failed = True
+if "keyboard-start" not in kb or "Start" not in kb or "startMicChrome" not in kb:
+    print("  FAIL  keyboard missing Start/mic chrome")
+    failed = True
+else:
+    print("  PASS  keyboard Start/mic chrome present")
+if "confirmFromSwipe" not in kb or "confirmUtterance" not in session_src:
+    print("  FAIL  swipe bottom-edge confirm missing")
+    failed = True
+else:
+    print("  PASS  swipe bottom-edge confirm present")
+if "Swipe up to confirm" not in kb or "keyboard-swipe-confirm" not in kb:
+    print("  FAIL  swipe confirm affordance missing")
+    failed = True
+confirm_fn = session_src.split("func confirmUtterance", 1)[-1].split("func clearTranscript", 1)[0]
+if "startListening" in confirm_fn or "toggleListening" in confirm_fn:
+    print("  FAIL  BREAKS IF: swipe confirm starts the microphone")
+    failed = True
+else:
+    print("  PASS  swipe confirm does not start the microphone")
+if "rollRecognitionKeepingMic" not in engine_src or "rollRecognitionKeepingMic" not in confirm_fn:
+    print("  FAIL  swipe continue must roll recognition without a new mic start")
+    failed = True
+else:
+    print("  PASS  swipe continue rolls recognition on the existing mic")
+if "Polish.modes" not in kb or "setPolishMode" not in kb or "keyboard-polish-picker" not in kb:
+    print("  FAIL  keyboard tone picker must reuse existing Polish")
+    failed = True
+else:
+    print("  PASS  keyboard tone picker is existing Polish")
+if re.search(r'"(formal|very-casual|very_casual)"', kb):
+    print("  FAIL  BREAKS IF: Formal/Casual invented as a second keyboard catalog")
+    failed = True
+else:
+    print("  PASS  keyboard did not invent a Formal/Casual catalog")
+if "Not Style Formal|Casual|Very casual" not in kb and "Not Style (Formal" not in kb:
+    if "Style Formal|Casual|Very casual stays the Style catalog" not in kb:
+        print("  FAIL  keyboard picker must stay distinct from Style Formal|Casual|Very casual")
+        failed = True
+    else:
+        print("  PASS  keyboard picker stays distinct from Style")
+else:
+    print("  PASS  keyboard picker stays distinct from Style")
+if "PrivacyDefaultsCard" not in identity or "Local defaults" not in identity:
+    print("  FAIL  privacy card must list local defaults")
+    failed = True
+else:
+    print("  PASS  privacy card lists local defaults")
+if "PrivacyDefaultsCard" not in home_src or "PrivacyDefaultsCard" not in panes_src:
+    print("  FAIL  Home + Settings must show the privacy local-defaults card")
+    failed = True
+else:
+    print("  PASS  Home + Settings show privacy local-defaults card")
+if "privacyCardListsLocalDefaults = true" not in enforcer:
+    print("  FAIL  EnforcerBound missing privacy local-defaults lock")
+    failed = True
+if 'keyboardOnStateCopy = "Mabel is on"' not in enforcer \
+        or "keyboardSecondToneCatalogAllowed = false" not in enforcer \
+        or "keyboardInventedFormalCasualCatalogAllowed = false" not in enforcer:
+    print("  FAIL  EnforcerBound missing Flow→Mabel UX locks")
+    failed = True
+else:
+    print("  PASS  EnforcerBound Flow→Mabel UX locks folded")
 
 sys.exit(1 if failed else 0)
 PY

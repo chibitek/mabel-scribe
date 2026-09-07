@@ -111,6 +111,16 @@ final class OnDeviceSpeechEngine: @unchecked Sendable {
         sink = nil
     }
 
+    /// New recognition task on the existing mic tap after swipe-confirm.
+    /// Does not start listening. No-op unless the user already tapped Start.
+    func rollRecognitionKeepingMic() {
+        lock.lock()
+        let listening = wantsListen
+        lock.unlock()
+        guard listening else { return }
+        scheduleStickyRestart(delay: 0)
+    }
+
     // MARK: - Permissions (fail closed before any audio session)
 
     func currentMicrophoneAuth() -> MicrophoneAuth {

@@ -202,6 +202,9 @@ if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift"
   && grep -q 'static let wisprBAAClaimAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let silentTrainingUploadAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let localOnlyLocalFirstCopyOK = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveLocalContainerOnly = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveCloudSyncAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveNexusWriteAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'privacySuite = "b6530197"' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'GREEN (b6530197): Local-only mode ships' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'real HIPAA BAA parked (no Make It So)' "$IOS/Shared/EnforcerBound.swift" \
@@ -443,6 +446,13 @@ if "static let localOnlyLocalFirstCopyOK = true" not in enforcer:
     failed = True
 else:
     print("  PASS  local-only / local-first copy OK in Settings")
+if "static let historySurviveLocalContainerOnly = true" not in enforcer \
+        or "static let historySurviveCloudSyncAllowed = false" not in enforcer \
+        or "static let historySurviveNexusWriteAllowed = false" not in enforcer:
+    print("  FAIL  history-survive must stay local container only (no cloud/Nexus)")
+    failed = True
+else:
+    print("  PASS  history-survive Enforcer BOUND is local App Group/container only")
 if "GREEN (b6530197): Local-only mode ships" not in enforcer \
         or "BREAKS IF (b6530197): HIPAA/BAA/Wispr BAA claim ships" not in enforcer:
     print("  FAIL  Suite b6530197 canonical GREEN/BREAKS IF missing")

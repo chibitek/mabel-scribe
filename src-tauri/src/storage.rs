@@ -4,8 +4,12 @@
 //! TestFlight 1.4.0/1403+ version bumps. Copy a legacy store into the
 //! current container on launch **if the current store is missing or
 //! empty and a legacy path has data**. Never reset on version bump.
-//! Never delete the source (copy, do not move). Local-first — no cloud
-//! sync, no Nexus/Mochii write, no mock restore.
+//! Never delete the source (copy, do not move).
+//!
+//! Enforcer soft BOUND (binding privacy): local App Group / container /
+//! Application Support copy only. MUST NOT invent cloud sync or Nexus
+//! write. BREAKS IF: iCloud / CloudKit / cross-device sync; Nexus /
+//! Mochii / SIEM write; mock restore.
 //!
 //! Root cause this tip: TF/MAS writes
 //! `~/Library/Containers/com.mabel.app/Data/Library/Application Support/com.mabel.app`
@@ -27,6 +31,11 @@ use std::path::{Path, PathBuf};
 pub const BUNDLE_DIR: &str = "com.mabel.app";
 pub const LEGACY_BUNDLE_DIR: &str = "com.typr.app";
 pub const MARKER_FILE: &str = ".migration-v1.done";
+
+/// Enforcer soft BOUND (suite b6530197). Tests fail if this is retargeted
+/// to cloud or Nexus. Local container / App Group / Application Support
+/// copy only.
+pub const ENFORCER_BOUND: &str = "CONFIRMED Suite b6530197; history-survive-updates is local App Group/container/Application Support copy only; MUST NOT invent cloud sync or Nexus write; no iCloud/CloudKit; no cross-device sync; no Nexus/Mochii/SIEM write; no mock restore; iOS 0.1.0 has no history file (do not invent one); BREAKS IF: cloud sync; BREAKS IF: Nexus write; BREAKS IF: mock restore";
 
 /// Folder names that have held user data across Typr → Mabel and
 /// identifier vs productName Application Support layouts.
@@ -995,5 +1004,46 @@ mod tests {
             !store.contains("if marker.exists() {\n        return MigrationReport::already_current();"),
             "stale empty-launch marker must not skip import"
         );
+    }
+
+    #[test]
+    fn enforcer_bound_history_survive_is_local_container_only() {
+        assert!(ENFORCER_BOUND.contains("b6530197"));
+        assert!(ENFORCER_BOUND.contains("local App Group/container/Application Support copy only"));
+        assert!(ENFORCER_BOUND.contains("MUST NOT invent cloud sync or Nexus write"));
+        assert!(ENFORCER_BOUND.contains("BREAKS IF: cloud sync"));
+        assert!(ENFORCER_BOUND.contains("BREAKS IF: Nexus write"));
+        assert!(ENFORCER_BOUND.contains("iOS 0.1.0 has no history file"));
+        let prod = include_str!("storage.rs");
+        let migrate = prod
+            .split("pub fn migrate_into")
+            .nth(1)
+            .unwrap()
+            .split("fn normalize")
+            .next()
+            .unwrap();
+        let copy = prod
+            .split("fn copy_file")
+            .nth(1)
+            .unwrap()
+            .split("fn verify_json")
+            .next()
+            .unwrap();
+        for forbidden in [
+            "reqwest",
+            "iCloud",
+            "CloudKit",
+            "NSUbiquitous",
+            "CKRecord",
+            "auth.chibitek.com",
+            "Nexus",
+            "Mochii",
+        ] {
+            assert!(
+                !migrate.contains(forbidden) && !copy.contains(forbidden),
+                "BREAKS IF: history migrate leaves the local container ({forbidden})"
+            );
+        }
+        assert!(copy.contains("fs::copy"), "copy stays local fs");
     }
 }

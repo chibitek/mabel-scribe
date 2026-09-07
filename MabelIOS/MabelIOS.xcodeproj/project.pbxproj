@@ -22,7 +22,6 @@
 		B2C20001B2C10214 /* CatChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10114 /* CatChrome.swift */; };
 		B2C20001B2C10217 /* EnforcerBound.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10115 /* EnforcerBound.swift */; };
 		B2C20001B2C10219 /* Polish.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10117 /* Polish.swift */; };
-		B2C20001B2C10233 /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10125 /* HistoryStore.swift */; };
 		B2C20001B2C10215 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10105 /* Assets.xcassets */; };
 		B2C20001B2C10216 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10108 /* PrivacyInfo.xcprivacy */; };
 		B2C20001B2C10220 /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10120 /* KeyboardViewController.swift */; };
@@ -35,7 +34,6 @@
 		B2C20001B2C10229 /* EnforcerBound.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10115 /* EnforcerBound.swift */; };
 		B2C20001B2C10231 /* SettingsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10116 /* SettingsStore.swift */; };
 		B2C20001B2C10232 /* Polish.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10117 /* Polish.swift */; };
-		B2C20001B2C10234 /* HistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10125 /* HistoryStore.swift */; };
 		B2C20001B2C10227 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10124 /* PrivacyInfo.xcprivacy */; };
 		B2C20001B2C10235 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10125 /* Assets.xcassets */; };
 		B2C20001B2C10228 /* MabelKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B2C20001B2C10021 /* MabelKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -87,7 +85,6 @@
 		B2C20001B2C10115 /* EnforcerBound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnforcerBound.swift; sourceTree = "<group>"; };
 		B2C20001B2C10116 /* SettingsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStore.swift; sourceTree = "<group>"; };
 		B2C20001B2C10117 /* Polish.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Polish.swift; sourceTree = "<group>"; };
-		B2C20001B2C10125 /* HistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStore.swift; sourceTree = "<group>"; };
 		B2C20001B2C10120 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
 		B2C20001B2C10121 /* KeyboardRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardRootView.swift; sourceTree = "<group>"; };
 		B2C20001B2C10122 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -157,7 +154,6 @@
 				B2C20001B2C10115 /* EnforcerBound.swift */,
 				B2C20001B2C10116 /* SettingsStore.swift */,
 				B2C20001B2C10117 /* Polish.swift */,
-				B2C20001B2C10125 /* HistoryStore.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -305,7 +301,6 @@
 				B2C20001B2C10214 /* CatChrome.swift in Sources */,
 				B2C20001B2C10217 /* EnforcerBound.swift in Sources */,
 				B2C20001B2C10219 /* Polish.swift in Sources */,
-				B2C20001B2C10233 /* HistoryStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -323,7 +318,6 @@
 				B2C20001B2C10229 /* EnforcerBound.swift in Sources */,
 				B2C20001B2C10231 /* SettingsStore.swift in Sources */,
 				B2C20001B2C10232 /* Polish.swift in Sources */,
-				B2C20001B2C10234 /* HistoryStore.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

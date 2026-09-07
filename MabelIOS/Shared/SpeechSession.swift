@@ -136,7 +136,7 @@ final class SpeechSession {
                 self.appendFinal(self.volatileTail)
                 self.volatileTail = ""
             }
-            let committed = self.displayTranscript
+            let committed = Polish.applyFromAppGroup(self.displayTranscript)
             self.phase = .idle
             self.statusMessage = "Mic off · tap the orb to dictate"
             if committed.isEmpty == false {

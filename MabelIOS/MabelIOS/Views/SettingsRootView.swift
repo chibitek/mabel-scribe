@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Host Settings IA. Mabel cat chrome — not Flow.
-/// Keyboard extension remains ship #1; these panes are scaffold.
+/// Polish is ship #2. Keyboard overlay stays ship #1.
 struct SettingsRootView: View {
     @Environment(SettingsStore.self) private var settings
 
@@ -29,6 +29,8 @@ struct SettingsRootView: View {
             GeneralSettingsPane()
         case "Keyboard":
             KeyboardSettingsPane()
+        case "Polish":
+            PolishSettingsPane()
         case "Notifications":
             NotificationsSettingsPane()
         default:

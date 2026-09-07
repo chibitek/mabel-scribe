@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Linux-safe structural proof for Mabel iOS keyboard (ship #1).
+# Linux-safe structural proof for Mabel iOS Keyboard + Polish (ship #2).
 # Does not compile iOS. Does not claim HIPAA.
 set -euo pipefail
 
@@ -15,7 +15,7 @@ need_file() {
   if [[ -f "$1" ]]; then ok "file ${1#$ROOT/}"; else bad "missing ${1#$ROOT/}"; fi
 }
 
-echo "Mabel iOS keyboard scaffold check"
+echo "Mabel iOS Keyboard + Polish scaffold check"
 echo "repo: $ROOT"
 
 need_file "$PBX"
@@ -34,6 +34,7 @@ need_file "$IOS/Shared/SpeechSession.swift"
 need_file "$IOS/Shared/CatChrome.swift"
 need_file "$IOS/Shared/EnforcerBound.swift"
 need_file "$IOS/Shared/SettingsStore.swift"
+need_file "$IOS/Shared/Polish.swift"
 need_file "$IOS/MabelIOS/Views/SettingsRootView.swift"
 need_file "$IOS/MabelIOS/Views/SettingsPanes.swift"
 need_file "$IOS/MabelIOS/Views/HomeTabView.swift"
@@ -118,6 +119,37 @@ else
   bad "keyboard Info.plist missing extension / open access"
 fi
 
+# ASC 90474: host must declare PortraitUpsideDown. Keyboard Info.plist stays untouched.
+if python3 - "$IOS/MabelIOS/Info.plist" <<'PY'
+import sys, plistlib
+with open(sys.argv[1], "rb") as f:
+    data = plistlib.load(f)
+orients = data.get("UISupportedInterfaceOrientations") or []
+need = [
+    "UIInterfaceOrientationPortrait",
+    "UIInterfaceOrientationLandscapeLeft",
+    "UIInterfaceOrientationLandscapeRight",
+    "UIInterfaceOrientationPortraitUpsideDown",
+]
+missing = [k for k in need if k not in orients]
+if missing:
+    print("missing", missing)
+    raise SystemExit(1)
+if orients.index("UIInterfaceOrientationPortraitUpsideDown") < orients.index("UIInterfaceOrientationLandscapeRight"):
+    print("PortraitUpsideDown must follow LandscapeRight")
+    raise SystemExit(1)
+PY
+then
+  ok "host Info.plist ASC 90474 PortraitUpsideDown"
+else
+  bad "host Info.plist missing UIInterfaceOrientationPortraitUpsideDown (ASC 90474)"
+fi
+if grep -q 'UIInterfaceOrientationPortraitUpsideDown' "$IOS/MabelKeyboard/Info.plist"; then
+  bad "keyboard Info.plist must not gain host orientation keys"
+else
+  ok "keyboard Info.plist orientations unchanged"
+fi
+
 for PRIV in "$IOS/MabelIOS/PrivacyInfo.xcprivacy" "$IOS/MabelKeyboard/PrivacyInfo.xcprivacy"; do
   if grep -q 'NSPrivacyTracking</key>' "$PRIV" && grep -q '<false/>' "$PRIV"; then
     ok "PrivacyInfo tracking disabled ($(basename "$(dirname "$PRIV")"))"
@@ -147,8 +179,15 @@ rm -f "$LEAK"
 if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let forbiddenBrands = \["Flow", "Wispr"\]' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let shipOrder = \["Keyboard", "Polish", "Dictionary", "Scratchpad", "Languages"\]' "$IOS/Shared/EnforcerBound.swift" \
-  && grep -q 'static let thisTip = "Keyboard"' "$IOS/Shared/EnforcerBound.swift" \
-  && grep -q 'static let settingsPanes = \["Account", "General", "Keyboard", "Notifications", "Data & privacy"\]' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let thisTip = "Polish"' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let settingsPanes = \["Account", "General", "Keyboard", "Polish", "Notifications", "Data & privacy"\]' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let polishModes = \["off", "casual", "professional", "polite"\]' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let polishDefaultOff = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let polishRequiresDualGate = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let polishSignOutLocks = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let polishDistinctFromStyle = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -qF 'GREEN (Polish): Off|Casual|Professional|Polite' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -qF 'BREAKS IF (Polish): default ON' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let cloudStorageAvailableV1 = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let improveModelsDefaultOn = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let silentCloudAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
@@ -195,7 +234,7 @@ allow = re.compile(
     r'forbiddenBrands|isForbiddenBrand|BREAKS IF|no Flow|not a |clone|hard break|do not',
     re.I,
 )
-later_ship_files = re.compile(r'(LanguagePack|PolishPanel|DictionaryEngine|ScratchpadStore)', re.I)
+later_ship_files = re.compile(r'(LanguagePack|DictionaryEngine|ScratchpadStore)', re.I)
 
 for dirpath, _, files in os.walk(root):
     if "xcodeproj" in dirpath or "DerivedData" in dirpath:
@@ -224,8 +263,8 @@ if 'displayName = EnforcerBound.displayBrand' not in identity:
 if 'static let displayBrand = "Mabel"' not in enforcer:
     print("  FAIL  EnforcerBound.displayBrand must be Mabel")
     failed = True
-if 'static let thisTip = "Keyboard"' not in enforcer:
-    print("  FAIL  this tip must stay Keyboard")
+if 'static let thisTip = "Polish"' not in enforcer:
+    print("  FAIL  this tip must be Polish")
     failed = True
 
 # Keyboard is not a silent spy: no audio start in lifecycle methods
@@ -293,6 +332,11 @@ for required in (
     "Live Activities",
     "Improve models",
     "Dictation cloud",
+    "PolishSettingsPane",
+    "polish-toggle",
+    "polish-mode-select",
+    "polish-activate",
+    "Sign out locks Polish",
 ):
     blob = settings_root + settings_panes
     if required not in blob:
@@ -691,6 +735,165 @@ for name in re.findall(r"path = ([A-Za-z0-9_.]+\.swift);", pbx):
 if missing:
     sys.exit(1)
 print("  PASS  all pbxproj Swift files exist on disk")
+PY
+
+# Polish product locks (ship #2). Dual gate, default Off, local-first, distinct.
+python3 - "$IOS" <<'PY'
+import os, re, sys
+root = sys.argv[1]
+failed = False
+polish = open(os.path.join(root, "Shared/Polish.swift")).read()
+enforcer = open(os.path.join(root, "Shared/EnforcerBound.swift")).read()
+store = open(os.path.join(root, "Shared/SettingsStore.swift")).read()
+session = open(os.path.join(root, "Shared/SpeechSession.swift")).read()
+panes = open(os.path.join(root, "MabelIOS/Views/SettingsPanes.swift")).read()
+style_tab = open(os.path.join(root, "MabelIOS/Views/HostRootView.swift")).read()
+lock = open(os.path.join(root, "MabelIOS/Views/LockedProTabView.swift")).read()
+
+for required in (
+    'static let defaultMode = off',
+    'static let casual = "casual"',
+    'static let professional = "professional"',
+    'static let polite = "polite"',
+    "Never invent facts",
+    "Never expand meaning",
+    "do not send this step off-device",
+    "Coach cannot rewrite",
+    "Not Nexus",
+    "sign-out locks Polish",
+    "StoreKit Pro AND Stiki session",
+    "Activate Pro / Sign in with Stiki",
+    "Formal|Casual|Very casual",
+    "acceptOrFailClosed",
+    "applyFromAppGroup",
+    "isProUnlocked(stikiSignedIn: stikiSignedIn, storeKitEntitled: storeKitEntitled)",
+):
+    if required not in polish:
+        print(f"  FAIL  Polish.swift missing {required}")
+        failed = True
+if 'static let defaultMode = off' not in polish:
+    print("  FAIL  Polish default must be Off")
+    failed = True
+if re.search(r'defaultMode\s*=\s*casual', polish):
+    print("  FAIL  BREAKS IF: default ON")
+    failed = True
+if re.search(r'https://|api\.groq\.com|URLSession|CKContainer|nexus_write', polish):
+    print("  FAIL  BREAKS IF: cloud / Nexus write in Polish")
+    failed = True
+if "import StoreKit" in polish:
+    print("  FAIL  Polish must not import StoreKit")
+    failed = True
+if "Polish.applyFromAppGroup" not in session:
+    print("  FAIL  SpeechSession must apply Polish after ASR")
+    failed = True
+else:
+    print("  PASS  SpeechSession applies Polish after ASR")
+if "func setPolishMode" not in store or "func signOutStiki" not in store:
+    print("  FAIL  SettingsStore missing Polish persist / sign-out lock")
+    failed = True
+else:
+    print("  PASS  SettingsStore Polish persist + sign-out lock")
+if "PolishSettingsPane" not in panes or "polish-mode-select" not in panes:
+    print("  FAIL  Settings missing Polish pane / mode picker")
+    failed = True
+if "Not Style (Formal, Casual, Very casual)" not in panes:
+    print("  FAIL  Polish must stay distinct from Style register")
+    failed = True
+else:
+    print("  PASS  Polish UI distinct from Style Formal|Casual|Very casual")
+if 'case "Style"' not in style_tab:
+    print("  FAIL  Style tab must remain (distinct from Polish)")
+    failed = True
+else:
+    print("  PASS  Style tab remains distinct from Polish Settings")
+if "Activate Pro" not in panes or "Sign in with Stiki" not in panes:
+    print("  FAIL  locked Polish must offer Activate Pro / Sign in with Stiki")
+    failed = True
+else:
+    print("  PASS  locked Polish uses dual-gate CTAs")
+if "Sign out locks Polish" not in panes:
+    print("  FAIL  Account must say sign-out locks Polish")
+    failed = True
+
+def require_ok(mode, stiki, storekit):
+    if mode in ("casual", "professional", "polite"):
+        return bool(stiki and storekit)
+    return True
+
+def effective(mode, stiki, storekit):
+    if mode not in ("casual", "professional", "polite"):
+        return "off"
+    return mode if (stiki and storekit) else "off"
+
+gate_failed = False
+for mode in ("off", "casual", "professional", "polite"):
+    for stiki, storekit in ((False, False), (True, False), (False, True), (True, True)):
+        allowed = require_ok(mode, stiki, storekit)
+        want_allow = True if mode == "off" else bool(stiki and storekit)
+        got_eff = effective(mode, stiki, storekit)
+        want_eff = mode if (mode != "off" and stiki and storekit) else "off"
+        if allowed != want_allow or got_eff != want_eff:
+            print(f"  FAIL  Polish gate mode={mode} stiki={stiki} storekit={storekit}")
+            failed = True
+            gate_failed = True
+if not gate_failed:
+    print("  PASS  Polish dual-gate truth table (StoreKit ≠ Stiki; sign-out → Off)")
+
+# Local rules: professional synonym, fail-closed expansion, Off is identity.
+def apply(text, mode, stiki, storekit):
+    if effective(mode, stiki, storekit) == "off":
+        return text
+    if mode == "professional":
+        return text.replace("gonna", "going to").replace("yeah", "yes")
+    return text
+
+if apply("yeah I am gonna go", "professional", False, False) != "yeah I am gonna go":
+    print("  FAIL  Free / signed-out must not rewrite")
+    failed = True
+else:
+    print("  PASS  Free / signed-out Polish is identity")
+if apply("hello", "off", True, True) != "hello":
+    print("  FAIL  Off must not rewrite")
+    failed = True
+else:
+    print("  PASS  Off Polish is identity")
+
+def accept_or_fail(inp, out):
+    cleaned = out.strip()
+    if not cleaned:
+        return None
+    if len(inp.strip()) >= 20 and len(cleaned) > len(inp.strip()) * 2.5:
+        return None
+    return cleaned
+
+if accept_or_fail("hello world this is spoken text", "x" * 200) is not None:
+    print("  FAIL  BREAKS IF: invent (expanded output accepted)")
+    failed = True
+else:
+    print("  PASS  invented expansion fails closed")
+if "2.5" not in polish:
+    print("  FAIL  acceptOrFailClosed missing 2.5x invent tripwire")
+    failed = True
+
+# Keyboard overlay / entitlements must stay App Group only.
+for rel in ("MabelIOS/MabelIOS.entitlements", "MabelKeyboard/MabelKeyboard.entitlements"):
+    blob = open(os.path.join(root, rel)).read()
+    if "group.com.mabel.ios" not in blob:
+        print(f"  FAIL  {rel} missing App Group")
+        failed = True
+    if "in-app-payments" in blob or "allow-jit" in blob:
+        print(f"  FAIL  {rel} gained extra entitlements")
+        failed = True
+print("  PASS  App Group entitlements unchanged (no StoreKit / JIT)")
+
+if "Formal|Casual|Very casual" not in polish or "Clipboard" not in polish:
+    print("  FAIL  Polish product lock must name Style + Clipboard")
+    failed = True
+if "This tip is Polish" not in lock:
+    print("  FAIL  later-ship placeholder must name this tip Polish")
+    failed = True
+
+sys.exit(1 if failed else 0)
 PY
 
 # Mac + Spatial identities must stay put

@@ -32,6 +32,16 @@ struct AccountSettingsPane: View {
                     .font(.footnote)
                     .foregroundStyle(IOSPalette.mist)
             }
+
+            Section {
+                Button("Sign out") {
+                    settings.signOutStiki()
+                }
+                .disabled(settings.stikiSignedIn == false)
+            } footer: {
+                Text("Sign out locks Polish. Free dictate stays available.")
+                    .foregroundStyle(IOSPalette.mist)
+            }
         }
         .scrollContentBackground(.hidden)
         .background(IOSPalette.cream.ignoresSafeArea())
@@ -42,6 +52,7 @@ struct AccountSettingsPane: View {
     private func stikiButton(_ title: String) -> some View {
         Button(title) {
             settings.stikiSignedIn = false
+            settings.persist()
         }
         .disabled(true)
     }
@@ -51,6 +62,7 @@ struct AccountSettingsPane: View {
             // Purchase / restore / redeem when ASC products exist.
             // Dual gate stays closed until Stiki AND entitlement are both live.
             settings.storeKitEntitled = false
+            settings.persist()
         }
         .disabled(true)
     }
@@ -61,7 +73,7 @@ struct GeneralSettingsPane: View {
         SettingsStoreForm { store in
             Section("Languages") {
                 Text(store.languagesNote)
-                Text("Languages ship later. This tip stays Keyboard.")
+                Text("Languages ship later. This tip is Polish.")
                     .font(.footnote)
                     .foregroundStyle(IOSPalette.mist)
             }
@@ -107,6 +119,62 @@ struct KeyboardSettingsPane: View {
             }
         }
         .navigationTitle("Keyboard")
+    }
+}
+
+struct PolishSettingsPane: View {
+    var body: some View {
+        SettingsStoreForm { store in
+            Section("Polish") {
+                Text("Off, Casual, Professional, or Polite. After dictate, a local tone rewrite on this iPhone — autocorrect and light reword only. Never invents facts. Not Style (Formal, Casual, Very casual). Not Dictionary, Snippets, Scratchpad, or Clipboard. Coach cannot rewrite. Not Nexus.")
+                    .font(.footnote)
+                    .foregroundStyle(IOSPalette.mist)
+                    .accessibilityIdentifier("polish-hint")
+
+                if store.isProUnlocked {
+                    Toggle("Polish", isOn: Binding(
+                        get: { Polish.isLive(store.effectivePolishMode) },
+                        set: { on in
+                            if on {
+                                let next = store.polishMode == Polish.off ? Polish.casual : store.polishMode
+                                store.setPolishMode(next)
+                            } else {
+                                store.setPolishMode(Polish.off)
+                            }
+                        }
+                    ))
+                    .accessibilityIdentifier("polish-toggle")
+                    .accessibilityLabel("Polish")
+
+                    Picker("Polish mode", selection: Binding(
+                        get: { store.effectivePolishMode },
+                        set: { store.setPolishMode($0) }
+                    )) {
+                        Text("Off").tag(Polish.off)
+                        Text("Casual").tag(Polish.casual)
+                        Text("Professional").tag(Polish.professional)
+                        Text("Polite").tag(Polish.polite)
+                    }
+                    .accessibilityIdentifier("polish-mode-select")
+                    .accessibilityLabel("Polish mode")
+                } else {
+                    Text(EnforcerBound.polishLockedMessage)
+                        .font(.footnote)
+                        .foregroundStyle(IOSPalette.mist)
+                    NavigationLink("Activate Pro") {
+                        AccountSettingsPane()
+                    }
+                    .accessibilityIdentifier("polish-activate")
+                    NavigationLink("Sign in with Stiki") {
+                        AccountSettingsPane()
+                    }
+                }
+            } footer: {
+                Text("Default Off. Sign out locks Polish. Free dictate stays ungated. Local-first — no cloud, no team, no Nexus.")
+                    .foregroundStyle(IOSPalette.mist)
+            }
+        }
+        .navigationTitle("Polish")
     }
 }
 

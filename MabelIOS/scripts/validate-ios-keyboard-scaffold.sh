@@ -205,6 +205,10 @@ if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift"
   && grep -q 'static let historySurviveLocalContainerOnly = true' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let historySurviveCloudSyncAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let historySurviveNexusWriteAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveMochiiWriteAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveClipboardSpyAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveCoachAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveHipaaClaimAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'privacySuite = "b6530197"' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'GREEN (b6530197): Local-only mode ships' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'real HIPAA BAA parked (no Make It So)' "$IOS/Shared/EnforcerBound.swift" \
@@ -448,11 +452,20 @@ else:
     print("  PASS  local-only / local-first copy OK in Settings")
 if "static let historySurviveLocalContainerOnly = true" not in enforcer \
         or "static let historySurviveCloudSyncAllowed = false" not in enforcer \
-        or "static let historySurviveNexusWriteAllowed = false" not in enforcer:
-    print("  FAIL  history-survive must stay local container only (no cloud/Nexus)")
+        or "static let historySurviveNexusWriteAllowed = false" not in enforcer \
+        or "static let historySurviveMochiiWriteAllowed = false" not in enforcer \
+        or "static let historySurviveClipboardSpyAllowed = false" not in enforcer \
+        or "static let historySurviveCoachAllowed = false" not in enforcer \
+        or "static let historySurviveHipaaClaimAllowed = false" not in enforcer:
+    print("  FAIL  history-survive must stay local container only (no cloud/Nexus/clipboard spy/HIPAA)")
     failed = True
 else:
     print("  PASS  history-survive Enforcer BOUND is local App Group/container only")
+if "MUST NOT invent cloud sync, Nexus/Mochii write, clipboard spy/coach, or HIPAA claim" not in enforcer:
+    print("  FAIL  Enforcer BOUND addendum missing CoS MUST NOT invent line")
+    failed = True
+else:
+    print("  PASS  Enforcer BOUND addendum names cloud/Nexus/Mochii/clipboard spy/coach/HIPAA")
 if "GREEN (b6530197): Local-only mode ships" not in enforcer \
         or "BREAKS IF (b6530197): HIPAA/BAA/Wispr BAA claim ships" not in enforcer:
     print("  FAIL  Suite b6530197 canonical GREEN/BREAKS IF missing")

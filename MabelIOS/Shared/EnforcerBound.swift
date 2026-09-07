@@ -45,9 +45,11 @@ import Foundation
 ///
 /// BREAKS IF (CoS maple): maple leaf icon; geometric orb as the dictate icon.
 ///
-/// GREEN (history-survive-updates): local App Group / container copy only.
-/// MUST NOT invent cloud sync or Nexus write. iOS 0.1.0 has no history file.
-/// BREAKS IF: cloud sync; Nexus write; invented iOS history; mock restore.
+/// GREEN (history-survive-updates): MUST migrate local App Group / container only.
+/// MUST NOT invent cloud sync, Nexus/Mochii write, clipboard spy/coach, or HIPAA claim.
+/// iOS 0.1.0 has no history file.
+/// BREAKS IF: cloud sync; Nexus/Mochii write; clipboard spy/coach; HIPAA claim;
+/// invented iOS history; mock restore.
 enum EnforcerBound {
     static let displayBrand = "Mabel"
     static let forbiddenBrands = ["Flow", "Wispr"]
@@ -100,12 +102,16 @@ enum EnforcerBound {
     static let mapleLeafIconAllowed = false
     static let dictateIconIsMabelCat = true
     static let geometricOrbDictateIconAllowed = false
-    /// Enforcer soft BOUND: history-survive-updates is local App Group /
-    /// container copy only. MUST NOT invent cloud sync or Nexus write.
-    /// iOS 0.1.0 has no history file — do not invent one.
+    /// Enforcer BOUND addendum (CoS): MUST migrate local App Group /
+    /// container only. MUST NOT invent cloud sync, Nexus/Mochii write,
+    /// clipboard spy/coach, or HIPAA claim.
     static let historySurviveLocalContainerOnly = true
     static let historySurviveCloudSyncAllowed = false
     static let historySurviveNexusWriteAllowed = false
+    static let historySurviveMochiiWriteAllowed = false
+    static let historySurviveClipboardSpyAllowed = false
+    static let historySurviveCoachAllowed = false
+    static let historySurviveHipaaClaimAllowed = false
 
     static var shipOrderLine: String {
         shipOrder.joined(separator: " → ")

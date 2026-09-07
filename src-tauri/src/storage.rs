@@ -6,10 +6,12 @@
 //! empty and a legacy path has data**. Never reset on version bump.
 //! Never delete the source (copy, do not move).
 //!
-//! Enforcer soft BOUND (binding privacy): local App Group / container /
-//! Application Support copy only. MUST NOT invent cloud sync or Nexus
-//! write. BREAKS IF: iCloud / CloudKit / cross-device sync; Nexus /
-//! Mochii / SIEM write; mock restore.
+//! Enforcer BOUND addendum (CoS, binding privacy): MUST migrate local
+//! App Group / container / Application Support only. MUST NOT invent
+//! cloud sync, Nexus/Mochii write, clipboard spy/coach, or HIPAA claim.
+//! BREAKS IF: iCloud / CloudKit / cross-device sync; Nexus / Mochii /
+//! SIEM write; clipboard spy or Coach read of this store; HIPAA/BAA
+//! claim; mock restore.
 //!
 //! Root cause this tip: TF/MAS writes
 //! `~/Library/Containers/com.mabel.app/Data/Library/Application Support/com.mabel.app`
@@ -32,10 +34,9 @@ pub const BUNDLE_DIR: &str = "com.mabel.app";
 pub const LEGACY_BUNDLE_DIR: &str = "com.typr.app";
 pub const MARKER_FILE: &str = ".migration-v1.done";
 
-/// Enforcer soft BOUND (suite b6530197). Tests fail if this is retargeted
-/// to cloud or Nexus. Local container / App Group / Application Support
-/// copy only.
-pub const ENFORCER_BOUND: &str = "CONFIRMED Suite b6530197; history-survive-updates is local App Group/container/Application Support copy only; MUST NOT invent cloud sync or Nexus write; no iCloud/CloudKit; no cross-device sync; no Nexus/Mochii/SIEM write; no mock restore; iOS 0.1.0 has no history file (do not invent one); BREAKS IF: cloud sync; BREAKS IF: Nexus write; BREAKS IF: mock restore";
+/// Enforcer BOUND addendum via CoS (suite b6530197). Tests fail if this
+/// is retargeted off the local container.
+pub const ENFORCER_BOUND: &str = "CONFIRMED Suite b6530197; MUST migrate local App Group/container/Application Support only; MUST NOT invent cloud sync, Nexus/Mochii write, clipboard spy/coach, or HIPAA claim; no iCloud/CloudKit; no cross-device sync; no Nexus/Mochii/SIEM write; no clipboard spy; Coach must not read this store; no HIPAA/BAA claim; no mock restore; iOS 0.1.0 has no history file (do not invent one); BREAKS IF: cloud sync; BREAKS IF: Nexus write; BREAKS IF: Mochii write; BREAKS IF: clipboard spy/coach; BREAKS IF: HIPAA claim; BREAKS IF: mock restore";
 
 /// Folder names that have held user data across Typr → Mabel and
 /// identifier vs productName Application Support layouts.
@@ -1009,10 +1010,13 @@ mod tests {
     #[test]
     fn enforcer_bound_history_survive_is_local_container_only() {
         assert!(ENFORCER_BOUND.contains("b6530197"));
-        assert!(ENFORCER_BOUND.contains("local App Group/container/Application Support copy only"));
-        assert!(ENFORCER_BOUND.contains("MUST NOT invent cloud sync or Nexus write"));
+        assert!(ENFORCER_BOUND.contains("MUST migrate local App Group/container/Application Support only"));
+        assert!(ENFORCER_BOUND.contains("MUST NOT invent cloud sync, Nexus/Mochii write, clipboard spy/coach, or HIPAA claim"));
         assert!(ENFORCER_BOUND.contains("BREAKS IF: cloud sync"));
         assert!(ENFORCER_BOUND.contains("BREAKS IF: Nexus write"));
+        assert!(ENFORCER_BOUND.contains("BREAKS IF: Mochii write"));
+        assert!(ENFORCER_BOUND.contains("BREAKS IF: clipboard spy/coach"));
+        assert!(ENFORCER_BOUND.contains("BREAKS IF: HIPAA claim"));
         assert!(ENFORCER_BOUND.contains("iOS 0.1.0 has no history file"));
         let prod = include_str!("storage.rs");
         let migrate = prod
@@ -1038,6 +1042,10 @@ mod tests {
             "auth.chibitek.com",
             "Nexus",
             "Mochii",
+            "HIPAA",
+            "pasteboard",
+            "NSPasteboard",
+            "Coach",
         ] {
             assert!(
                 !migrate.contains(forbidden) && !copy.contains(forbidden),

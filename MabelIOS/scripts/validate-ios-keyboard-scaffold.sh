@@ -41,6 +41,8 @@ need_file "$IOS/MabelIOS/Views/HomeTabView.swift"
 need_file "$IOS/MabelIOS/Views/LockedProTabView.swift"
 need_file "$IOS/MabelKeyboard/KeyboardViewController.swift"
 need_file "$IOS/MabelKeyboard/KeyboardRootView.swift"
+need_file "$IOS/MabelKeyboard/Assets.xcassets/MabelCat.imageset/mabel-cat.jpeg"
+need_file "$IOS/MabelIOS/Assets.xcassets/MabelCat.imageset/mabel-cat.jpeg"
 need_file "$IOS/MabelKeyboard/Info.plist"
 need_file "$IOS/MabelKeyboard/MabelKeyboard.entitlements"
 need_file "$IOS/MabelKeyboard/PrivacyInfo.xcprivacy"
@@ -665,6 +667,51 @@ if grep -q 'advanceToNextInputMode' "$IOS/MabelKeyboard/KeyboardViewController.s
   ok "next-keyboard / globe path present"
 else
   bad "missing next keyboard control"
+fi
+
+# TF 0.1.0/2 smoke: sticky listen, full keyboard, Mabel cat (not maple leaf).
+if grep -q 'taskHint = .dictation' "$IOS/Shared/OnDeviceSpeechEngine.swift" \
+  && grep -q 'scheduleStickyRestart' "$IOS/Shared/OnDeviceSpeechEngine.swift" \
+  && grep -q 'isRecoverableEndOfSpeech' "$IOS/Shared/OnDeviceSpeechEngine.swift" \
+  && grep -q 'kAFAssistantErrorDomain' "$IOS/Shared/OnDeviceSpeechEngine.swift"; then
+  ok "sticky ASR restarts after Apple end-of-speech / silence"
+else
+  bad "speech engine missing sticky ASR restart"
+fi
+if grep -q 'func idleStopSeconds' "$IOS/Shared/SettingsStore.swift" \
+  && grep -q 'armIdleWatch' "$IOS/Shared/SpeechSession.swift" \
+  && grep -q 'Idle only stops a session you already started' "$IOS/MabelIOS/Views/SettingsPanes.swift"; then
+  ok "idle-stop is optional and never starts the mic"
+else
+  bad "idle-stop helper missing or could start the mic"
+fi
+if grep -q 'static let preferredHeight: CGFloat = 408' "$IOS/MabelKeyboard/KeyboardViewController.swift" \
+  && grep -q 'UILayoutPriority(999)' "$IOS/MabelKeyboard/KeyboardViewController.swift" \
+  && ! grep -q 'equalToConstant: 276' "$IOS/MabelKeyboard/KeyboardViewController.swift"; then
+  ok "keyboard height is full-board, not truncated 276"
+else
+  bad "keyboard still uses truncated 276pt height"
+fi
+if grep -q 'static let top = \["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"\]' "$IOS/MabelKeyboard/KeyboardRootView.swift" \
+  && grep -q 'static let middle = \["A", "S", "D", "F", "G", "H", "J", "K", "L"\]' "$IOS/MabelKeyboard/KeyboardRootView.swift" \
+  && grep -q 'static let bottom = \["Z", "X", "C", "V", "B", "N", "M"\]' "$IOS/MabelKeyboard/KeyboardRootView.swift" \
+  && grep -q 'showQwerty' "$IOS/MabelKeyboard/KeyboardRootView.swift"; then
+  ok "full QWERTY present so the transcript can be edited"
+else
+  bad "keyboard missing full QWERTY"
+fi
+if grep -q 'Image("MabelCat")' "$IOS/Shared/CatChrome.swift" \
+  && grep -q 'Mabel cat portrait' "$IOS/Shared/CatChrome.swift" \
+  && grep -q 'not a maple leaf' "$IOS/Shared/CatChrome.swift" \
+  && grep -q 'mabel-cat.jpeg' "$IOS/MabelKeyboard/Assets.xcassets/MabelCat.imageset/Contents.json"; then
+  ok "dictate control uses Mabel cat branding (not orb / maple leaf)"
+else
+  bad "Mabel cat branding missing from dictate control"
+fi
+if grep -q 'B2C20001B2C10235 /\* Assets.xcassets in Resources \*/' "$PBX"; then
+  ok "keyboard target embeds MabelCat assets"
+else
+  bad "pbxproj keyboard target missing Assets.xcassets"
 fi
 
 if grep -q 'promptHostPermissions' "$IOS/Shared/OnDeviceSpeechEngine.swift" \

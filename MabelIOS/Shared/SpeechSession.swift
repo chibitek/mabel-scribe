@@ -15,11 +15,13 @@ final class SpeechSession {
     var phase: ListenPhase = .idle
     var finalTranscript = ""
     var volatileTail = ""
-    var statusMessage = "Tap the orb to dictate"
+    var statusMessage = "Tap Mabel to dictate"
     var lastError: String?
     var lastGate: DictatePermissionGate = .undeterminedOpenHost
 
     var isListening: Bool { phase == .listening || phase == .preparing }
+
+    private var idleWatch: Task<Void, Never>?
 
     var displayTranscript: String {
         let head = finalTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -114,7 +116,8 @@ final class SpeechSession {
                     }
                 }
                 self.phase = .listening
-                self.statusMessage = "Listening · tap the orb to stop · mic is on"
+                self.statusMessage = "Listening · tap Mabel to stop · mic is on"
+                self.armIdleWatch()
             } catch SpeechEngineError.permissionDenied, SpeechEngineError.fullAccessRequired {
                 self.refreshGate(context: context)
                 self.phase = .denied
@@ -129,6 +132,8 @@ final class SpeechSession {
     }
 
     func stopListening() {
+        idleWatch?.cancel()
+        idleWatch = nil
         Task { [weak self] in
             guard let self else { return }
             await self.speech.stop()
@@ -138,7 +143,7 @@ final class SpeechSession {
             }
             let committed = Polish.applyFromAppGroup(self.displayTranscript)
             self.phase = .idle
-            self.statusMessage = "Mic off · tap the orb to dictate"
+            self.statusMessage = "Mic off · tap Mabel to dictate"
             if committed.isEmpty == false {
                 self.onStopped?(committed)
             }
@@ -156,16 +161,36 @@ final class SpeechSession {
         switch event {
         case .volatile(let text):
             volatileTail = text
+            armIdleWatch()
         case .final(let text):
             appendFinal(text)
             volatileTail = ""
+            armIdleWatch()
         case .status(let message):
             statusMessage = message
         case .failed(let message):
+            idleWatch?.cancel()
+            idleWatch = nil
             lastError = message
             phase = .idle
-            statusMessage = "Mic off · tap the orb to dictate"
+            statusMessage = "Mic off · tap Mabel to dictate"
             Task { await speech.stop() }
+        }
+    }
+
+    /// Settings idle-stop (default 0 = off). Never starts the microphone.
+    /// A positive value is the only auto-stop; Apple end-of-speech is sticky.
+    private func armIdleWatch() {
+        idleWatch?.cancel()
+        let seconds = SettingsStore.idleStopSeconds()
+        guard seconds > 0, isListening else {
+            idleWatch = nil
+            return
+        }
+        idleWatch = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(seconds))
+            guard let self, Task.isCancelled == false, self.isListening else { return }
+            self.stopListening()
         }
     }
 

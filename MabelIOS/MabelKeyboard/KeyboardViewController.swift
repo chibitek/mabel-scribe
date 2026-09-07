@@ -6,9 +6,13 @@ import UIKit
 /// permission gate. Never listen in viewDidLoad / viewWillAppear /
 /// textDidChange. Ambient / always-on listen is a hard break.
 final class KeyboardViewController: UIInputViewController {
+    /// Full QWERTY + cat row. 276pt / defaultHigh was truncating the board.
+    static let preferredHeight: CGFloat = 408
+
     private let session = SpeechSession()
     private let chrome = KeyboardChrome()
     private var hosting: UIHostingController<KeyboardRootView>?
+    private var heightConstraint: NSLayoutConstraint?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -23,14 +27,12 @@ final class KeyboardViewController: UIInputViewController {
         host.view.backgroundColor = .clear
         addChild(host)
         view.addSubview(host.view)
-        let height = view.heightAnchor.constraint(equalToConstant: 276)
-        height.priority = .defaultHigh
+        applyKeyboardHeight()
         NSLayoutConstraint.activate([
             host.view.topAnchor.constraint(equalTo: view.topAnchor),
             host.view.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             host.view.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             host.view.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            height,
         ])
         host.didMove(toParent: self)
         hosting = host
@@ -39,9 +41,21 @@ final class KeyboardViewController: UIInputViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         // Status refresh only. Never start the microphone here.
+        applyKeyboardHeight()
         chrome.hasFullAccess = hasFullAccess
         chrome.needsInputModeSwitch = needsInputModeSwitchKey
         session.refreshGate(context: .keyboard(hasFullAccess: hasFullAccess))
+    }
+
+    private func applyKeyboardHeight() {
+        if let heightConstraint {
+            heightConstraint.constant = Self.preferredHeight
+            return
+        }
+        let height = view.heightAnchor.constraint(equalToConstant: Self.preferredHeight)
+        height.priority = UILayoutPriority(999)
+        height.isActive = true
+        heightConstraint = height
     }
 
     override func viewWillDisappear(_ animated: Bool) {

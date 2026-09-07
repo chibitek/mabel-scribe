@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "mabel-cat.jpeg",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}

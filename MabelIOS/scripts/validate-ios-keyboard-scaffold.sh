@@ -236,7 +236,13 @@ if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift"
   && grep -q 'static let keyboardInventedFormalCasualCatalogAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let privacyCardListsLocalDefaults = true' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'GREEN (Erick 2026-09-07 Flow→Mabel iOS UX)' "$IOS/Shared/EnforcerBound.swift" \
-  && grep -q 'BREAKS IF (Erick 2026-09-07 Flow→Mabel iOS UX)' "$IOS/Shared/EnforcerBound.swift"; then
+  && grep -q 'BREAKS IF (Erick 2026-09-07 Flow→Mabel iOS UX)' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'GREEN (b6530197 Enforcer soft BOUND): local-first privacy card' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'BREAKS IF (b6530197 Enforcer soft BOUND): HIPAA claim; cloud' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let localFirstPrivacyCard = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let stickyListenRequiresExplicitOnState = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let startTapOrGestureOnly = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let hipaaCloudNexusAmbientAllowed = false' "$IOS/Shared/EnforcerBound.swift"; then
   ok "EnforcerBound locks Mabel brand, ship order, Settings IA, Home IA, Suite b6530197, CoS maple, Flow→Mabel UX"
 else
   bad "EnforcerBound missing brand/shipOrder/settings/home/cloud locks"
@@ -1082,6 +1088,16 @@ if 'keyboardOnStateCopy = "Mabel is on"' not in enforcer \
     failed = True
 else:
     print("  PASS  EnforcerBound Flow→Mabel UX locks folded")
+if "GREEN (b6530197 Enforcer soft BOUND): local-first privacy card" not in enforcer \
+        or "BREAKS IF (b6530197 Enforcer soft BOUND): HIPAA claim; cloud" not in enforcer \
+        or "static let localFirstPrivacyCard = true" not in enforcer \
+        or "static let stickyListenRequiresExplicitOnState = true" not in enforcer \
+        or "static let startTapOrGestureOnly = true" not in enforcer \
+        or "static let hipaaCloudNexusAmbientAllowed = false" not in enforcer:
+    print("  FAIL  Enforcer soft BOUND Suite b6530197 GREEN/BREAKS IF missing")
+    failed = True
+else:
+    print("  PASS  Enforcer soft BOUND Suite b6530197 GREEN/BREAKS IF folded")
 
 sys.exit(1 if failed else 0)
 PY

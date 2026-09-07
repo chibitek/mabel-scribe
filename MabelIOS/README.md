@@ -48,6 +48,10 @@ Ship order (do not skip or reorder): **Keyboard → Polish → Dictionary → Sc
 
 **BREAKS IF (Erick 2026-09-07 Flow→Mabel iOS UX):** Flow brand / "Flow is on"; ambient / always-on; swipe starts the mic; second tone catalog; Formal/Casual invented separate from Polish/Style; dual gate weakened; HIPAA/BAA claim.
 
+**GREEN (b6530197 Enforcer soft BOUND):** local-first privacy card; sticky listen with explicit on-state; start tap/gesture only; no HIPAA/cloud/Nexus/ambient.
+
+**BREAKS IF (b6530197 Enforcer soft BOUND):** HIPAA claim; cloud; Nexus write; ambient / always-on listen; privacy card not local-first; sticky listen without explicit on-state; start without tap/gesture.
+
 ## What v0.1.0 does
 
 - Host app shell with Mabel cat chrome (cream / rose / portrait). Bottom tabs Home | Dictionary | Snippets | Style | Scratchpad. Hamburger opens Account / Settings. Setup steps enable the keyboard.

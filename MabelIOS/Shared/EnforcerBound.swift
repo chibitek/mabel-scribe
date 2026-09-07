@@ -62,6 +62,13 @@ import Foundation
 /// ambient / always-on listen; swipe starts the mic; second tone catalog;
 /// Formal/Casual invented separate from Polish/Style; dual gate weakened;
 /// Polish default ON; HIPAA/BAA claim; cloud / Nexus / Mochii write.
+///
+/// GREEN (b6530197 Enforcer soft BOUND): local-first privacy card;
+/// sticky listen with explicit on-state; start tap/gesture only;
+/// no HIPAA/cloud/Nexus/ambient.
+/// BREAKS IF (b6530197 Enforcer soft BOUND): HIPAA claim; cloud;
+/// Nexus write; ambient / always-on listen; privacy card not local-first;
+/// sticky listen without explicit on-state; start without tap/gesture.
 enum EnforcerBound {
     static let displayBrand = "Mabel"
     static let forbiddenBrands = ["Flow", "Wispr"]
@@ -133,6 +140,12 @@ enum EnforcerBound {
     static let keyboardSecondToneCatalogAllowed = false
     static let keyboardInventedFormalCasualCatalogAllowed = false
     static let privacyCardListsLocalDefaults = true
+    /// Suite b6530197 Enforcer soft BOUND (Flow→Mabel iOS). Soft nits later.
+    static let enforcerSoftBoundSuite = "b6530197"
+    static let localFirstPrivacyCard = true
+    static let stickyListenRequiresExplicitOnState = true
+    static let startTapOrGestureOnly = true
+    static let hipaaCloudNexusAmbientAllowed = false
 
     static var shipOrderLine: String {
         shipOrder.joined(separator: " → ")

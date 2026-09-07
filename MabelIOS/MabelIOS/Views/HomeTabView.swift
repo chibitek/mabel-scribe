@@ -118,6 +118,10 @@ struct HomeTabView: View {
         .accessibilityHint("Opens keyboard setup so you can enable Mabel in any app.")
     }
 
+    /// Placeholder tiles only. iOS 0.1.0 has no dictation-history file
+    /// (no stats.json, no Insights store). Do not invent counts. Mac
+    /// Insights is stats.json in Application Support. When iOS grows a
+    /// real store it must live in group.com.mabel.ios so TF overlays keep it.
     private var statsCarousel: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {

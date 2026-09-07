@@ -3,6 +3,8 @@ import Observation
 
 /// Host Settings prefs. App Group so the keyboard can read extension
 /// prefs later. Free dictate never reads Stiki or Pro from this store.
+/// This suite is prefs only — iOS 0.1.0 has no dictation-history /
+/// Insights file. Do not invent word counts here.
 @MainActor
 @Observable
 final class SettingsStore {

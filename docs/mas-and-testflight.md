@@ -131,7 +131,7 @@ It does set:
 - `com.apple.security.automation.apple-events` (paste)
 - `com.apple.security.temporary-exception.apple-events` → `com.apple.systemevents` (sandboxed osascript paste)
 - `com.apple.security.files.user-selected.read-write` (manual model file pick)
-- `com.apple.security.temporary-exception.files.home-relative-path.read-only` → `/Library/Application Support/com.mabel.app` and `com.typr.app` (import prior DMG history into the TF container; #10 mic + System Events keys stay)
+- `com.apple.security.temporary-exception.files.home-relative-path.read-only` → `/Library/Application Support/com.mabel.app`, `com.typr.app`, `Mabel`, `Typr`, `typr`, plus the `com.typr.app` container and `com.mabel.app`/`Mabel` productName container paths (copy-if-missing prior DMG / TF history into the current container; #10 mic + System Events keys stay)
 
 In-App Purchase is enabled on the App ID / MAS profile, not as a sandbox key in this file. See [app-store-iap.md](app-store-iap.md).
 

@@ -1,18 +1,29 @@
 //! Local data root + upgrade survival.
 //!
-//! Product LOCK (hard): dictation / usage history in the current
-//! Application Support store must survive a TestFlight version bump on
-//! the **same install / container**. Do not wipe `stats.json`,
-//! `clipboard-history.json`, or `config.json` on upgrade. Load-or-default
-//! that overwrites those files is a lock break.
+//! Product LOCK (hard): Mac dictation / usage history must survive
+//! TestFlight 1.4.0/1403+ version bumps. Copy a legacy store into the
+//! current container on launch **if the current store is missing or
+//! empty and a legacy path has data**. Never reset on version bump.
+//! Never delete the source (copy, do not move).
+//!
+//! Enforcer BOUND addendum (CoS, binding privacy): MUST migrate local
+//! App Group / container / Application Support only. MUST NOT invent
+//! cloud sync, Nexus/Mochii write, clipboard spy/coach, or HIPAA claim.
+//! BREAKS IF: iCloud / CloudKit / cross-device sync; Nexus / Mochii /
+//! SIEM write; clipboard spy or Coach read of this store; HIPAA/BAA
+//! claim; mock restore.
+//!
+//! Root cause this tip: TF/MAS writes
+//! `~/Library/Containers/com.mabel.app/Data/Library/Application Support/com.mabel.app`
+//! while months of DMG / pre-sandbox history live at
+//! `~/Library/Application Support/{com.mabel.app,com.typr.app,Mabel,Typr}`.
+//! `.migration-v1.done` used to be written on the first *empty* launch and
+//! then blocked every later import — that looked like “every update wipes
+//! history.” Same-container files were never version-wiped; the empty
+//! container just never re-scanned.
 //!
 //! Schema rewrite is soft later — keep serde defaults; do not invent a
 //! new on-disk format on this tip.
-//!
-//! Optional import from an older *path* (unsandboxed DMG or `com.typr.app`)
-//! only fills files the current store does not already hold. Never
-//! overwrite dest history. Never delete the source. If a prior store
-//! exists and cannot be read, surface a reason.
 
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -22,6 +33,24 @@ use std::path::{Path, PathBuf};
 pub const BUNDLE_DIR: &str = "com.mabel.app";
 pub const LEGACY_BUNDLE_DIR: &str = "com.typr.app";
 pub const MARKER_FILE: &str = ".migration-v1.done";
+
+/// Enforcer BOUND addendum via CoS (suite b6530197). Tests fail if this
+/// is retargeted off the local container.
+pub const ENFORCER_BOUND: &str = "CONFIRMED Suite b6530197; MUST migrate local App Group/container/Application Support only; MUST NOT invent cloud sync, Nexus/Mochii write, clipboard spy/coach, or HIPAA claim; no iCloud/CloudKit; no cross-device sync; no Nexus/Mochii/SIEM write; no clipboard spy; Coach must not read this store; no HIPAA/BAA claim; no mock restore; iOS 0.1.0 has no history file (do not invent one); BREAKS IF: cloud sync; BREAKS IF: Nexus write; BREAKS IF: Mochii write; BREAKS IF: clipboard spy/coach; BREAKS IF: HIPAA claim; BREAKS IF: mock restore";
+
+/// Folder names that have held user data across Typr → Mabel and
+/// identifier vs productName Application Support layouts.
+pub const LEGACY_DIR_NAMES: &[&str] = &[
+    BUNDLE_DIR,
+    LEGACY_BUNDLE_DIR,
+    "Mabel",
+    "Typr",
+    "typr",
+    "mabel",
+];
+
+/// Bundle IDs whose sandbox containers may still hold a prior store.
+pub const LEGACY_CONTAINER_IDS: &[&str] = &[BUNDLE_DIR, LEGACY_BUNDLE_DIR];
 
 /// User-owned JSON/text. Models, wavs, and debug.log are not imported.
 pub const USER_DATA_FILES: &[&str] = &[
@@ -33,6 +62,9 @@ pub const USER_DATA_FILES: &[&str] = &[
     "style.json",
     "transforms.json",
     "scratchpad.txt",
+    "stiki-session.json",
+    "stiki-kyc.json",
+    "connectors.json",
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -152,25 +184,45 @@ fn strip_container_prefix(path: &Path) -> Option<PathBuf> {
 }
 
 pub fn legacy_candidate_dirs() -> Vec<PathBuf> {
+    candidate_dirs_from(real_home().as_deref(), dirs::home_dir().as_deref())
+}
+
+/// Build every readable prior-store path from a real home and (optional)
+/// sandbox `$HOME`. Tests inject temp roots so this stays deterministic.
+pub fn candidate_dirs_from(real_home: Option<&Path>, sandbox_home: Option<&Path>) -> Vec<PathBuf> {
     let mut out = Vec::new();
-    if let Some(home) = real_home() {
-        let support = home.join("Library").join("Application Support");
-        out.push(support.join(BUNDLE_DIR));
-        out.push(support.join(LEGACY_BUNDLE_DIR));
+    let mut push_support = |root: &Path| {
+        let support = root.join("Library").join("Application Support");
+        for name in LEGACY_DIR_NAMES {
+            out.push(support.join(name));
+        }
+        let containers = root.join("Library").join("Containers");
+        for id in LEGACY_CONTAINER_IDS {
+            let container_support = containers
+                .join(id)
+                .join("Data")
+                .join("Library")
+                .join("Application Support");
+            for name in LEGACY_DIR_NAMES {
+                out.push(container_support.join(name));
+            }
+        }
+    };
+    if let Some(home) = real_home {
+        push_support(home);
     }
-    if let Some(home) = dirs::home_dir() {
-        out.push(
-            home.join("Library")
-                .join("Application Support")
-                .join(BUNDLE_DIR),
-        );
+    if let Some(home) = sandbox_home {
+        push_support(home);
     }
     out.sort();
     out.dedup();
     out
 }
 
-/// One-time import of prior-version user files into `dest`.
+/// Import prior-version user files into `dest` when the current store is
+/// missing or empty. Runs on every launch that still lacks real history so
+/// a stale `.migration-v1.done` from an empty first launch cannot hide
+/// months of DMG / prior-container data. Never deletes the source.
 pub fn migrate_into(dest: &Path, candidates: &[PathBuf]) -> MigrationReport {
     if let Err(e) = fs::create_dir_all(dest) {
         return MigrationReport::failed(format!(
@@ -180,7 +232,13 @@ pub fn migrate_into(dest: &Path, candidates: &[PathBuf]) -> MigrationReport {
     }
 
     let marker = dest.join(MARKER_FILE);
-    if marker.exists() {
+
+    // Dest already has Insights / clipboard history *and* we already
+    // completed an import (or same-container bookkeeping): leave it.
+    // A marker alone on an empty dest must NOT skip the scan — that
+    // was the 1401 wipe. Missing companion files (config, snippets)
+    // still fill if dest history exists but no marker yet.
+    if has_real_history(dest) && marker.exists() {
         return MigrationReport::already_current();
     }
 
@@ -197,13 +255,9 @@ pub fn migrate_into(dest: &Path, candidates: &[PathBuf]) -> MigrationReport {
                 match import_missing_files(cand, dest) {
                     Ok((imported, skipped)) => {
                         if imported.is_empty() {
-                            let report = if has_real_history(dest) {
-                                MigrationReport::already_current()
-                            } else {
-                                MigrationReport::fresh()
-                            };
-                            let _ = write_marker(&marker, cand, &report);
-                            return report;
+                            // This candidate had nothing dest still needed.
+                            // Keep scanning — do not write a "fresh" marker.
+                            continue;
                         }
                         let report = MigrationReport::migrated(cand, imported, skipped);
                         if let Err(e) = write_marker(&marker, cand, &report) {
@@ -233,22 +287,21 @@ pub fn migrate_into(dest: &Path, candidates: &[PathBuf]) -> MigrationReport {
     }
 
     if let Some((path, err)) = blocked {
-        if !has_real_history(dest) {
-            return MigrationReport::failed(format!(
-                "Could not import previous Mabel data from {}. {err} \
-                 Your old files are still there. Insights and history were not replaced.",
-                path.display()
-            ));
-        }
+        return MigrationReport::failed(format!(
+            "Could not import previous Mabel data from {}. {err} \
+             Your old files are still there. Insights and history were not replaced.",
+            path.display()
+        ));
     }
 
-    let report = if has_real_history(dest) || dest.join("config.json").exists() {
+    // Empty dest, no readable legacy. Do not write a marker — the next
+    // launch must still be able to import if a DMG path or entitlement
+    // becomes visible. A version bump must never seal an empty store.
+    if has_real_history(dest) || dest.join("config.json").exists() {
         MigrationReport::already_current()
     } else {
         MigrationReport::fresh()
-    };
-    let _ = write_marker(&marker, dest, &report);
-    report
+    }
 }
 
 fn normalize(path: &Path) -> PathBuf {
@@ -314,8 +367,16 @@ fn import_missing_files(src: &Path, dest: &Path) -> Result<(Vec<String>, Vec<Str
 fn needs_json_verify(name: &str) -> bool {
     matches!(
         name,
-        "stats.json" | "config.json" | "clipboard-history.json" | "teams.json"
-            | "snippets.json" | "style.json" | "transforms.json"
+        "stats.json"
+            | "config.json"
+            | "clipboard-history.json"
+            | "teams.json"
+            | "snippets.json"
+            | "style.json"
+            | "transforms.json"
+            | "stiki-session.json"
+            | "stiki-kyc.json"
+            | "connectors.json"
     )
 }
 
@@ -574,6 +635,88 @@ mod tests {
         assert!(fs::read_to_string(dest.join("stats.json"))
             .unwrap()
             .contains("\"total_dictations\":4"));
+    }
+
+    #[test]
+    fn stale_fresh_marker_does_not_block_legacy_import() {
+        // 1401-class bug: first empty launch wrote .migration-v1.done and
+        // then every later TF open skipped the DMG / unsandboxed store.
+        let root = tmp();
+        let dest = root.join("dest");
+        let legacy = root.join("legacy");
+        fs::create_dir_all(&dest).unwrap();
+        write(
+            &dest,
+            MARKER_FILE,
+            r#"{"from":"dest","status":"fresh","imported":[]}"#,
+        );
+        write(&legacy, "stats.json", &sample_stats(88));
+        write(&legacy, "config.json", sample_config());
+
+        let report = migrate_into(&dest, &[legacy.clone()]);
+        assert_eq!(report.status, "migrated", "{report:?}");
+        assert!(report.imported.contains(&"stats.json".into()));
+        assert!(fs::read_to_string(dest.join("stats.json"))
+            .unwrap()
+            .contains("\"total_dictations\":88"));
+        assert!(legacy.join("stats.json").exists(), "copy not move");
+    }
+
+    #[test]
+    fn empty_dest_without_legacy_does_not_seal_with_marker() {
+        let dest = tmp();
+        let report = migrate_into(&dest, &[]);
+        assert_eq!(report.status, "fresh", "{report:?}");
+        assert!(
+            !dest.join(MARKER_FILE).exists(),
+            "sealing an empty store would hide a later-visible legacy path"
+        );
+    }
+
+    #[test]
+    fn product_name_folder_is_imported() {
+        let root = tmp();
+        let dest = root.join("dest");
+        let mabel = root.join("Mabel");
+        write(&mabel, "stats.json", &sample_stats(21));
+        write(&mabel, "config.json", sample_config());
+
+        let report = migrate_into(&dest, &[mabel]);
+        assert_eq!(report.status, "migrated", "{report:?}");
+        assert!(fs::read_to_string(dest.join("stats.json"))
+            .unwrap()
+            .contains("\"total_dictations\":21"));
+    }
+
+    #[test]
+    fn candidate_dirs_include_container_and_product_name() {
+        let real = Path::new("/Users/erick");
+        let sandbox = Path::new("/Users/erick/Library/Containers/com.mabel.app/Data");
+        let dirs = candidate_dirs_from(Some(real), Some(sandbox));
+        let as_str: Vec<String> = dirs.iter().map(|p| p.to_string_lossy().into_owned()).collect();
+        assert!(as_str.iter().any(|p| p.ends_with("Application Support/com.mabel.app")));
+        assert!(as_str.iter().any(|p| p.ends_with("Application Support/com.typr.app")));
+        assert!(as_str.iter().any(|p| p.ends_with("Application Support/Mabel")));
+        assert!(as_str.iter().any(|p| p.ends_with("Application Support/Typr")));
+        assert!(as_str.iter().any(|p| {
+            p.contains("Containers/com.typr.app/Data/Library/Application Support")
+        }));
+        assert!(as_str.iter().any(|p| {
+            p.contains("Containers/com.mabel.app/Data/Library/Application Support/Mabel")
+        }));
+    }
+
+    #[test]
+    fn version_bump_never_resets_existing_stats() {
+        let dest = tmp();
+        write(&dest, "stats.json", &sample_stats(1403));
+        write(&dest, "config.json", sample_config());
+        let before = fs::read_to_string(dest.join("stats.json")).unwrap();
+        for _ in 0..3 {
+            let report = migrate_into(&dest, &[]);
+            assert_eq!(report.status, "already_current", "{report:?}");
+            assert_eq!(fs::read_to_string(dest.join("stats.json")).unwrap(), before);
+        }
     }
 
     #[test]
@@ -857,5 +1000,58 @@ mod tests {
         assert!(migrate < settings && migrate < stats);
         assert!(main.contains("get_storage_status"));
         assert!(!main.contains("PathBuf::from(\".\")"));
+        let store = include_str!("storage.rs");
+        assert!(
+            !store.contains("if marker.exists() {\n        return MigrationReport::already_current();"),
+            "stale empty-launch marker must not skip import"
+        );
+    }
+
+    #[test]
+    fn enforcer_bound_history_survive_is_local_container_only() {
+        assert!(ENFORCER_BOUND.contains("b6530197"));
+        assert!(ENFORCER_BOUND.contains("MUST migrate local App Group/container/Application Support only"));
+        assert!(ENFORCER_BOUND.contains("MUST NOT invent cloud sync, Nexus/Mochii write, clipboard spy/coach, or HIPAA claim"));
+        assert!(ENFORCER_BOUND.contains("BREAKS IF: cloud sync"));
+        assert!(ENFORCER_BOUND.contains("BREAKS IF: Nexus write"));
+        assert!(ENFORCER_BOUND.contains("BREAKS IF: Mochii write"));
+        assert!(ENFORCER_BOUND.contains("BREAKS IF: clipboard spy/coach"));
+        assert!(ENFORCER_BOUND.contains("BREAKS IF: HIPAA claim"));
+        assert!(ENFORCER_BOUND.contains("iOS 0.1.0 has no history file"));
+        let prod = include_str!("storage.rs");
+        let migrate = prod
+            .split("pub fn migrate_into")
+            .nth(1)
+            .unwrap()
+            .split("fn normalize")
+            .next()
+            .unwrap();
+        let copy = prod
+            .split("fn copy_file")
+            .nth(1)
+            .unwrap()
+            .split("fn verify_json")
+            .next()
+            .unwrap();
+        for forbidden in [
+            "reqwest",
+            "iCloud",
+            "CloudKit",
+            "NSUbiquitous",
+            "CKRecord",
+            "auth.chibitek.com",
+            "Nexus",
+            "Mochii",
+            "HIPAA",
+            "pasteboard",
+            "NSPasteboard",
+            "Coach",
+        ] {
+            assert!(
+                !migrate.contains(forbidden) && !copy.contains(forbidden),
+                "BREAKS IF: history migrate leaves the local container ({forbidden})"
+            );
+        }
+        assert!(copy.contains("fs::copy"), "copy stays local fs");
     }
 }

@@ -607,6 +607,8 @@ mod tests {
         );
         assert!(mas.contains("/Library/Application Support/com.mabel.app"));
         assert!(mas.contains("/Library/Application Support/com.typr.app"));
+        assert!(mas.contains("/Library/Application Support/Mabel"));
+        assert!(mas.contains("/Library/Application Support/Typr"));
         let dmg = include_str!("../entitlements.plist");
         assert!(!dmg.contains("com.apple.security.app-sandbox"));
     }

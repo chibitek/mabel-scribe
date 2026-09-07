@@ -202,6 +202,13 @@ if grep -q 'static let displayBrand = "Mabel"' "$IOS/Shared/EnforcerBound.swift"
   && grep -q 'static let wisprBAAClaimAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let silentTrainingUploadAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'static let localOnlyLocalFirstCopyOK = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveLocalContainerOnly = true' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveCloudSyncAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveNexusWriteAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveMochiiWriteAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveClipboardSpyAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveCoachAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
+  && grep -q 'static let historySurviveHipaaClaimAllowed = false' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'privacySuite = "b6530197"' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'GREEN (b6530197): Local-only mode ships' "$IOS/Shared/EnforcerBound.swift" \
   && grep -q 'real HIPAA BAA parked (no Make It So)' "$IOS/Shared/EnforcerBound.swift" \
@@ -443,6 +450,22 @@ if "static let localOnlyLocalFirstCopyOK = true" not in enforcer:
     failed = True
 else:
     print("  PASS  local-only / local-first copy OK in Settings")
+if "static let historySurviveLocalContainerOnly = true" not in enforcer \
+        or "static let historySurviveCloudSyncAllowed = false" not in enforcer \
+        or "static let historySurviveNexusWriteAllowed = false" not in enforcer \
+        or "static let historySurviveMochiiWriteAllowed = false" not in enforcer \
+        or "static let historySurviveClipboardSpyAllowed = false" not in enforcer \
+        or "static let historySurviveCoachAllowed = false" not in enforcer \
+        or "static let historySurviveHipaaClaimAllowed = false" not in enforcer:
+    print("  FAIL  history-survive must stay local container only (no cloud/Nexus/clipboard spy/HIPAA)")
+    failed = True
+else:
+    print("  PASS  history-survive Enforcer BOUND is local App Group/container only")
+if "MUST NOT invent cloud sync, Nexus/Mochii write, clipboard spy/coach, or HIPAA claim" not in enforcer:
+    print("  FAIL  Enforcer BOUND addendum missing CoS MUST NOT invent line")
+    failed = True
+else:
+    print("  PASS  Enforcer BOUND addendum names cloud/Nexus/Mochii/clipboard spy/coach/HIPAA")
 if "GREEN (b6530197): Local-only mode ships" not in enforcer \
         or "BREAKS IF (b6530197): HIPAA/BAA/Wispr BAA claim ships" not in enforcer:
     print("  FAIL  Suite b6530197 canonical GREEN/BREAKS IF missing")
@@ -927,6 +950,32 @@ else:
 if "2.5" not in polish:
     print("  FAIL  acceptOrFailClosed missing 2.5x invent tripwire")
     failed = True
+
+# iOS 0.1.0 has no dictation-history store. Do not invent one.
+# Home tiles are placeholders. App Group is prefs (SettingsStore) only.
+# When a real iOS Insights/history file ships, it must use group.com.mabel.ios.
+if os.path.exists(os.path.join(root, "Shared/HistoryStore.swift")):
+    print("  FAIL  do not invent an iOS history store this tip (0.1.0 has none)")
+    failed = True
+else:
+    print("  PASS  no invented iOS HistoryStore (0.1.0 has no history file)")
+home_hist = open(os.path.join(root, "MabelIOS/Views/HomeTabView.swift")).read()
+if "no dictation-history file" not in home_hist:
+    print("  FAIL  Home must document that iOS has no history store")
+    failed = True
+else:
+    print("  PASS  Home documents iOS placeholder stats (no store)")
+if 'statCard(title: "Words today", value: "0")' not in home_hist:
+    print("  FAIL  Home placeholder stats must stay explicit zeros until a real store ships")
+    failed = True
+else:
+    print("  PASS  Home stats stay placeholders")
+settings_store = open(os.path.join(root, "Shared/SettingsStore.swift")).read()
+if "IOSIdentity.appGroup" not in settings_store and "group.com.mabel.ios" not in settings_store:
+    print("  FAIL  existing iOS prefs must stay on the App Group suite")
+    failed = True
+else:
+    print("  PASS  SettingsStore App Group suite is the durable iOS prefs path")
 
 # Keyboard overlay / entitlements must stay App Group only.
 for rel in ("MabelIOS/MabelIOS.entitlements", "MabelKeyboard/MabelKeyboard.entitlements"):

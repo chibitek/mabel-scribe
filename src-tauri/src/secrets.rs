@@ -27,14 +27,24 @@ pub fn get_groq_key() -> Result<String, String> {
         }
     }
     if let Some(cached) = CACHED.read().unwrap().clone() {
-        return Ok(cached);
-    }
-    match entry()?.get_password() {
-        Ok(s) => {
-            *CACHED.write().unwrap() = Some(s.clone());
-            Ok(s)
+        if !cached.is_empty() {
+            return Ok(cached);
         }
-        Err(keyring::Error::NoEntry) => Ok(String::new()),
+    }
+    let key = keychain_password_to_groq_key(entry()?.get_password())?;
+    *CACHED.write().unwrap() = Some(key.clone());
+    Ok(key)
+}
+
+/// Fail closed: a missing, empty, or unreadable keychain item is an error.
+/// Never `Ok("")` — empty-from-auth must not look like a successful key read.
+pub(crate) fn keychain_password_to_groq_key(
+    result: Result<String, keyring::Error>,
+) -> Result<String, String> {
+    match result {
+        Ok(s) if !s.trim().is_empty() => Ok(s),
+        Ok(_) => Err("Groq API key not set".to_string()),
+        Err(keyring::Error::NoEntry) => Err("Groq API key not set".to_string()),
         Err(e) => Err(format!("Keychain read error: {}", e)),
     }
 }
@@ -67,5 +77,32 @@ pub fn set_groq_key(value: &str) -> Result<(), String> {
             *CACHED.write().unwrap() = Some(value.to_string());
         }
         res
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn missing_or_empty_keychain_entry_is_err_not_empty_ok() {
+        assert!(keychain_password_to_groq_key(Err(keyring::Error::NoEntry)).is_err());
+        assert!(keychain_password_to_groq_key(Ok(String::new())).is_err());
+        assert!(keychain_password_to_groq_key(Ok("   ".into())).is_err());
+        assert_eq!(
+            keychain_password_to_groq_key(Ok("gsk_test".into())).unwrap(),
+            "gsk_test"
+        );
+    }
+
+    #[test]
+    fn keychain_platform_error_stays_err() {
+        let err = keychain_password_to_groq_key(Err(keyring::Error::Invalid(
+            "keychain".into(),
+            "default keychain could not be found".into(),
+        )))
+        .unwrap_err();
+        assert!(err.contains("Keychain read error"), "{err}");
+        assert!(err.contains("default keychain could not be found"), "{err}");
     }
 }

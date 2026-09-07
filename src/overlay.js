@@ -108,6 +108,7 @@ const errorTitle = (payload) => {
   if (payload && typeof payload === 'object' && payload.title) return payload.title;
   const msg = typeof payload === 'string' ? payload : payload?.message || '';
   if (/mic|silence|microphone/i.test(msg)) return 'Mic access needed';
+  if (/keychain|groq api|api key/i.test(msg)) return 'Cloud engine failed';
   if (/model|parakeet|whisper|downloaded|not linked/i.test(msg)) return 'Model not ready';
   if (/no audio|too short|captured/i.test(msg)) return 'No audio captured';
   if (/no text|recognized/i.test(msg)) return 'Nothing recognized';

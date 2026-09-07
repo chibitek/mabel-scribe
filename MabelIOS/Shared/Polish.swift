@@ -1,5 +1,11 @@
 import Foundation
 
+/// Typed gate failure. `Result<String, String>` + String-as-Error trips
+/// Xcode 26.6 SwiftUI Section type-check on the Polish settings pane.
+struct PolishGateError: Error, Equatable {
+    let message: String
+}
+
 /// Product **Polish** — Enforcer BOUND (fold hard). iOS ship #2 after Keyboard.
 ///
 /// Modes: Off | Casual | Professional | Polite (tone rewrite).
@@ -93,11 +99,11 @@ enum Polish {
         _ raw: String,
         stikiSignedIn: Bool,
         storeKitEntitled: Bool
-    ) -> Result<String, String> {
+    ) -> Result<String, PolishGateError> {
         let mode = normalizeMode(raw)
         if isLive(mode) {
             guard EnforcerBound.isProUnlocked(stikiSignedIn: stikiSignedIn, storeKitEntitled: storeKitEntitled) else {
-                return .failure(EnforcerBound.polishLockedMessage)
+                return .failure(PolishGateError(message: EnforcerBound.polishLockedMessage))
             }
         }
         return .success(mode)

@@ -1,4 +1,13 @@
-//! Mac long-session transcript integrity (Erick P0 / Product LOCK).
+//! Mac long-session transcript integrity (Erick P0).
+//!
+//! Product LOCK UPDATE + Enforcer BOUND UPDATE confirm (Erick 2026-09-08):
+//! Mac TF only this tip; fail closed/reset rather than invent. Soft nits later.
+//!
+//! GREEN (b6530197 Product LOCK UPDATE + Enforcer BOUND UPDATE):
+//! Mac TF only this tip; fail closed/reset rather than invent words;
+//! Soft nits later.
+//! BREAKS IF (b6530197 Product LOCK UPDATE + Enforcer BOUND UPDATE):
+//! invent/garbage inject on long Mac session; iOS in this tip.
 //!
 //! Toggle / hold can capture 15+ minutes as one WAV. Whisper (cpp, WhisperKit,
 //! Groq) then conditions each ~30s window on the previous window's text.
@@ -8,12 +17,28 @@
 //! Soft reset only: isolate chunks and drop garbage. Do not unload the warm
 //! Parakeet / WhisperKit CoreML session (that was the empty take-2 bug).
 //! Live streaming stays parked.
-//!
-//! BREAKS IF: invent / garbage inject on a long Mac session.
 
 use std::path::{Path, PathBuf};
 
 use crate::audio::NATIVE_ASR_SAMPLE_RATE;
+
+/// Named Enforcer suite. Tests fail if this is retargeted without a new MCS.
+pub const ENFORCER_SUITE: &str = "b6530197";
+
+/// Product LOCK UPDATE (Erick 2026-09-08 confirm). Soft nits later.
+pub const PRODUCT_LOCK: &str =
+    "Mac TF only this tip; fail closed/reset rather than invent. Soft nits later.";
+
+/// Enforcer BOUND UPDATE (Suite b6530197). `enforcer_bound_*` tests fold this.
+pub const ENFORCER_BOUND: &str = "CONFIRMED Suite b6530197; Mac TF only this tip; fail closed/reset rather than invent words; Soft nits later; BREAKS IF: invent/garbage inject on long Mac session; iOS in this tip";
+
+pub const BREAKS_IF: &str =
+    "BREAKS IF: invent/garbage inject on long Mac session; iOS in this tip";
+
+/// GREEN: this tip is Mac TestFlight only.
+pub const MAC_TF_ONLY: bool = true;
+/// BREAKS IF: iOS ships in this tip.
+pub const IOS_IN_THIS_TIP: bool = false;
 
 /// Whisper's decoder window is 30s. Stay under it so one chunk cannot grow
 /// a previous-text prompt inside a single engine call.
@@ -297,5 +322,52 @@ mod tests {
         );
         let keep = token_overlap_ratio(spoken, "Please send the metrics to May after the meeting today.").unwrap();
         assert!(keep > 0.80);
+    }
+
+    #[test]
+    fn enforcer_bound_long_sticky_transcript_integrity_suite_b6530197() {
+        assert_eq!(ENFORCER_SUITE, "b6530197");
+        assert!(MAC_TF_ONLY);
+        assert!(!IOS_IN_THIS_TIP);
+        assert_eq!(
+            PRODUCT_LOCK,
+            "Mac TF only this tip; fail closed/reset rather than invent. Soft nits later."
+        );
+        assert!(ENFORCER_BOUND.contains("CONFIRMED Suite b6530197"));
+        assert!(ENFORCER_BOUND.contains("Mac TF only this tip"));
+        assert!(ENFORCER_BOUND.contains("fail closed/reset rather than invent words"));
+        assert!(ENFORCER_BOUND.contains("Soft nits later"));
+        assert!(ENFORCER_BOUND.contains("BREAKS IF: invent/garbage inject on long Mac session"));
+        assert_eq!(
+            BREAKS_IF,
+            "BREAKS IF: invent/garbage inject on long Mac session; iOS in this tip"
+        );
+
+        let src = include_str!("transcript_integrity.rs");
+        assert!(src.contains("GREEN (b6530197 Product LOCK UPDATE + Enforcer BOUND UPDATE):"));
+        assert!(src.contains("BREAKS IF (b6530197 Product LOCK UPDATE + Enforcer BOUND UPDATE):"));
+        assert!(src.contains("Mac TF only this tip"));
+        assert!(src.contains("Soft nits later"));
+
+        let polish = include_str!("polish.rs");
+        assert!(polish.contains("Mac TF only this tip"));
+        assert!(polish.contains("fail closed/reset rather than invent"));
+        assert!(polish.contains("Soft nits later"));
+
+        // Mac TF only: iOS sticky ASR / App Group append are not this tip.
+        let ios_engine = include_str!("../../MabelIOS/Shared/OnDeviceSpeechEngine.swift");
+        let ios_session = include_str!("../../MabelIOS/Shared/SpeechSession.swift");
+        assert!(
+            !ios_engine.contains("ISOLATED_CHUNK") && !ios_session.contains("transcribe_isolated_take"),
+            "BREAKS IF: iOS in this tip"
+        );
+        assert!(
+            include_str!("recorder.rs").contains("transcribe_isolated_take"),
+            "Mac recorder must isolate long-session ASR"
+        );
+        assert!(
+            !include_str!("recorder.rs").contains("spawn_vad_worker()"),
+            "live streaming stays parked"
+        );
     }
 }

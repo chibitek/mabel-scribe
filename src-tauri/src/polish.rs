@@ -12,6 +12,9 @@
 //!
 //! Product LOCK still applies: Pro only, modes Off|Casual|Professional|Polite,
 //! after ASR, autocorrect + light reword, cat UI, no website upgrade.
+//!
+//! Product LOCK UPDATE + Enforcer BOUND UPDATE confirm (Erick 2026-09-08):
+//! Mac TF only this tip; fail closed/reset rather than invent. Soft nits later.
 
 use std::path::PathBuf;
 
@@ -19,7 +22,7 @@ use crate::storekit;
 
 /// Named Enforcer BOUND. `enforcer_bound_*` tests fail if this is violated.
 pub const ENFORCER_BOUND: &str =
-    "default OFF; local Gemma fail closed; never invent; fail closed/reset rather than invent words; not Nexus write; clipboardHistoryEnabled != Polish";
+    "default OFF; local Gemma fail closed; never invent; fail closed/reset rather than invent words; Mac TF only this tip; Soft nits later; not Nexus write; clipboardHistoryEnabled != Polish";
 
 pub const MODE_OFF: &str = "off";
 pub const MODE_CASUAL: &str = "casual";
@@ -307,6 +310,8 @@ mod tests {
         assert!(ENFORCER_BOUND.contains("default OFF"));
         assert!(ENFORCER_BOUND.contains("never invent"));
         assert!(ENFORCER_BOUND.contains("fail closed/reset rather than invent words"));
+        assert!(ENFORCER_BOUND.contains("Mac TF only this tip"));
+        assert!(ENFORCER_BOUND.contains("Soft nits later"));
         assert!(ENFORCER_BOUND.contains("not Nexus write"));
         assert!(ENFORCER_BOUND.contains("clipboardHistoryEnabled != Polish"));
 
